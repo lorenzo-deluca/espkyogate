@@ -35,7 +35,7 @@ _GateConfig StartupConfig;
 int FasePollingKyo;
 int CmdExec;
 
-long previousMillis = 0;      // Timer loop from http://www.arduino.cc/en/Tutorial/BlinkWithoutDelay
+long previousMillis = 0; // Timer loop from http://www.arduino.cc/en/Tutorial/BlinkWithoutDelay
 long interval = 1000;
 
 void setup()
@@ -56,7 +56,7 @@ void setup()
   client.setCallback(callback);
 }
 
-void callback(char* topic, byte* payload, unsigned int length)
+void callback(char *topic, byte *payload, unsigned int length)
 {
   String ComandoRicevuto = "";
   char Log[255];
@@ -79,13 +79,13 @@ void callback(char* topic, byte* payload, unsigned int length)
   GestioneComando(ComandoRicevuto);
 }
 
-
 void loop()
 {
   char TraceString[255];
 
   // Serial.println("Ready");
-  if (!client.connected()) {
+  if (!client.connected())
+  {
     reconnect();
   }
   client.loop();
@@ -95,30 +95,28 @@ void loop()
 
   if (currentMillis - previousMillis >= interval)
   {
-      if (StartupConfig.PollingKyo)
+    if (StartupConfig.PollingKyo)
+    {
+      if (KyoUnit_Polling())
       {
-          if(KyoUnit_Polling())
-          {
-            // ad ogni polling aggiorno il keepalive dmy_PollingCentraleKyo (se non viene aggiornato per 30 secondi scatta l'allarme)
-            if(StartupConfig.DomoticzUpdate && StartupConfig.DomoticzStateIdx > 0)
-            {
-                sprintf(TraceString, "{\"command\": \"setuservariable\", \"idx\": %d, \"value\": \"OK\"  }", StartupConfig.DomoticzStateIdx );
-                client.publish(domoticz_topic, TraceString);
-            }
-          }
-          
-          FasePollingKyo = FASE_POLLING_KYO_STATO;
+        // ad ogni polling aggiorno il keepalive dmy_PollingCentraleKyo (se non viene aggiornato per 30 secondi scatta l'allarme)
+        if (StartupConfig.DomoticzUpdate && StartupConfig.DomoticzStateIdx > 0)
+        {
+          sprintf(TraceString, "{\"command\": \"setuservariable\", \"idx\": %d, \"value\": \"OK\"  }", StartupConfig.DomoticzStateIdx);
+          client.publish(domoticz_topic, TraceString);
+        }
       }
 
-      if(CmdExec != CMD_NO_CDM)
-      {
-          KyoUnit_GesCmdExec(CmdExec);
-          CmdExec = CMD_NO_CDM;
-      }
+      FasePollingKyo = FASE_POLLING_KYO_STATO;
+    }
 
-      // salvo ultima esecuzione
-      previousMillis = currentMillis;
+    if (CmdExec != CMD_NO_CDM)
+    {
+      KyoUnit_GesCmdExec(CmdExec);
+      CmdExec = CMD_NO_CDM;
+    }
+
+    // salvo ultima esecuzione
+    previousMillis = currentMillis;
   }
-
 }
-

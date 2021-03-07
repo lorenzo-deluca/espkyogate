@@ -27,44 +27,43 @@
 #define command_topic "ESPKyoGate/in"
 #define domoticz_topic "domoticz/in"
 
-#define MAX_ZONE  32
-#define MAX_AREE  8
+#define MAX_ZONE 32
+#define MAX_AREE 8
 
-typedef struct 
+typedef struct
 {
     bool Abilitato;
-    
+
     bool StatusAttuale;
     bool LastStatus;
 
     int DomoticzIdx;
-}_Valore;
+} _Valore;
 
-typedef struct 
+typedef struct
 {
-   // stato Zone
-   struct Zona
-   {
-      bool Abilitata;
-      int StatoAttivo;
-      int DomoticzID;
-      
-      int LastStatus;
-   }Zone[MAX_ZONE];
+    // stato Zone
+    struct Zona
+    {
+        bool Abilitata;
+        int StatoAttivo;
+        int DomoticzID;
+
+        int LastStatus;
+    } Zone[MAX_ZONE];
 
     // stato Aree
     _Valore Area[MAX_AREE];
-    
+
     // Stato Warnings
-    struct 
+    struct
     {
         _Valore MancanzaRete;
         _Valore StatoPiano;
         _Valore StatoMansarda;
         _Valore StatoPerimetro;
         _Valore WarningWireless;
-    }
-    Warnings; 
+    } Warnings;
 
     bool PollingKyo = false;
     bool TracePolling = false;
@@ -73,19 +72,18 @@ typedef struct
     int DomoticzStateIdx = -1;
 
     char OkConfig[2];
-}_GateConfig;
-
+} _GateConfig;
 
 // Fasi Polling
-#define FASE_POLLING_KYO_INIT           0
-#define FASE_POLLING_KYO_STATO          1
-#define FASE_POLLING_KYO_INSERIMENTI    2
+#define FASE_POLLING_KYO_INIT 0
+#define FASE_POLLING_KYO_STATO 1
+#define FASE_POLLING_KYO_INSERIMENTI 2
 
-#define FASE_POLLING_KYO_FINE           99
+#define FASE_POLLING_KYO_FINE 99
 
-#define CMD_ARM_AWAY                    1
-#define CMD_ARM_HOME                    2
-#define CMD_DISARM                      3
-#define CMD_ACK_ALARM                   4
+#define CMD_ARM_AWAY 1
+#define CMD_ARM_HOME 2
+#define CMD_DISARM 3
+#define CMD_ACK_ALARM 4
 
-#define CMD_NO_CDM                      -1
+#define CMD_NO_CDM -1
