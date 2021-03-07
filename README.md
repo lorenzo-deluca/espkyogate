@@ -76,17 +76,17 @@ Publish **Command** in `ESPKyoGate/in` Topic
 |`?` | Show avaiable commands in `ESPKyoGate/out`
 |`conf zone <ZoneNumber> <Enabled> <ActiveState> <Idx> ` | Configure Zone
 |`show zone <ZoneNumber>` | Show selected zone in `ESPKyoGate/out`
-|`conf param DomoticzUpdate` | 
+|`conf param DomoticzUpdate` | Enable/Disable updates to Domoticz/HA
 |`start` | Start polling Kyo32
 |`stop` | Stop polling Kyo32
 |`save` | Save current Configuration (Zone, Area)
-|`restart` | Restart board without save
 |`trace` | Enable serial trace logs in `ESPKyoGate/out`
 |`notrace` | Disable serial trace logs
 |`reset` | Erase all settings and restart!
+|`restart` | Restart board without saving
 
 ### Config.yaml file for Home Assistant
-You have to change `<RadarName>` / `<DoorName>` and `<AreaID>`
+You have to change `<RadarName>` / `<DoorName>` and `<Idx>`
 ```yaml
 binary_sensor:
   - platform: mqtt
@@ -95,7 +95,7 @@ binary_sensor:
     state_topic: "domoticz/in"
     device_class: motion
     off_delay: 30
-    value_template: " {% if value_json.idx == <AreaID> and value_json.switchcmd == 'On' %}
+    value_template: " {% if value_json.idx == <Idx> and value_json.switchcmd == 'On' %}
           {{'ON'}}
         {% endif %}"
 
@@ -104,9 +104,9 @@ binary_sensor:
     name: "<DoorName>"
     state_topic: "domoticz/in"
     device_class: door
-    value_template: " {% if value_json.idx == <AreaID> and value_json.switchcmd == 'On' %}
+    value_template: " {% if value_json.idx == <Idx> and value_json.switchcmd == 'On' %}
           {{'ON'}}
-        {% elif value_json.idx == **<AreaID>** and value_json.switchcmd == 'Off' %}
+        {% elif value_json.idx == <Idx> and value_json.switchcmd == 'Off' %}
           {{'OFF'}}
         {% endif %}"
 ```
