@@ -98,7 +98,7 @@ binary_sensor:
     value_template: " {% if value_json.idx == <AreaID> and value_json.switchcmd == 'On' %}
           {{'ON'}}
         {% endif %}"
-		
+
  - platform: mqtt
     unique_id: <DoorName>
     name: "<DoorName>"
