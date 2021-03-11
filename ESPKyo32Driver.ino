@@ -283,15 +283,36 @@ bool Kyo32_SelPolling(int FasePolling)
 
         FasePollingKyo = FASE_POLLING_KYO_INSERIMENTI;
 
-        if (Count == 18)
+        int MaxZone = 0;
+        switch(Count)
         {
-            // Ciclo ZONE
-            for (i = 0; i < MAX_ZONE; i++)
-            {
-                mask = 00000001;
-                StatoZona = -1;
+            // Kyo32G
+            case 18:
+                MaxZone = MAX_ZONE;
+            break;
 
-                if (StartupConfig.Zone[i].Abilitata)
+            // Kyo8
+            case 12:
+                MaxZone = ;
+            break;
+
+            default:
+                return false;
+        }
+       
+        // Ciclo ZONE
+        for (i = 0; i < MaxZone; i++)
+        {
+            mask = 00000001;
+            StatoZona = -1;
+
+            if (StartupConfig.Zone[i].Abilitata)
+            {
+                if (MaxZone == MAX_ZONE_KYO_8)
+                {
+                    StatoZona = (Rx[6] >> i) & 1;
+                }
+                else
                 {
                     if (i >= 24)
                         StatoZona = (Rx[6] >> (i - 24)) & 1;
@@ -301,73 +322,76 @@ bool Kyo32_SelPolling(int FasePolling)
                         StatoZona = (Rx[8] >> (i - 8)) & 1;
                     else if (i <= 7)
                         StatoZona = (Rx[9] >> i) & 1;
-
-                    if (StartupConfig.Zone[i].LastStatus != StatoZona)
-                    {
-                        if (StartupConfig.Zone[i].DomoticzID != 0 && StartupConfig.DomoticzUpdate)
-                        {
-                            sprintf(TraceString, "{\"command\": \"switchlight\", \"idx\": %d, \"switchcmd\": \"%s\"  }", StartupConfig.Zone[i].DomoticzID, (StatoZona == StartupConfig.Zone[i].StatoAttivo) ? "On" : "Off");
-                            client.publish(domoticz_topic, TraceString);
-                        }
-
-                        sprintf(TraceString, "Stato Zona %d = %s", StartupConfig.Zone[i].DomoticzID, (StatoZona == StartupConfig.Zone[i].StatoAttivo) ? "On" : "Off");
-                        client.publish(trace_topic, TraceString);
-
-                        StartupConfig.Zone[i].LastStatus = StatoZona;
-                    }
                 }
-            }
 
-            // Ciclo AREE
-            for (i = 0; i < MAX_AREE; i++)
-            {
-                StatoZona = -1;
-
-                if (StartupConfig.Area[i].Abilitato)
+                if (StartupConfig.Zone[i].LastStatus != StatoZona)
                 {
-                    StatoZona = (Rx[15] >> i) & 1;
-
-                    if (StartupConfig.Area[i].LastStatus != StatoZona)
+                    if (StartupConfig.Zone[i].DomoticzID != 0 && StartupConfig.DomoticzUpdate)
                     {
-                        if (StartupConfig.Area[i].DomoticzIdx != 0 && StartupConfig.DomoticzUpdate)
-                        {
-                            sprintf(TraceString, "{\"command\": \"switchlight\", \"idx\": %d, \"switchcmd\": \"%s\"  }", StartupConfig.Area[i].DomoticzIdx, (StatoZona == 1) ? "On" : "Off");
-                            client.publish(domoticz_topic, TraceString);
-                        }
-
-                        sprintf(TraceString, "Stato Area %d = %s", StartupConfig.Area[i].DomoticzIdx, (StatoZona == 1) ? "On" : "Off");
-                        client.publish(trace_topic, TraceString);
-
-                        StartupConfig.Area[i].LastStatus = StatoZona;
-                    }
-                }
-            }
-
-            // Warnings
-            if (StartupConfig.Warnings.MancanzaRete.DomoticzIdx > 0)
-            {
-                StatoZona = (Rx[14] >> 0) & 1;
-
-                if (StartupConfig.Warnings.MancanzaRete.LastStatus != StatoZona)
-                {
-                    if (StartupConfig.Warnings.MancanzaRete.DomoticzIdx != 0 && StartupConfig.DomoticzUpdate)
-                    {
-                        sprintf(TraceString, "{\"command\": \"switchlight\", \"idx\": %d, \"switchcmd\": \"%s\"  }", StartupConfig.Warnings.MancanzaRete.DomoticzIdx, (StatoZona == 1) ? "On" : "Off");
+                        sprintf(TraceString, "{\"command\": \"switchlight\", \"idx\": %d, \"switchcmd\": \"%s\"  }", StartupConfig.Zone[i].DomoticzID, (StatoZona == StartupConfig.Zone[i].StatoAttivo) ? "On" : "Off");
                         client.publish(domoticz_topic, TraceString);
                     }
 
-                    sprintf(TraceString, "Stato MancanzaRete %d = %s", StartupConfig.Warnings.MancanzaRete.DomoticzIdx, (StatoZona == 1) ? "On" : "Off");
+                    sprintf(TraceString, "Stato Zona %d = %s", StartupConfig.Zone[i].DomoticzID, (StatoZona == StartupConfig.Zone[i].StatoAttivo) ? "On" : "Off");
                     client.publish(trace_topic, TraceString);
 
-                    StartupConfig.Warnings.MancanzaRete.LastStatus = StatoZona;
+                    StartupConfig.Zone[i].LastStatus = StatoZona;
                 }
             }
-
-            return true;
         }
-        else
-            return false;
 
+        // Ciclo AREE
+        for (i = 0; i < MAX_AREE; i++)
+        {
+            StatoZona = -1;
+
+            if (StartupConfig.Area[i].Abilitato)
+            {
+                if (MaxZone == MAX_ZONE_KYO_8)
+                    StatoZona = (Rx[9] >> i) & 1;
+                else
+                    StatoZona = (Rx[15] >> i) & 1;
+
+                if (StartupConfig.Area[i].LastStatus != StatoZona)
+                {
+                    if (StartupConfig.Area[i].DomoticzIdx != 0 && StartupConfig.DomoticzUpdate)
+                    {
+                        sprintf(TraceString, "{\"command\": \"switchlight\", \"idx\": %d, \"switchcmd\": \"%s\"  }", StartupConfig.Area[i].DomoticzIdx, (StatoZona == 1) ? "On" : "Off");
+                        client.publish(domoticz_topic, TraceString);
+                    }
+
+                    sprintf(TraceString, "Stato Area %d = %s", StartupConfig.Area[i].DomoticzIdx, (StatoZona == 1) ? "On" : "Off");
+                    client.publish(trace_topic, TraceString);
+
+                    StartupConfig.Area[i].LastStatus = StatoZona;
+                }
+            }
+        }
+
+        // Warnings
+        if (StartupConfig.Warnings.MancanzaRete.DomoticzIdx > 0)
+        {
+            if (MaxZone == MAX_ZONE_KYO_8)
+                StatoZona = (Rx[8] >> 0) & 1;
+            else
+                StatoZona = (Rx[14] >> 0) & 1;
+
+            if (StartupConfig.Warnings.MancanzaRete.LastStatus != StatoZona)
+            {
+                if (StartupConfig.Warnings.MancanzaRete.DomoticzIdx != 0 && StartupConfig.DomoticzUpdate)
+                {
+                    sprintf(TraceString, "{\"command\": \"switchlight\", \"idx\": %d, \"switchcmd\": \"%s\"  }", StartupConfig.Warnings.MancanzaRete.DomoticzIdx, (StatoZona == 1) ? "On" : "Off");
+                    client.publish(domoticz_topic, TraceString);
+                }
+
+                sprintf(TraceString, "Stato MancanzaRete %d = %s", StartupConfig.Warnings.MancanzaRete.DomoticzIdx, (StatoZona == 1) ? "On" : "Off");
+                client.publish(trace_topic, TraceString);
+
+                StartupConfig.Warnings.MancanzaRete.LastStatus = StatoZona;
+            }
+        }
+
+        return true;
         break;
     }
 

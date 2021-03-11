@@ -28,6 +28,7 @@
 #define domoticz_topic "domoticz/in"
 
 #define MAX_ZONE 32
+#define MAX_ZONE_KYO_8 8 
 #define MAX_AREE 8
 
 typedef struct
