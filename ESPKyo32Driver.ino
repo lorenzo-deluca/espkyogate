@@ -293,7 +293,7 @@ bool Kyo32_SelPolling(int FasePolling)
 
             // Kyo8
             case 12:
-                MaxZone = ;
+                MaxZone = MAX_ZONE_KYO_8;
             break;
 
             default:
