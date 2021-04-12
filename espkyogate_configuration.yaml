@@ -1,0 +1,71 @@
+esphome:
+  name: esp32_test
+  platform: ESP8266
+  board: d1_mini
+  includes:
+    - bentel_kyo32.h
+
+wifi:
+  ssid: "WiFiLDL_iOT"
+  password: "pswiOT2017!"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esp32 Test Fallback Hotspot"
+    password: "12345678"
+
+captive_portal:
+
+# Enable logging
+logger:
+  level: VERBOSE
+  baud_rate: 0
+
+# Enable Home Assistant API
+api:
+  password: "xxxx"
+
+ota:
+  password: "xxxx"
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO1
+  rx_pin: GPIO3
+  baud_rate: 9600
+  data_bits: 8
+  parity: EVEN
+  
+#time:
+#  - platform: homeassistant
+#    id: homeassistant_time
+#    on_time:
+#      # Every 5 minutes
+#      - seconds: /5
+#        then:
+#          - uart.write: [0xF0, 0x04, 0xF0, 0x0A, 0x00, 0xEE]
+
+
+binary_sensor:
+  - platform: custom
+    lambda: |-
+      auto kyo32 = new Bentel_Kyo32(id(uart_bus));
+      App.register_component(kyo32);
+      return {kyo32->zona_1, kyo32->zona_2, kyo32->zona_3, kyo32->zona_4, kyo32->zona_5, kyo32->zona_6, kyo32->zona_7, kyo32->zona_8, kyo32->zona_9, kyo32->zona_10, kyo32->zona_11, kyo32->zona_12, kyo32->zona_13, kyo32->zona_14, kyo32->zona_15, kyo32->zona_16,
+      kyo32->zona_sabotaggio_1, kyo32->zona_sabotaggio_2, kyo32->zona_sabotaggio_3, kyo32->zona_sabotaggio_4, kyo32->zona_sabotaggio_5, kyo32->zona_sabotaggio_6, kyo32->zona_sabotaggio_7, kyo32->zona_sabotaggio_8, kyo32->zona_sabotaggio_9, kyo32->zona_sabotaggio_10, kyo32->zona_sabotaggio_11, kyo32->zona_sabotaggio_12, kyo32->zona_sabotaggio_13, kyo32->zona_sabotaggio_14, kyo32->zona_sabotaggio_15, kyo32->zona_sabotaggio_16,
+      kyo32->allarme_area_1, kyo32->allarme_area_2, kyo32->allarme_area_3,
+      kyo32->warn_mancanza_rete, kyo32->warn_scomparsa_bpi, kyo32->warn_fusibile, kyo32->warn_batteria_bassa, kyo32->warn_guasto_linea_telefonica, kyo32->warn_codici_default, kyo32->warn_wireless,
+      kyo32->sabotaggio_zona, kyo32->sabotaggio_chiave_falsa, kyo32->sabotaggio_bpi, kyo32->sabotaggio_sistema, kyo32->sabotaggio_jam, kyo32->sabotaggio_wireless,
+      kyo32->inserimento_totale_area_1,kyo32->inserimento_totale_area_2,kyo32->inserimento_totale_area_3,
+      kyo32->inserimento_parziale_area_1,kyo32->inserimento_parziale_area_2,kyo32->inserimento_parziale_area_3,
+      kyo32->inserimento_parziale_ritardo_0_area_1,kyo32->inserimento_parziale_ritardo_0_area_2,kyo32->inserimento_parziale_ritardo_0_area_3,
+      kyo32->disinserita_area_1,kyo32->disinserita_area_2,kyo32->disinserita_area_3};
+    binary_sensors:
+      - id: zona_1
+        name: "Zona IR Sala"
+      - id: inserimento_totale_area_1
+        name: "Area 1 - Inserita Totale"
+      - id: warn_mancanza_rete
+        name: "Warning Mancanza Rete"
+      - id: disinserita_area_1
+        name: "Area 1 - Disinserita"
