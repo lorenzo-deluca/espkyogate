@@ -1,10 +1,9 @@
 
 # ESPKyo32Gate
 
-Serial Bridge for **Bentel Kyo32G Alarm Central**, based on **ESP8266** Board and **MQTT Protocol**.
+Serial Bridge for **Bentel Kyo32G Alarm Central**, based on **ESP8266** Board and **ESPHome** Open Source Firmware.
 
-It was initially designed to work with the **Domoticz** open source Home Automation system.
-Later, since I migrated my system to **Home Assistant** with the script below you can emulate the behavior of Domoticz with **manually configured mqtt entities** both on HA.
+Thanks to @dario81 
 
 ## Firmware Preparation
 Set your SSID and MQTT in **ESPKyoDef.h** file.
@@ -28,6 +27,10 @@ The WeMos can be powered with USB directly from the 12V output of the control un
 Which I recommend because in this way, even in case of power failure, the ESP is powered by the battery of the control unit.
 
 ![Bentel Kyo 32G ESP Connection](https://raw.githubusercontent.com/lorenzo-deluca/ESPKyo32Gate/master/images/BentelKYO32G-Connections.jpg)
+
+## Build and Upload Firmware
+'python3 -m esphome espkyogate_configuration.yaml compile'
+'python3 -m esphome espkyogate_configuration.yaml run'
 
 ## Usage
 When the card connects to WiFi and to the mqtt broker it publishes in the topic `ESPKyoGate/out` the message 

@@ -70,3 +70,5 @@ binary_sensor:
         name: "Allarme Area 1"
       - id: sabotaggio_zona
         name: "Sabotaggio Zona"
+      - id: inserimento_totale_area_1
+        name: "Inserimento Area 1"

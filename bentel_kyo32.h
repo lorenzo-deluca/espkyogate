@@ -190,31 +190,43 @@ public:
 	byte cmdGetPartitionStatus[6] = {0xf0, 0x02, 0x15, 0x12, 0x00, 0x19}; // f0 02 15 12 00 19 - Partitions Status - Outputs Status - Tamper Memory - Bypassed Zones - Zone Alarm Memory - Zone Tamper Memory
 	byte cmqGetSoftwareVersion[6] = {0xf0, 0x00, 0x00, 0x0b, 0x00, 0xfb}; // f0 00 00 0b 00 fb
 
-	int sendMessageToKyo(byte *cmd, int lcmd, byte ReadByes[])
-	{
-		byte RxBuff[255];
-		char TraceString[255];
+	bool serialTrace = false;
 
-		int index = 0, i = 0;
-		int val;
+	int sendMessageToKyo(byte *cmd, int lcmd, byte ReadByes[], int waitForAnswer = 0)
+	{
+		int index = 0;
+		byte RxBuff[255];
 		memset(ReadByes, 0, 254);
 
 		write_array(cmd, lcmd);
-		//delay(100);
+		delay(waitForAnswer);
+		
+		// Read a single Byte
 		while (available() > 0)
-		{
-			// Read a single Byte
 			RxBuff[index++] = read(); 
-			//delay(3);
+
+		if (this->serialTrace)
+		{
+			int i;
+			char txString[255];
+			char rxString[255];
+			memset(txString, 0, 255);
+			memset(rxString, 0, 255);
+
+			for (i = 0; i < lcmd; i++)
+				sprintf(txString, "%s %02X", txString, cmd[i]);
+
+			for (i = 0; i < index; i++)
+				sprintf(rxString, "%s %02X", rxString, RxBuff[i]);
+
+			ESP_LOGD("sendMessageToKyo", "TX [%d] '%s', RX [%d] '%s'", lcmd, txString, index, rxString);
 		}
 
-		if (index > 0)
-		{
-			memcpy(ReadByes, RxBuff, index);
-			return index;
-		}
-		else
+		if (index <= 0)
 			return -1;
+
+		memcpy(ReadByes, RxBuff, index);
+		return index;
 	}
 
 	void setup() override
@@ -222,11 +234,9 @@ public:
 		register_service(&Bentel_Kyo32::on_clock_setting, "clock_setting",
 						 {"pin", "day", "month", "year", "hour", "minutes", "seconds", "data_format"});
 
-		register_service(&Bentel_Kyo32::arm_partitions, "arm_partitions",
-						 {"pin", "partition_mask", "type"});
+		register_service(&Bentel_Kyo32::arm_area, "arm_area", {"area", "arm_type"});
 
-		register_service(&Bentel_Kyo32::disarm_partitions, "disarm_partitions",
-						 {"pin", "partition_mask", "type"});
+		register_service(&Bentel_Kyo32::disarm_area, "disarm_area", {"area"});
 
 		register_service(&Bentel_Kyo32::on_reset_alarms, "reset_alarms",
 						 {"pin"});
@@ -243,6 +253,9 @@ public:
 		register_service(&Bentel_Kyo32::on_deactivate_output, "deactivate_output",
 						 {"pin", "output_number"});
 
+		register_service(&Bentel_Kyo32::on_debug_command, "debug_command",
+						 {"serial_trace"});
+
 		this->set_update_interval(250);
 	}
 
@@ -251,25 +264,25 @@ public:
 		ESP_LOGD("custom", "Clock Setting. PIN: %d, Day: %d, Month: %d, Year: %d, Hour: %d, Minutes: %d, Seconds: %d, Data Format: %d", pin, day, month, year, hour, minutes, seconds, data_format);
 	}
 
-	void arm_partitions(int pin, int partition_mask, int type)
+	void arm_area(int area, int arm_type)
 	{
-		ESP_LOGD("custom", "Arm Partitions. PIN: %d, Partition Mask: %d, Type: %d", pin, partition_mask, type);
+		ESP_LOGD("arm_area", "request arm type %d area %d", area, arm_type);
 
 		byte cmdArmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x01, 0x00, 0x00, 0xFE, 0xFF};
 
 		byte Rx[255];
-		int Count = sendMessageToKyo(cmdArmPartition, sizeof(cmdArmPartition), Rx);
-		ESP_LOGD("custom", "arm_partitions kyo respond %i", Count);
+		int Count = sendMessageToKyo(cmdArmPartition, sizeof(cmdArmPartition), Rx, 50);
+		ESP_LOGD("arm_area", "arm_area kyo respond %i", Count);
 	}
 
-	void disarm_partitions(int pin, int partition_mask, int type)
+	void disarm_area(int area)
 	{
-		ESP_LOGD("custom", "Disarm Partitions. PIN: %d, Partition Mask: %d, Type: %d", pin, partition_mask, type);
+		ESP_LOGD("disarm_area", "request disarm area %d", area);
 		byte cmdDisarmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0xFF, 0xFF};
 
 		byte Rx[255];
-		int Count = sendMessageToKyo(cmdDisarmPartition, sizeof(cmdDisarmPartition), Rx);
-		ESP_LOGD("custom", "disarm_partitions kyo respond %i", Count);
+		int Count = sendMessageToKyo(cmdDisarmPartition, sizeof(cmdDisarmPartition), Rx, 50);
+		ESP_LOGD("disarm_area", "kyo respond %i", Count);
 	}
 
 	void on_reset_alarms(int pin)
@@ -297,13 +310,18 @@ public:
 		ESP_LOGD("custom", "Deactivate Output. PIN: %d, Output Number: %d", pin, output_number);
 	}
 
+	void on_debug_command(int serial_trace)
+	{
+		this->serialTrace = (serial_trace == 1);
+	}
+
 	void loop() override
 	{
 	}
 
 	void update() override
 	{
-		this->update_sensor_status();
+		this->update_zones_status();
 		//delay(100);
 		this->update_aree_status();
 		//delay(100);
@@ -312,26 +330,21 @@ public:
 	void update_aree_status()
 	{
 		byte Rx[255];
-		int Count = 0, i;
-
-		int StatoZona;
-		byte mask = 1;
-
+		int Count = 0;
 		Count = sendMessageToKyo(cmdGetPartitionStatus, sizeof(cmdGetPartitionStatus), Rx);
 		if (Count != 26)
 		{
-			//kyo_comunication->publish_state(false);
-			//ESP_LOGD("custom", "update_aree_status invalid message length %i", Count);
+			kyo_comunication->publish_state(false);
+			ESP_LOGD("update_aree_status", "invalid message length %i", Count);
 			return;
 		}
 
 		kyo_comunication->publish_state(true);
 
+		int StatoZona, i;
 		// Ciclo AREE INSERITE
-		for (i = 0; i < 8; i++)
+		for (i = 0; i < MAX_AREE; i++)
 		{
-			mask = 00000001;
-			StatoZona = -1;
 			StatoZona = (Rx[6] >> i) & 1;
 			inserimento_totale_area[i].publish_state(StatoZona == 1);
 		}
@@ -339,53 +352,32 @@ public:
 		// Ciclo AREE INSERITE PARZIALI
 		for (i = 0; i < MAX_AREE; i++)
 		{
-			mask = 00000001;
-			StatoZona = -1;
 			StatoZona = (Rx[7] >> i) & 1;
-
 			inserimento_parziale_area[i].publish_state(StatoZona == 1);
 		}
 
 		// Ciclo AREE INSERITE PARZIALI RITARDO 0
 		for (i = 0; i < MAX_AREE; i++)
 		{
-			mask = 00000001;
-			StatoZona = -1;
 			StatoZona = (Rx[8] >> i) & 1;
-
 			inserimento_parziale_ritardo_0_area[i].publish_state(StatoZona == 1);
 		}
 
 		// Ciclo AREE DISINSERITE
 		for (i = 0; i < MAX_AREE; i++)
 		{
-			mask = 00000001;
-			StatoZona = -1;
 			StatoZona = (Rx[9] >> i) & 1;
-
 			disinserita_area[i].publish_state(StatoZona == 1);
 		}
 
-		// Ciclo STATO SIRENA
-		for (i = 0; i < MAX_AREE; i++)
-		{
-			mask = 00000001;
-			StatoZona = -1;
-			StatoZona = (Rx[10] >> i) & 1;
-
-			if (i == 0)
-			{
-				stato_sirena->publish_state(StatoZona == 1);
-				break;
-			}
-		}
+		// STATO SIRENA
+		StatoZona = (Rx[10] >> 0) & 1;
+		stato_sirena->publish_state(StatoZona == 1);
 
 		// CICLO STATO USCITE
 		for (i = 0; i < MAX_ZONE; i++)
 		{
-			mask = 00000001;
-			StatoZona = -1;
-
+			StatoZona = 0;
 			if (i >= 8 && i <= 15)
 				StatoZona = (Rx[11] >> (i - 8)) & 1;
 			else if (i <= 7)
@@ -398,9 +390,7 @@ public:
 		// CICLO ZONE ESCLUSE
 		for (i = 0; i < MAX_ZONE; i++)
 		{
-			mask = 00000001;
-			StatoZona = -1;
-
+			StatoZona = 0;
 			if (i >= 24)
 				StatoZona = (Rx[13] >> (i - 24)) & 1;
 			else if (i >= 16 && i <= 23)
@@ -417,9 +407,7 @@ public:
 		// CICLO MEMORIA ALLARME ZONE
 		for (i = 0; i < MAX_ZONE; i++)
 		{
-			mask = 00000001;
-			StatoZona = -1;
-
+			StatoZona = 0;
 			if (i >= 24)
 				StatoZona = (Rx[17] >> (i - 24)) & 1;
 			else if (i >= 16 && i <= 23)
@@ -436,9 +424,7 @@ public:
 		// CICLO MEMORIA SABOTAGGIO ZONE
 		for (i = 0; i < MAX_ZONE; i++)
 		{
-			mask = 00000001;
-			StatoZona = -1;
-
+			StatoZona = 0;
 			if (i >= 24)
 				StatoZona = (Rx[21] >> (i - 24)) & 1;
 			else if (i >= 16 && i <= 23)
@@ -453,27 +439,24 @@ public:
 		}
 	}
 
-	void update_sensor_status()
+	void update_zones_status()
 	{
 		byte Rx[255];
-		int Count = 0, i;
-
-		int StatoZona;
-		byte mask = 1;
+		int Count = 0;
 
 		Count = sendMessageToKyo(cmdGetSensorStatus, sizeof(cmdGetSensorStatus), Rx);
 		if (Count != 18)
 		{
-			//ESP_LOGD("custom", "update_sensor_status invalid message length %i", Count);
+			ESP_LOGD("update_zones_status", "invalid message length %i", Count);
 			return;
 		}
+
+		int StatoZona, i;
 
 		// Ciclo ZONE
 		for (i = 0; i < MAX_ZONE; i++)
 		{
-			mask = 00000001;
-			StatoZona = -1;
-
+			StatoZona = 0;
 			if (i >= 24)
 				StatoZona = (Rx[6] >> (i - 24)) & 1;
 			else if (i >= 16 && i <= 23)
@@ -490,9 +473,7 @@ public:
 		// Ciclo SABOTAGGIO ZONE
 		for (i = 0; i < MAX_ZONE; i++)
 		{
-			mask = 00000001;
-			StatoZona = -1;
-
+			StatoZona = 0;
 			if (i >= 24)
 				StatoZona = (Rx[10] >> (i - 24)) & 1;
 			else if (i >= 16 && i <= 23)
@@ -503,15 +484,22 @@ public:
 				StatoZona = (Rx[13] >> i) & 1;
 
 			zona_sabotaggio[i].publish_state(StatoZona == 1);
+
+			if (StatoZona == 1)
+				zona[i].publish_state("sabotate");
+		}
+
+		// Ciclo ALLARME AREA
+		for (i = 0; i < MAX_AREE; i++)
+		{
+			StatoZona = (Rx[15] >> i) & 1;
+			allarme_area[0].publish_state(StatoZona == 1);
 		}
 
 		// Ciclo WARNINGS
 		for (i = 0; i < 8; i++)
 		{
-			mask = 00000001;
-			StatoZona = -1;
 			StatoZona = (Rx[14] >> i) & 1;
-
 			switch(i)
 			{
 				case 0:
@@ -544,23 +532,10 @@ public:
 			}
 		}
 
-		// Ciclo ALLARME AREA
-		for (i = 0; i < MAX_AREE; i++)
-		{
-			mask = 00000001;
-			StatoZona = -1;
-			StatoZona = (Rx[15] >> i) & 1;
-
-			allarme_area[0].publish_state(StatoZona == 1);
-		}
-
 		// Ciclo SABOTAGGI
 		for (i = 0; i < 8; i++)
 		{
-			mask = 00000001;
-			StatoZona = -1;
 			StatoZona = (Rx[16] >> i) & 1;
-
 			switch(i)
 			{
 				case 2:
