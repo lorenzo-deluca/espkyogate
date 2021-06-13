@@ -79,14 +79,14 @@ public:
 	BinarySensor *zona_sabotaggio_32 = &zona_sabotaggio[31];
 	
 	BinarySensor* zona_esclusa = new BinarySensor[MAX_ZONE];
-	BinarySensor *zona_esclusa_1 = &zona_sabotaggio[0];
-	BinarySensor *zona_esclusa_2 = &zona_sabotaggio[1];
-	BinarySensor *zona_esclusa_3 = &zona_sabotaggio[2];
-	BinarySensor *zona_esclusa_4 = &zona_sabotaggio[3];
-	BinarySensor *zona_esclusa_5 = &zona_sabotaggio[4];
-	BinarySensor *zona_esclusa_6 = &zona_sabotaggio[5];
-	BinarySensor *zona_esclusa_7 = &zona_sabotaggio[6];
-	BinarySensor *zona_esclusa_8 = &zona_sabotaggio[7];
+	BinarySensor *zona_esclusa_1 = &zona_esclusa[0];
+	BinarySensor *zona_esclusa_2 = &zona_esclusa[1];
+	BinarySensor *zona_esclusa_3 = &zona_esclusa[2];
+	BinarySensor *zona_esclusa_4 = &zona_esclusa[3];
+	BinarySensor *zona_esclusa_5 = &zona_esclusa[4];
+	BinarySensor *zona_esclusa_6 = &zona_esclusa[5];
+	BinarySensor *zona_esclusa_7 = &zona_esclusa[6];
+	BinarySensor *zona_esclusa_8 = &zona_esclusa[7];
 	
 	BinarySensor* memoria_allarme_zona = new BinarySensor[MAX_ZONE];
 	BinarySensor *memoria_allarme_zona_1 = &memoria_allarme_zona[0];
@@ -231,30 +231,21 @@ public:
 
 	void setup() override
 	{
-		register_service(&Bentel_Kyo32::on_clock_setting, "clock_setting",
-						 {"pin", "day", "month", "year", "hour", "minutes", "seconds", "data_format"});
+		//register_service(&Bentel_Kyo32::on_clock_setting, "clock_setting",
+		//				 {"pin", "day", "month", "year", "hour", "minutes", "seconds", "data_format"});
 
 		register_service(&Bentel_Kyo32::arm_area, "arm_area", {"area", "arm_type"});
-
 		register_service(&Bentel_Kyo32::disarm_area, "disarm_area", {"area"});
 
-		register_service(&Bentel_Kyo32::on_reset_alarms, "reset_alarms",
-						 {"pin"});
+		register_service(&Bentel_Kyo32::on_reset_alarms, "reset_alarms", {"pin"});
 
-		register_service(&Bentel_Kyo32::on_bypass_zone, "bypass_zone",
-						 {"pin", "zone_number"});
+		//register_service(&Bentel_Kyo32::on_bypass_zone, "bypass_zone", {"pin", "zone_number"});
+		//register_service(&Bentel_Kyo32::on_unbypass_zone, "unbypass_zone", {"pin", "zone_number"});
 
-		register_service(&Bentel_Kyo32::on_unbypass_zone, "unbypass_zone",
-						 {"pin", "zone_number"});
+		register_service(&Bentel_Kyo32::on_activate_output, "activate_output", {"pin", "output_number"});
+		register_service(&Bentel_Kyo32::on_deactivate_output, "deactivate_output", {"pin", "output_number"});
 
-		register_service(&Bentel_Kyo32::on_activate_output, "activate_output",
-						 {"pin", "output_number"});
-
-		register_service(&Bentel_Kyo32::on_deactivate_output, "deactivate_output",
-						 {"pin", "output_number"});
-
-		register_service(&Bentel_Kyo32::on_debug_command, "debug_command",
-						 {"serial_trace"});
+		register_service(&Bentel_Kyo32::on_debug_command, "debug_command", {"serial_trace"});
 
 		this->set_update_interval(500);
 	}
@@ -266,13 +257,42 @@ public:
 
 	void arm_area(int area, int arm_type)
 	{
-		ESP_LOGD("arm_area", "request arm type %d area %d", area, arm_type);
+		ESP_LOGD("arm_area", "request arm type %d area %d", arm_type, area);
 
-		byte cmdArmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x01, 0x00, 0x00, 0xFE, 0xFF};
+		//byte cmdArmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x01, 0x00, 0x00, 0xFE, 0xFF};
+		byte cmdArmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0xCC, 0xFF};
+		if (area > 8)
+		{
+			ESP_LOGD("arm_area", "Invalid Area %i, MAX 8", area);
+			return;
+		}
+
+		byte command = 0x00;
+		command |= 1 << (area - 1);
+
+		if (arm_type == 2)
+		{
+			cmdArmPartition[7] = command;
+		}
+		else
+		{
+			cmdArmPartition[6] = command;
+		}
+
+		cmdArmPartition[9] = calculateCRC(cmdArmPartition, 8);
 
 		byte Rx[255];
 		int Count = sendMessageToKyo(cmdArmPartition, sizeof(cmdArmPartition), Rx, 10);
 		ESP_LOGD("arm_area", "arm_area kyo respond %i", Count);
+	}
+
+	byte calculateCRC(byte *cmd, int lcmd)
+	{
+		int sum = 0x00;
+		for (int i = 0; i <= lcmd; i++)
+			sum += cmd[i];
+
+		return (0x203 - sum);
 	}
 
 	void disarm_area(int area)
