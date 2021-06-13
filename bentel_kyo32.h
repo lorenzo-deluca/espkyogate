@@ -256,7 +256,7 @@ public:
 		register_service(&Bentel_Kyo32::on_debug_command, "debug_command",
 						 {"serial_trace"});
 
-		this->set_update_interval(250);
+		this->set_update_interval(500);
 	}
 
 	void on_clock_setting(int pin, int day, int month, int year, int hour, int minutes, int seconds, int data_format)
@@ -271,7 +271,7 @@ public:
 		byte cmdArmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x01, 0x00, 0x00, 0xFE, 0xFF};
 
 		byte Rx[255];
-		int Count = sendMessageToKyo(cmdArmPartition, sizeof(cmdArmPartition), Rx, 50);
+		int Count = sendMessageToKyo(cmdArmPartition, sizeof(cmdArmPartition), Rx, 10);
 		ESP_LOGD("arm_area", "arm_area kyo respond %i", Count);
 	}
 
@@ -281,7 +281,7 @@ public:
 		byte cmdDisarmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0xFF, 0xFF};
 
 		byte Rx[255];
-		int Count = sendMessageToKyo(cmdDisarmPartition, sizeof(cmdDisarmPartition), Rx, 50);
+		int Count = sendMessageToKyo(cmdDisarmPartition, sizeof(cmdDisarmPartition), Rx, 10);
 		ESP_LOGD("disarm_area", "kyo respond %i", Count);
 	}
 
@@ -321,27 +321,30 @@ public:
 
 	void update() override
 	{
-		this->update_zones_status();
-		//delay(100);
-		this->update_aree_status();
-		//delay(100);
+		this->update_kyo_status();
+		delay(5);
+
+		//this->update_kyo_areas();
+		delay(5);
 	}
 
-	void update_aree_status()
+	void update_kyo_areas()
 	{
 		byte Rx[255];
 		int Count = 0;
-		Count = sendMessageToKyo(cmdGetPartitionStatus, sizeof(cmdGetPartitionStatus), Rx);
+
+		Count = sendMessageToKyo(cmdGetPartitionStatus, sizeof(cmdGetPartitionStatus), Rx, 10);
 		if (Count != 26)
 		{
 			kyo_comunication->publish_state(false);
-			ESP_LOGD("update_aree_status", "invalid message length %i", Count);
+			ESP_LOGD("update_kyo_areas", "invalid message length %i", Count);
 			return;
 		}
 
 		kyo_comunication->publish_state(true);
 
 		int StatoZona, i;
+
 		// Ciclo AREE INSERITE
 		for (i = 0; i < MAX_AREE; i++)
 		{
@@ -437,19 +440,23 @@ public:
 			//ESP_LOGD("custom", "The value of sensor is: %i", StatoZona);
 			memoria_sabotaggio_zona[i].publish_state(StatoZona == 1);
 		}
+		
 	}
 
-	void update_zones_status()
+	void update_kyo_status()
 	{
 		byte Rx[255];
 		int Count = 0;
 
-		Count = sendMessageToKyo(cmdGetSensorStatus, sizeof(cmdGetSensorStatus), Rx);
+		Count = sendMessageToKyo(cmdGetSensorStatus, sizeof(cmdGetSensorStatus), Rx, 10);
 		if (Count != 18)
 		{
-			ESP_LOGD("update_zones_status", "invalid message length %i", Count);
+			kyo_comunication->publish_state(false);
+			ESP_LOGD("update_kyo_status", "invalid message length %i", Count);
 			return;
 		}
+
+		kyo_comunication->publish_state(true);
 
 		int StatoZona, i;
 
@@ -563,5 +570,8 @@ public:
 					break;
 			}
 		}
+
+		kyo_comunication->publish_state(true);
+		return;
 	}
 };

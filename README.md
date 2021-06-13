@@ -1,20 +1,8 @@
 
-# ESPKyo32Gate
+# ESPKyo32Gate for ESPhome
 
 Serial Bridge for **Bentel Kyo32G Alarm Central**, based on **ESP8266** Board and **ESPHome** Open Source Firmware.
-
-Thanks to @dario81 
-
-## Firmware Preparation
-Set your SSID and MQTT in **ESPKyoDef.h** file.
-
-    #define mqtt_server "enter mqtt server"
-    #define mqtt_user ""
-    #define mqtt_password ""
-    
-	#define wifi_ssid "enter wifi SSID"
-	#define wifi_password "enter wifi password"
-You have to flash this firmware on ESP8266 Board using Arduino software.
+Thanks to @dario81 for initial porting to ESPHome 
 
 ## Hardware Connections
 As board I used a **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine.
@@ -28,88 +16,20 @@ Which I recommend because in this way, even in case of power failure, the ESP is
 
 ![Bentel Kyo 32G ESP Connection](https://raw.githubusercontent.com/lorenzo-deluca/ESPKyo32Gate/master/images/BentelKYO32G-Connections.jpg)
 
+## Firmware Preparation
+The file `espkyogate_configuration.yaml` is already present in this repo, I suggest you start from this.
+Set your WiFi ssid and password in `wifi` section.
+Set `uart` settings in base depending on the board you use, example file is for Wemos D1 mini.
+Finally edit `binary_sensors` you want to see on your Home Assistant as configured in the example file.
+
 ## Build and Upload Firmware
 'python3 -m esphome espkyogate_configuration.yaml compile'
 'python3 -m esphome espkyogate_configuration.yaml run'
 
+## Check logs
+'python3 -m esphome espkyogate_configuration.yaml logs'
+
 ## Usage
-When the card connects to WiFi and to the mqtt broker it publishes in the topic `ESPKyoGate/out` the message 
-> "ESP Connesso".
 
-After receiving this message you can continue with the configuration of **Zones** and **Areas**.
-After these configurazion must be **enabled the dialogue** with the central unit and **saved the settings**.
-
-All commands must be sent to topic `ESPKyoGate/in`, the result of the command will be sent to the topic `ESPKyoGate/out`
-
-### Configure Zone
-Then the **Zones** must be configured, starting from zone 1, for each zone an Idx must be specified, if you use Domoticz it will be the Id of the device that identifies the zone (pir, door, window, etc. ..), otherwise, even if you use Home Assistant you must assign a unique Idx for each zone.
-
-For example this is a message to configure Zone 1, with Idx 21.
-
-    conf zone 1 1 1 21
-
-![MQTT Configure Zone](https://raw.githubusercontent.com/lorenzo-deluca/ESPKyo32Gate/master/images/configure-zone.png)
-
-### Enable Updates and Unit Polling
-After to have configured the Zones it must be activated the state update via MQTT  and enable the serial communication to the Central Unit Kyo.
-
-First you have to activate the sending of zone status via MQTT to Domoticz (or HA if you configure the entities as described below):
-> conf param DomoticzUpdate 1
-
-After that you have to enable the serial communication to the Central Unit Kyo:
-> start
-
-Finally, the settings must be saved, otherwise all settings made so far will not be retained when the ESP card is restarted.
-> save
-
-## MQTT 
-When the board connects to your MQTT Broker you can control it through these topics.
-
-|Topic|Function|
-|--|--|
-|`ESPKyoGate/in` | Send Command to Board|
-|`ESPKyoGate/out` | Firmware Logs and Command Outputs |
-  
-### MQTT Commands  
-
-Publish **Command** in `ESPKyoGate/in` Topic
-
-|Command|Function|
-|--|--|
-|`?` | Show avaiable commands in `ESPKyoGate/out`
-|`conf zone <ZoneNumber> <Enabled> <ActiveState> <Idx> ` | Configure Zone
-|`show zone <ZoneNumber>` | Show selected zone in `ESPKyoGate/out`
-|`conf param DomoticzUpdate` | Enable/Disable updates to Domoticz/HA
-|`start` | Start polling Kyo32
-|`stop` | Stop polling Kyo32
-|`save` | Save current Configuration (Zone, Area)
-|`trace` | Enable serial trace logs in `ESPKyoGate/out`
-|`notrace` | Disable serial trace logs
-|`reset` | Erase all settings and restart!
-|`restart` | Restart board without saving
-
-### Config.yaml file for Home Assistant
-You have to change `<RadarName>` / `<DoorName>` and `<Idx>`
-```yaml
-binary_sensor:
-  - platform: mqtt
-    unique_id: "<RadarName>"
-    name: "<RadarName>"
-    state_topic: "domoticz/in"
-    device_class: motion
-    off_delay: 30
-    value_template: " {% if value_json.idx == <Idx> and value_json.switchcmd == 'On' %}
-          {{'ON'}}
-        {% endif %}"
-
- - platform: mqtt
-    unique_id: <DoorName>
-    name: "<DoorName>"
-    state_topic: "domoticz/in"
-    device_class: door
-    value_template: " {% if value_json.idx == <Idx> and value_json.switchcmd == 'On' %}
-          {{'ON'}}
-        {% elif value_json.idx == <Idx> and value_json.switchcmd == 'Off' %}
-          {{'OFF'}}
-        {% endif %}"
-```
+## License
+GNU AGPLv3 © [Lorenzo De Luca][https://lorenzodeluca.dev]

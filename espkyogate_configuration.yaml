@@ -35,16 +35,6 @@ uart:
   baud_rate: 9600
   data_bits: 8
   parity: EVEN
-  
-#time:
-#  - platform: homeassistant
-#    id: homeassistant_time
-#    on_time:
-#      # Every 5 minutes
-#      - seconds: /5
-#        then:
-#          - uart.write: [0xF0, 0x04, 0xF0, 0x0A, 0x00, 0xEE]
-
 
 binary_sensor:
   - platform: custom
