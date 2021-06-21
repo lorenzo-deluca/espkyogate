@@ -318,8 +318,8 @@ public:
 		register_service(&Bentel_Kyo32::arm_area, "arm_area", {"area", "arm_type", "specific_area"});
 		register_service(&Bentel_Kyo32::disarm_area, "disarm_area", {"area", "specific_area"});
 		register_service(&Bentel_Kyo32::reset_alarms, "reset_alarms");
-		//register_service(&Bentel_Kyo32::activate_output, "activate_output", {"pin", "output_number"});
-		//register_service(&Bentel_Kyo32::deactivate_output, "deactivate_output", {"pin", "output_number"});
+		register_service(&Bentel_Kyo32::activate_output, "activate_output", {"output_number"});
+		register_service(&Bentel_Kyo32::deactivate_output, "deactivate_output", {"output_number"});
 		register_service(&Bentel_Kyo32::debug_command, "debug_command", {"serial_trace", "log_trace"});
 
 		//register_service(&Bentel_Kyo32::on_clock_setting, "clock_setting", {"pin", "day", "month", "year", "hour", "minutes", "seconds", "data_format"});
@@ -408,7 +408,7 @@ public:
 		cmdDisarmPartition[9] = calculateCRC(cmdDisarmPartition, 8);
 
 		byte Rx[255];
-		int Count = sendMessageToKyo(cmdDisarmPartition, sizeof(cmdDisarmPartition), Rx, 100);
+		int Count = sendMessageToKyo(cmdDisarmPartition, sizeof(cmdDisarmPartition), Rx, 80);
 		ESP_LOGD("disarm_area", "kyo respond %i", Count);
 	}
 
@@ -433,6 +433,46 @@ public:
 	{
 	}
 
+	void activate_output(int output_number)
+	{
+		if (output_number > MAX_AREE)
+		{
+			ESP_LOGD("activate_output", "invalid output %i, MAX %i", output_number, MAX_AREE);
+			return;
+		}
+
+		ESP_LOGD("activate_output", "activate Output Number: %d", output_number);
+		
+		byte cmdActivateOutput[9] = {0x0f, 0x06, 0xf0, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00};
+		
+		cmdActivateOutput[6] |= 1 << (output_number - 1);
+		cmdActivateOutput[8] = cmdActivateOutput[6];
+
+		byte Rx[255];
+		int Count = sendMessageToKyo(cmdActivateOutput, sizeof(cmdActivateOutput), Rx, 80);
+		ESP_LOGD("activate_output", "kyo respond %i", Count);
+	}
+
+	void deactivate_output(int output_number)
+	{
+		if (output_number > MAX_AREE)
+		{
+			ESP_LOGD("deactivate_output", "invalid output %i, MAX %i", output_number, MAX_AREE);
+			return;
+		}
+
+		ESP_LOGD("deactivate_output", "deactivate Output Number: %d", output_number);
+		
+		byte cmdDeactivateOutput[9] = {0x0f, 0x06, 0xf0, 0x01, 0x00, 0x06, 0x00, 0x00, 0xCC};
+		
+		cmdDeactivateOutput[7] |= 1 << (output_number - 1);
+		cmdDeactivateOutput[8] = cmdDeactivateOutput[7];
+
+		byte Rx[255];
+		int Count = sendMessageToKyo(cmdDeactivateOutput, sizeof(cmdDeactivateOutput), Rx, 80);
+		ESP_LOGD("deactivate_output", "kyo respond %i", Count);
+	}
+
 	/*
 	void on_bypass_zone(int pin, int zone_number)
 	{
@@ -442,16 +482,6 @@ public:
 	void on_unbypass_zone(int pin, int zone_number)
 	{
 		ESP_LOGD("custom", "UnBypass Zone. PIN: %d, Zone Number: %d", pin, zone_number);
-	}
-
-	void on_activate_output(int pin, int output_number)
-	{
-		ESP_LOGD("custom", "Activate Output. PIN: %d, Output Number: %d", pin, output_number);
-	}
-
-	void on_deactivate_output(int pin, int output_number)
-	{
-		ESP_LOGD("custom", "Deactivate Output. PIN: %d, Output Number: %d", pin, output_number);
 	}
 
 	void on_clock_setting(int pin, int day, int month, int year, int hour, int minutes, int seconds, int data_format)

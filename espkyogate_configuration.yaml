@@ -56,8 +56,8 @@ binary_sensor:
         kyo32->memoria_sabotaggio_zona_1,
         kyo32->disinserita_area_1,
         kyo32->warn_scomparsa_bpi, kyo32->warn_fusibile, kyo32->warn_batteria_bassa, kyo32->warn_guasto_linea_telefonica, kyo32->warn_codici_default, kyo32->warn_wireless,
-        kyo32->sabotaggio_bpi, kyo32->sabotaggio_jam, kyo32->sabotaggio_wireless
-        };
+        kyo32->stato_uscita_1, kyo32->stato_uscita_2, kyo32->stato_uscita_3,
+        kyo32->sabotaggio_bpi, kyo32->sabotaggio_jam, kyo32->sabotaggio_wireless};
     binary_sensors:
       - id: kyo_comunication
         name: "Comunicazione Centrale"
@@ -97,4 +97,10 @@ binary_sensor:
         name: "Codici Default"
       - id: warn_wireless
         name: "Wireless"
+      - id: stato_uscita_1
+        name: "Uscita 1"
+      - id: stato_uscita_2
+        name: "Uscita 2"
+      - id: stato_uscita_3
+        name: "Uscita 3"
       
