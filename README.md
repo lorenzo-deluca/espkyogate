@@ -13,7 +13,6 @@ If someone from **Bentel** would like to contribute or collaborate please contac
 As board I used a **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine.
 
 ![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/ESPKyo32Gate/master/images/wiring.png)
-![ESP Connections](https://raw.githubusercontent.com/lorenzo-deluca/ESPKyo32Gate/master/images/ESP-Connections.jpg)
 
 In order to connect to the serial port of the Kyo32 Unit I recommend a connector based on **MAX3232** chip, like this https://it.aliexpress.com/item/32722395554.html
 This connector should be connected to the classic **TX/RX of the ESP board** and to the power supply (GND, 5V) on WeMos.
@@ -46,11 +45,54 @@ You should see something similar.
 See logs with this command 
 `python3 -m esphome espkyogate_configuration.yaml logs`
 
-Output should be the same as above
+Output should be the same as above.
 
 # Usage
+If everything went well now you should find a new device in Home Assistant, called **espkyogate**.
+Previously configured sensors will be automatically created and associated to the device.
 
+![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/ESPKyo32Gate/master/images/HomeAssistant-Lovelace.jpg)
 
+These methods will be available in the services:
+
+## Area Arm
+``` yaml
+service: esphome.espkyogate_arm_area
+data:
+  arm_type: 1 (total arm) - 2 (partially arm)
+  area: <area_number>
+  specific_area: 1 (arm <area_number> and disarm others) - 0 (arm only <area_number> without changing the others)
+```
+
+## Area Disarm
+``` yaml
+service: esphome.espkyogate_disarm_area
+data:
+  area: <area_number>
+  specific_area: 1 (disarm all areas) - 0 (disarm only <area_number> without changing the others)
+```
+
+## Reset Alarm Memory
+``` yaml
+service: esphome.espkyogate_reset_alarms
+data: {}
+```
+
+## Activate Output
+If an output is configured as 'Remote Command' (Comando Remoto) you can Activate or Deactivate
+``` yaml
+service: esphome.espkyogate_activate_output
+data:
+  output_number: <output_number>
+```
+
+## Deactivate Output
+If an output is configured as 'Remote Command' (Comando Remoto) you can Activate or Deactivate
+``` yaml
+service: esphome.espkyogate_deactivate_output
+data:
+  output_number: <output_number>
+```
 
 ## License
 GNU AGPLv3 © [Lorenzo De Luca][https://lorenzodeluca.dev]
