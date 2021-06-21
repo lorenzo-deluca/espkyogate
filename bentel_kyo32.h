@@ -186,8 +186,8 @@ public:
 	BinarySensor *sabotaggio_jam = new BinarySensor("Sabotaggio JAM");
 	BinarySensor *sabotaggio_wireless = new BinarySensor("Sabotaggio Wireless");
 
-	byte cmdGetSensorStatus[6] = {0xf0, 0x04, 0xf0, 0x0a, 0x00, 0xee};	  // f0 04 f0 0a 00 ee - Read Realtime Status and Trouble Status
-	byte cmdGetPartitionStatus[6] = {0xf0, 0x02, 0x15, 0x12, 0x00, 0x19}; // f0 02 15 12 00 19 - Partitions Status - Outputs Status - Tamper Memory - Bypassed Zones - Zone Alarm Memory - Zone Tamper Memory
+	byte cmdGetSensorStatus[6] = {0xf0, 0x04, 0xf0, 0x0a, 0x00, 0xee};	  // Read Realtime Status and Trouble Status
+	byte cmdGetPartitionStatus[6] = {0xf0, 0x02, 0x15, 0x12, 0x00, 0x19}; // Partitions Status (0305) - Outputs Status - Tamper Memory - Bypassed Zones - Zone Alarm Memory - Zone Tamper Memory
 	byte cmqGetSoftwareVersion[6] = {0xf0, 0x00, 0x00, 0x0b, 0x00, 0xfb}; // f0 00 00 0b 00 fb
 
 	enum class PollingStateEnum { Init = 1, Status, Areas, Command };
@@ -242,70 +242,20 @@ public:
 
 	void setup() override
 	{
-		//register_service(&Bentel_Kyo32::on_clock_setting, "clock_setting",
-		//				 {"pin", "day", "month", "year", "hour", "minutes", "seconds", "data_format"});
+		register_service(&Bentel_Kyo32::arm_area, "arm_area", {"area", "arm_type", "specific_area"});
+		register_service(&Bentel_Kyo32::disarm_area, "disarm_area", {"area", "specific_area"});
+		register_service(&Bentel_Kyo32::reset_alarms, "reset_alarms");
+		//register_service(&Bentel_Kyo32::activate_output, "activate_output", {"pin", "output_number"});
+		//register_service(&Bentel_Kyo32::deactivate_output, "deactivate_output", {"pin", "output_number"});
+		register_service(&Bentel_Kyo32::debug_command, "debug_command", {"serial_trace", "log_trace"});
 
-		register_service(&Bentel_Kyo32::arm_area, "arm_area", {"area", "arm_type"});
-		register_service(&Bentel_Kyo32::disarm_area, "disarm_area", {"area"});
-
-		register_service(&Bentel_Kyo32::on_reset_alarms, "reset_alarms", {"pin"});
-
+		//register_service(&Bentel_Kyo32::on_clock_setting, "clock_setting", {"pin", "day", "month", "year", "hour", "minutes", "seconds", "data_format"});
 		//register_service(&Bentel_Kyo32::on_bypass_zone, "bypass_zone", {"pin", "zone_number"});
 		//register_service(&Bentel_Kyo32::on_unbypass_zone, "unbypass_zone", {"pin", "zone_number"});
-
-		register_service(&Bentel_Kyo32::on_activate_output, "activate_output", {"pin", "output_number"});
-		register_service(&Bentel_Kyo32::on_deactivate_output, "deactivate_output", {"pin", "output_number"});
-
-		register_service(&Bentel_Kyo32::on_debug_command, "debug_command", {"serial_trace", "log_trace"});
 
 		this->pollingState = PollingStateEnum::Init;
 		this->kyo_comunication->publish_state(false);
 		this->set_update_interval(500);
-	}
-
-	void on_clock_setting(int pin, int day, int month, int year, int hour, int minutes, int seconds, int data_format)
-	{
-		ESP_LOGD("custom", "Clock Setting. PIN: %d, Day: %d, Month: %d, Year: %d, Hour: %d, Minutes: %d, Seconds: %d, Data Format: %d", pin, day, month, year, hour, minutes, seconds, data_format);
-	}
-
-	void arm_area(int area, int arm_type)
-	{
-		ESP_LOGD("arm_area", "request arm type %d area %d", arm_type, area);
-
-		byte cmdArmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0xCC, 0xFF};
-		if (area > MAX_AREE)
-		{
-			ESP_LOGD("arm_area", "Invalid Area %i, MAX 8", area);
-			return;
-		}
-
-		//byte command = 0x00;
-		//command |= 1 << (area - 1);
-
-		byte total_insert_area_status = 0x00, partial_insert_area_status = 0x00;
-		for (int i = 0; i < MAX_AREE; i++)
-		{
-			total_insert_area_status |= (this->inserimento_totale_area[i].state) << i;
-			partial_insert_area_status |= (this->inserimento_parziale_area[i].state) << i;
-		}
-
-		if (arm_type == 2)
-		{
-			partial_insert_area_status |= 1 << (area - 1);
-		}
-		else
-		{
-			total_insert_area_status |= 1 << (area - 1);
-		}
-
-		cmdArmPartition[6] = total_insert_area_status;
-		cmdArmPartition[7] = partial_insert_area_status;
-
-		cmdArmPartition[9] = calculateCRC(cmdArmPartition, 8);
-
-		byte Rx[255];
-		int Count = sendMessageToKyo(cmdArmPartition, sizeof(cmdArmPartition), Rx, 100);
-		ESP_LOGD("arm_area", "arm_area kyo respond %i", Count);
 	}
 
 	byte calculateCRC(byte *cmd, int lcmd)
@@ -317,21 +267,99 @@ public:
 		return (0x203 - sum);
 	}
 
-	void disarm_area(int area)
+	void arm_area(int area, int arm_type, int specific_area)
 	{
+		if (area > MAX_AREE)
+		{
+			ESP_LOGD("arm_area", "Invalid Area %i, MAX %i", area, MAX_AREE);
+			return;
+		}
+		
+		ESP_LOGD("arm_area", "request arm type %d area %d", arm_type, area);
+		byte cmdArmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0xCC, 0xFF};
+
+		byte total_insert_area_status = 0x00, partial_insert_area_status = 0x00;
+
+		if (specific_area == 1)
+		{
+			for (int i = 0; i < MAX_AREE; i++)
+			{
+				total_insert_area_status |= (this->inserimento_totale_area[i].state) << i;
+				partial_insert_area_status |= (this->inserimento_parziale_area[i].state) << i;
+			}
+		}
+
+		if (arm_type == 2)
+			partial_insert_area_status |= 1 << (area - 1);
+		else
+			total_insert_area_status |= 1 << (area - 1);
+
+		cmdArmPartition[6] = total_insert_area_status;
+		cmdArmPartition[7] = partial_insert_area_status;
+		cmdArmPartition[9] = calculateCRC(cmdArmPartition, 8);
+
+		byte Rx[255];
+		int Count = sendMessageToKyo(cmdArmPartition, sizeof(cmdArmPartition), Rx, 100);
+		ESP_LOGD("arm_area", "arm_area kyo respond %i", Count);
+	}
+
+	void disarm_area(int area, int specific_area)
+	{
+		if (area > MAX_AREE)
+		{
+			ESP_LOGD("arm_area", "invalid Area %i, MAX %i", area, MAX_AREE);
+			return;
+		}
+		
 		ESP_LOGD("disarm_area", "request disarm area %d", area);
 		byte cmdDisarmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0xFF, 0xFF};
+
+		byte total_insert_area_status = 0x00, partial_insert_area_status = 0x00;
+
+		if (specific_area == 1)
+		{
+			for (int i = 0; i < MAX_AREE; i++)
+			{
+				total_insert_area_status |= (this->inserimento_totale_area[i].state) << i;
+				partial_insert_area_status |= (this->inserimento_parziale_area[i].state) << i;
+			}
+
+			if (this->inserimento_totale_area[area - 1].state)
+				total_insert_area_status |= 0 << (area - 1);
+			else
+				partial_insert_area_status |= 1 << (area - 1);
+		}
+
+		cmdDisarmPartition[6] = total_insert_area_status;
+		cmdDisarmPartition[7] = partial_insert_area_status;
+		cmdDisarmPartition[9] = calculateCRC(cmdDisarmPartition, 8);
 
 		byte Rx[255];
 		int Count = sendMessageToKyo(cmdDisarmPartition, sizeof(cmdDisarmPartition), Rx, 100);
 		ESP_LOGD("disarm_area", "kyo respond %i", Count);
 	}
 
-	void on_reset_alarms(int pin)
+	void reset_alarms()
 	{
-		ESP_LOGD("custom", "Reset Alarms. PIN: %d", pin);
+		ESP_LOGD("reset_alarms", "Reset Alarms.");
+		byte cmdResetAllarms[9] = {0x0F, 0x05, 0xF0, 0x01, 0x00, 0x05, 0x07, 0x00, 0x07};
+
+		byte Rx[255];
+		int Count = sendMessageToKyo(cmdResetAllarms, sizeof(cmdResetAllarms), Rx, 100);
+		ESP_LOGD("reset_alarms", "kyo respond %i", Count);
 	}
 
+	void debug_command(int serial_trace, int log_trace)
+	{
+		this->serialTrace = (serial_trace == 1);
+		this->logTrace = (log_trace == 1);
+	}
+
+	void loop() override
+	{
+	}
+
+	/*
 	void on_bypass_zone(int pin, int zone_number)
 	{
 		ESP_LOGD("custom", "Bypass Zone. PIN: %d, Zone Number: %d", pin, zone_number);
@@ -352,15 +380,11 @@ public:
 		ESP_LOGD("custom", "Deactivate Output. PIN: %d, Output Number: %d", pin, output_number);
 	}
 
-	void on_debug_command(int serial_trace, int log_trace)
+	void on_clock_setting(int pin, int day, int month, int year, int hour, int minutes, int seconds, int data_format)
 	{
-		this->serialTrace = (serial_trace == 1);
-		this->logTrace = (log_trace == 1);
+		ESP_LOGD("custom", "Clock Setting. PIN: %d, Day: %d, Month: %d, Year: %d, Hour: %d, Minutes: %d, Seconds: %d, Data Format: %d", pin, day, month, year, hour, minutes, seconds, data_format);
 	}
-
-	void loop() override
-	{
-	}
+	*/
 
 	void update() override
 	{
@@ -380,7 +404,7 @@ public:
 				break;
 
 			case PollingStateEnum::Status:
-				if (this->update_kyo_areas())
+				if (this->update_kyo_partitions())
 				{
 					this->pollingState = PollingStateEnum::Init;
 					this->centralInvalidMessageCount = 0;
@@ -397,7 +421,7 @@ public:
 			this->kyo_comunication->publish_state(false);
 	}
 
-	bool update_kyo_areas()
+	bool update_kyo_partitions()
 	{
 		byte Rx[255];
 		int Count = 0;
@@ -405,8 +429,8 @@ public:
 		Count = sendMessageToKyo(cmdGetPartitionStatus, sizeof(cmdGetPartitionStatus), Rx, 100);
 		if (Count != 26)
 		{
-			//if (this->logTrace)
-				ESP_LOGD("update_kyo_areas", "invalid message length %i", Count);
+			if (this->logTrace)
+				ESP_LOGD("update_kyo_partitions", "invalid message length %i", Count);
 
 			return (false);
 		}
@@ -446,8 +470,8 @@ public:
 		}
 
 		// STATO SIRENA
-		StatoZona = (Rx[10] >> 0) & 1;
-		stato_sirena->publish_state(StatoZona == 1);
+		//StatoZona = (Rx[10] >> 0) & 1;
+		stato_sirena->publish_state((Rx[10] >> 0) == 1);
 		//ESP_LOGD("stato_sirena", "Stato Sirena %i", StatoZona);
 
 		// CICLO STATO USCITE
@@ -525,7 +549,7 @@ public:
 		Count = sendMessageToKyo(cmdGetSensorStatus, sizeof(cmdGetSensorStatus), Rx, 100);
 		if (Count != 18)
 		{
-			//if (this->logTrace)
+			if (this->logTrace)
 				ESP_LOGD("update_kyo_status", "invalid message length %i", Count);
 			
 			return false;
@@ -573,7 +597,7 @@ public:
 		for (i = 0; i < MAX_AREE; i++)
 		{
 			StatoZona = (Rx[15] >> i) & 1;
-			allarme_area[0].publish_state(StatoZona == 1);
+			allarme_area[i].publish_state(StatoZona == 1);
 		}
 
 		// Ciclo WARNINGS
