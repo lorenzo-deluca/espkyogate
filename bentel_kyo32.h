@@ -87,6 +87,30 @@ public:
 	BinarySensor *zona_esclusa_6 = &zona_esclusa[5];
 	BinarySensor *zona_esclusa_7 = &zona_esclusa[6];
 	BinarySensor *zona_esclusa_8 = &zona_esclusa[7];
+	BinarySensor *zona_esclusa_9 = &zona_esclusa[8];
+	BinarySensor *zona_esclusa_10= &zona_esclusa[9];
+	BinarySensor *zona_esclusa_11= &zona_esclusa[10];
+	BinarySensor *zona_esclusa_12= &zona_esclusa[11];
+	BinarySensor *zona_esclusa_13= &zona_esclusa[12];
+	BinarySensor *zona_esclusa_14= &zona_esclusa[13];
+	BinarySensor *zona_esclusa_15= &zona_esclusa[14];
+	BinarySensor *zona_esclusa_16= &zona_esclusa[15];
+	BinarySensor *zona_esclusa_17= &zona_esclusa[16];
+	BinarySensor *zona_esclusa_18= &zona_esclusa[17];
+	BinarySensor *zona_esclusa_19= &zona_esclusa[18];
+	BinarySensor *zona_esclusa_20= &zona_esclusa[19];
+	BinarySensor *zona_esclusa_21= &zona_esclusa[20];
+	BinarySensor *zona_esclusa_22= &zona_esclusa[21];
+	BinarySensor *zona_esclusa_23= &zona_esclusa[22];
+	BinarySensor *zona_esclusa_24= &zona_esclusa[23];
+	BinarySensor *zona_esclusa_25= &zona_esclusa[24];
+	BinarySensor *zona_esclusa_26= &zona_esclusa[25];
+	BinarySensor *zona_esclusa_27= &zona_esclusa[26];
+	BinarySensor *zona_esclusa_28= &zona_esclusa[27];
+	BinarySensor *zona_esclusa_29= &zona_esclusa[28];
+	BinarySensor *zona_esclusa_30= &zona_esclusa[29];
+	BinarySensor *zona_esclusa_31= &zona_esclusa[30];
+	BinarySensor *zona_esclusa_32= &zona_esclusa[31];
 	
 	BinarySensor* memoria_allarme_zona = new BinarySensor[MAX_ZONE];
 	BinarySensor *memoria_allarme_zona_1 = &memoria_allarme_zona[0];
@@ -97,6 +121,30 @@ public:
 	BinarySensor *memoria_allarme_zona_6 = &memoria_allarme_zona[5];
 	BinarySensor *memoria_allarme_zona_7 = &memoria_allarme_zona[6];
 	BinarySensor *memoria_allarme_zona_8 = &memoria_allarme_zona[7];
+	BinarySensor *memoria_allarme_zona_9 = &memoria_allarme_zona[8];
+	BinarySensor *memoria_allarme_zona_10 = &memoria_allarme_zona[9];
+	BinarySensor *memoria_allarme_zona_11 = &memoria_allarme_zona[10];
+	BinarySensor *memoria_allarme_zona_12 = &memoria_allarme_zona[11];
+	BinarySensor *memoria_allarme_zona_13 = &memoria_allarme_zona[12];
+	BinarySensor *memoria_allarme_zona_14 = &memoria_allarme_zona[13];
+	BinarySensor *memoria_allarme_zona_15 = &memoria_allarme_zona[14];
+	BinarySensor *memoria_allarme_zona_16 = &memoria_allarme_zona[15];
+	BinarySensor *memoria_allarme_zona_17 = &memoria_allarme_zona[16];
+	BinarySensor *memoria_allarme_zona_18 = &memoria_allarme_zona[17];
+	BinarySensor *memoria_allarme_zona_19 = &memoria_allarme_zona[18];
+	BinarySensor *memoria_allarme_zona_20 = &memoria_allarme_zona[19];
+	BinarySensor *memoria_allarme_zona_21 = &memoria_allarme_zona[20];
+	BinarySensor *memoria_allarme_zona_22 = &memoria_allarme_zona[21];
+	BinarySensor *memoria_allarme_zona_23 = &memoria_allarme_zona[22];
+	BinarySensor *memoria_allarme_zona_24 = &memoria_allarme_zona[23];
+	BinarySensor *memoria_allarme_zona_25 = &memoria_allarme_zona[24];
+	BinarySensor *memoria_allarme_zona_26 = &memoria_allarme_zona[25];
+	BinarySensor *memoria_allarme_zona_27 = &memoria_allarme_zona[26];
+	BinarySensor *memoria_allarme_zona_28 = &memoria_allarme_zona[27];
+	BinarySensor *memoria_allarme_zona_29 = &memoria_allarme_zona[28];
+	BinarySensor *memoria_allarme_zona_30 = &memoria_allarme_zona[29];
+	BinarySensor *memoria_allarme_zona_31 = &memoria_allarme_zona[30];
+	BinarySensor *memoria_allarme_zona_32 = &memoria_allarme_zona[31];
 	
 	BinarySensor* memoria_sabotaggio_zona = new BinarySensor[MAX_ZONE];
 	BinarySensor *memoria_sabotaggio_zona_1 = &memoria_sabotaggio_zona[0];
@@ -107,6 +155,30 @@ public:
 	BinarySensor *memoria_sabotaggio_zona_6 = &memoria_sabotaggio_zona[5];
 	BinarySensor *memoria_sabotaggio_zona_7 = &memoria_sabotaggio_zona[6];
 	BinarySensor *memoria_sabotaggio_zona_8 = &memoria_sabotaggio_zona[7];
+	BinarySensor *memoria_sabotaggio_zona_9 = &memoria_sabotaggio_zona[8];
+	BinarySensor *memoria_sabotaggio_zona_10 = &memoria_sabotaggio_zona[9];
+	BinarySensor *memoria_sabotaggio_zona_11 = &memoria_sabotaggio_zona[10];
+	BinarySensor *memoria_sabotaggio_zona_12 = &memoria_sabotaggio_zona[11];
+	BinarySensor *memoria_sabotaggio_zona_13 = &memoria_sabotaggio_zona[12];
+	BinarySensor *memoria_sabotaggio_zona_14 = &memoria_sabotaggio_zona[13];
+	BinarySensor *memoria_sabotaggio_zona_15 = &memoria_sabotaggio_zona[14];
+	BinarySensor *memoria_sabotaggio_zona_16 = &memoria_sabotaggio_zona[15];
+	BinarySensor *memoria_sabotaggio_zona_17 = &memoria_sabotaggio_zona[16];
+	BinarySensor *memoria_sabotaggio_zona_18 = &memoria_sabotaggio_zona[17];
+	BinarySensor *memoria_sabotaggio_zona_19 = &memoria_sabotaggio_zona[18];
+	BinarySensor *memoria_sabotaggio_zona_20 = &memoria_sabotaggio_zona[19];
+	BinarySensor *memoria_sabotaggio_zona_21 = &memoria_sabotaggio_zona[20];
+	BinarySensor *memoria_sabotaggio_zona_22 = &memoria_sabotaggio_zona[21];
+	BinarySensor *memoria_sabotaggio_zona_23 = &memoria_sabotaggio_zona[22];
+	BinarySensor *memoria_sabotaggio_zona_24 = &memoria_sabotaggio_zona[23];
+	BinarySensor *memoria_sabotaggio_zona_25 = &memoria_sabotaggio_zona[24];
+	BinarySensor *memoria_sabotaggio_zona_26 = &memoria_sabotaggio_zona[25];
+	BinarySensor *memoria_sabotaggio_zona_27 = &memoria_sabotaggio_zona[26];
+	BinarySensor *memoria_sabotaggio_zona_28 = &memoria_sabotaggio_zona[27];
+	BinarySensor *memoria_sabotaggio_zona_29 = &memoria_sabotaggio_zona[28];
+	BinarySensor *memoria_sabotaggio_zona_30 = &memoria_sabotaggio_zona[29];
+	BinarySensor *memoria_sabotaggio_zona_31 = &memoria_sabotaggio_zona[30];
+	BinarySensor *memoria_sabotaggio_zona_32 = &memoria_sabotaggio_zona[31];
 	
 	BinarySensor *warn_mancanza_rete = new BinarySensor("Warning Mancanza Rete");
 	BinarySensor *warn_scomparsa_bpi = new BinarySensor("Warning Scomparsa BPI");
@@ -187,8 +259,9 @@ public:
 	BinarySensor *sabotaggio_wireless = new BinarySensor("Sabotaggio Wireless");
 
 	byte cmdGetSensorStatus[6] = {0xf0, 0x04, 0xf0, 0x0a, 0x00, 0xee};	  // Read Realtime Status and Trouble Status
-	byte cmdGetPartitionStatus[6] = {0xf0, 0x02, 0x15, 0x12, 0x00, 0x19}; // Partitions Status (0305) - Outputs Status - Tamper Memory - Bypassed Zones - Zone Alarm Memory - Zone Tamper Memory
+	byte cmdGetPartitionStatus[6] = {0xf0, 0x02, 0x15, 0x12, 0x00, 0x19}; // Partitions Status (305) - Outputs Status - Tamper Memory - Bypassed Zones - Zone Alarm Memory - Zone Tamper Memory
 	byte cmqGetSoftwareVersion[6] = {0xf0, 0x00, 0x00, 0x0b, 0x00, 0xfb}; // f0 00 00 0b 00 fb
+	byte cmdResetAllarms[9] = {0x0F, 0x05, 0xF0, 0x01, 0x00, 0x05, 0x07, 0x00, 0x07};
 
 	enum class PollingStateEnum { Init = 1, Status, Areas, Command };
 
@@ -342,10 +415,9 @@ public:
 	void reset_alarms()
 	{
 		ESP_LOGD("reset_alarms", "Reset Alarms.");
-		byte cmdResetAllarms[9] = {0x0F, 0x05, 0xF0, 0x01, 0x00, 0x05, 0x07, 0x00, 0x07};
 
 		byte Rx[255];
-		int Count = sendMessageToKyo(cmdResetAllarms, sizeof(cmdResetAllarms), Rx, 100);
+		int Count = sendMessageToKyo(cmdResetAllarms, sizeof(cmdResetAllarms), Rx, 80);
 		ESP_LOGD("reset_alarms", "kyo respond %i", Count);
 	}
 
@@ -353,6 +425,8 @@ public:
 	{
 		this->serialTrace = (serial_trace == 1);
 		this->logTrace = (log_trace == 1);
+
+		ESP_LOGD("debug_command", "serial_trace %i log_trace %i", this->serialTrace, this->logTrace);
 	}
 
 	void loop() override
@@ -441,38 +515,44 @@ public:
 		for (i = 0; i < MAX_AREE; i++)
 		{
 			StatoZona = (Rx[6] >> i) & 1;
+			if (this->logTrace && (StatoZona == 1) != inserimento_totale_area[i].state)
+				ESP_LOGD("aree_totale", "Area %i - Stato %i", i, StatoZona);
+			
 			inserimento_totale_area[i].publish_state(StatoZona == 1);
-			//ESP_LOGD("aree_totale", "Area %i - Stato %i", i, StatoZona);
 		}
 
 		// Ciclo AREE INSERITE PARZIALI
 		for (i = 0; i < MAX_AREE; i++)
 		{
 			StatoZona = (Rx[7] >> i) & 1;
+			if (this->logTrace && (StatoZona == 1) != inserimento_parziale_area[i].state)
+				ESP_LOGD("aree_parziale", "Area %i - Stato %i", i, StatoZona);
+
 			inserimento_parziale_area[i].publish_state(StatoZona == 1);
-			//ESP_LOGD("aree_parziale", "Area %i - Stato %i", i, StatoZona);
 		}
 
 		// Ciclo AREE INSERITE PARZIALI RITARDO 0
 		for (i = 0; i < MAX_AREE; i++)
 		{
 			StatoZona = (Rx[8] >> i) & 1;
+			if (this->logTrace && (StatoZona == 1) != inserimento_parziale_ritardo_0_area[i].state)
+				ESP_LOGD("inserimento_parziale_ritardo_0_area", "Area %i - Stato %i", i, StatoZona);
+
 			inserimento_parziale_ritardo_0_area[i].publish_state(StatoZona == 1);
-			//ESP_LOGD("inserimento_parziale_ritardo_0_area", "Area %i - Stato %i", i, StatoZona);
 		}
 
 		// Ciclo AREE DISINSERITE
 		for (i = 0; i < MAX_AREE; i++)
 		{
 			StatoZona = (Rx[9] >> i) & 1;
+			if (this->logTrace && (StatoZona == 1) != disinserita_area[i].state)
+				ESP_LOGD("disinserita_area", "Area %i - Stato %i", i, StatoZona);
+
 			disinserita_area[i].publish_state(StatoZona == 1);
-			//ESP_LOGD("disinserita_area", "Area %i - Stato %i", i, StatoZona);
 		}
 
 		// STATO SIRENA
-		//StatoZona = (Rx[10] >> 0) & 1;
-		stato_sirena->publish_state((Rx[10] >> 0) == 1);
-		//ESP_LOGD("stato_sirena", "Stato Sirena %i", StatoZona);
+		stato_sirena->publish_state(((Rx[10] >> 5) & 1) == 1);
 
 		// CICLO STATO USCITE
 		for (i = 0; i < MAX_AREE; i++)
@@ -483,8 +563,10 @@ public:
 			else if (i <= 7)
 				StatoZona = (Rx[12] >> i) & 1;
 
+			if (this->logTrace && (StatoZona == 1) != stato_uscita[i].state)
+				ESP_LOGD("stato_uscita", "Uscita % - Stato %i", i, StatoZona);
+
 			stato_uscita[i].publish_state(StatoZona == 1);
-			//ESP_LOGD("stato_uscita", "Uscita % - Stato %i", i, StatoZona);
 		}
 
 		// CICLO ZONE ESCLUSE
@@ -500,7 +582,6 @@ public:
 			else if (i <= 7)
 				StatoZona = (Rx[16] >> i) & 1;
 
-			//ESP_LOGD("custom", "The value of sensor is: %i", StatoZona);
 			zona_esclusa[i].publish_state(StatoZona == 1);
 		}
 
@@ -517,7 +598,9 @@ public:
 			else if (i <= 7)
 				StatoZona = (Rx[20] >> i) & 1;
 
-			//ESP_LOGD("custom", "The value of sensor is: %i", StatoZona);
+			if (this->logTrace && (StatoZona == 1) != memoria_allarme_zona[i].state)	
+				ESP_LOGD("memoria_allarme_zona", "Zona %i - Stato %i", i, StatoZona);
+
 			memoria_allarme_zona[i].publish_state(StatoZona == 1);
 		}
 
@@ -534,7 +617,9 @@ public:
 			else if (i <= 7)
 				StatoZona = (Rx[24] >> i) & 1;
 
-			//ESP_LOGD("custom", "The value of sensor is: %i", StatoZona);
+			if (this->logTrace && (StatoZona == 1) != memoria_sabotaggio_zona[i].state)	
+				ESP_LOGD("memoria_sabotaggio_zona", "Zona %i - Stato %i", i, StatoZona);
+
 			memoria_sabotaggio_zona[i].publish_state(StatoZona == 1);
 		}
 		
@@ -588,9 +673,6 @@ public:
 				StatoZona = (Rx[13] >> i) & 1;
 
 			zona_sabotaggio[i].publish_state(StatoZona == 1);
-
-			if (StatoZona == 1)
-				zona[i].publish_state("sabotate");
 		}
 
 		// Ciclo ALLARME AREA

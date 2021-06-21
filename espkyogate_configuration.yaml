@@ -41,7 +41,8 @@ binary_sensor:
     lambda: |-
       auto kyo32 = new Bentel_Kyo32(id(uart_bus));
       App.register_component(kyo32);
-      return { kyo32->kyo_comunication,
+      return { 
+        kyo32->kyo_comunication,
         kyo32->stato_sirena,
         kyo32->warn_mancanza_rete,
         kyo32->sabotaggio_zona, 
@@ -55,7 +56,7 @@ binary_sensor:
         kyo32->memoria_sabotaggio_zona_1,
         kyo32->disinserita_area_1,
         kyo32->warn_scomparsa_bpi, kyo32->warn_fusibile, kyo32->warn_batteria_bassa, kyo32->warn_guasto_linea_telefonica, kyo32->warn_codici_default, kyo32->warn_wireless,
-        kyo32->sabotaggio_chiave_falsa, kyo32->sabotaggio_bpi, kyo32->sabotaggio_jam, kyo32->sabotaggio_wireless
+        kyo32->sabotaggio_bpi, kyo32->sabotaggio_jam, kyo32->sabotaggio_wireless
         };
     binary_sensors:
       - id: kyo_comunication
@@ -84,3 +85,16 @@ binary_sensor:
         name: "Memoria Sabotaggio Zona 1"
       - id: disinserita_area_1
         name: "Disinserita Area 1"
+      - id: warn_scomparsa_bpi
+        name: "Scomparsa BPI"
+      - id: warn_fusibile
+        name: "Fusibile"
+      - id: warn_batteria_bassa
+        name: "Batteria Bassa"
+      - id: warn_guasto_linea_telefonica
+        name: "Guasto Linea Telefonica"
+      - id: warn_codici_default
+        name: "Codici Default"
+      - id: warn_wireless
+        name: "Wireless"
+      
