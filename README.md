@@ -4,12 +4,17 @@
 Serial Bridge for **Bentel Kyo32G Alarm Central**, based on **ESP8266** Board and **ESPHome** Open Source Firmware.
 Thanks to @dario81 for initial porting to ESPHome.
 
+If you like this project you can support me with :coffee: or simply put a :star: to this repository :blush:
+
+<a href="https://www.buymeacoffee.com/lorenzodeluca" target="_blank">
+  <img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy Me A Coffee" width="150px">
+</a>
+
 > **disclaimer** This software was developed by analyzing serial messages from/to central, it was not sponsored or officially supported by **Bentel**
 
 If someone from **Bentel** would like to contribute or collaborate please contact me at [me@lorenzodeluca.dev](mailto:me@lorenzodeluca.dev?subject=[GitHub]ESPKyoGate)
 
 ## Hardware Connections
--------------
 As board I used a **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine.
 
 ![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/ESPKyo32Gate/master/images/wiring.png)
