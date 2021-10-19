@@ -17,17 +17,19 @@ If someone from **Bentel** would like to contribute or collaborate please contac
 ## Hardware Connections
 As board I used a **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine.
 
-![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/ESPKyo32Gate/master/images/wiring.png)
+![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/wiring.png)
 
 In order to connect to the serial port of the Kyo32 Unit I recommend a connector based on **MAX3232** chip, like this https://it.aliexpress.com/item/32722395554.html
 This connector should be connected to the classic **TX/RX of the ESP board** and to the power supply (GND, 5V) on WeMos.
+
+![Central Connections](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/BentelKYO32G-Connections.jpg)
 
 The WeMos can be powered with USB directly from the 12V output of the control unit by connecting any 12V->USB converter.
 
 Which I recommend because in this way, even in case of power failure, the ESP is powered by the battery of the control unit.
 
 ## Firmware Preparation
-The file `espkyogate_configuration.yaml` is already present in this repo, 
+The file `espkyogate_configuration.yaml` is already present in this repo.
 I suggest you start from this.
 
 Set your WiFi ssid and password in `wifi` section.
@@ -40,7 +42,7 @@ Finally edit `binary_sensors` you want to see on your Home Assistant as configur
 #### With ESPHome 
 This way is the easiest, just copy the files from this repository to the esphome folder, edit the `espkyogate_configuration.yaml` file as above, upload and see if everything works from the logs.
 You should see something similar.
-![ESPHomeLogs](https://raw.githubusercontent.com/lorenzo-deluca/ESPKyo32Gate/master/images/ESPHomeLogs.png)
+![ESPHomeLogs](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/ESPHomeLogs.png)
 
 #### From esphome command line
 `python3 -m esphome espkyogate_configuration.yaml compile`
@@ -56,7 +58,7 @@ Output should be the same as above.
 If everything went well now you should find a new device in Home Assistant, called **espkyogate**.
 Previously configured sensors will be automatically created and associated to the device.
 
-![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/ESPKyo32Gate/master/images/HomeAssistant-Lovelace.jpg)
+![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/HomeAssistant-Lovelace.png)
 
 These methods will be available in the services:
 
