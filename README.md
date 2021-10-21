@@ -101,5 +101,33 @@ data:
   output_number: <output_number>
 ```
 
+## Script to Arm more than one area
+If you want to arm several areas at the same time you have to call the same service several times, introducing a delay between one call and the next.
+Below is an example of a script that arms two areas.
+``` yaml
+alias: Bentel Arma Fuori Casa
+sequence:
+  - service: esphome.espkyogate_arm_area
+    data:
+      area: 1
+      arm_type: 1
+      specific_area: 1
+  - wait_template: ''
+    timeout: '00:00:05'
+  - service: esphome.espkyogate_arm_area
+    data:
+      area: 2
+      arm_type: 1
+      specific_area: 1
+  - wait_template: ''
+    timeout: '00:00:05'
+  - service: esphome.espkyogate_arm_area
+    data:
+      area: 3
+      arm_type: 1
+      specific_area: 1
+mode: single
+```
+
 ## License
 GNU AGPLv3 © [Lorenzo De Luca][https://lorenzodeluca.dev]
