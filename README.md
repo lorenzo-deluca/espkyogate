@@ -60,9 +60,10 @@ Previously configured sensors will be automatically created and associated to th
 
 ![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/HomeAssistant-Lovelace.png)
 
-These methods will be available in the services:
+## Avaiable Services
+These methods will be available in the services
 
-## Area Arm
+### Area Arm
 ``` yaml
 service: esphome.espkyogate_arm_area
 data:
@@ -71,7 +72,7 @@ data:
   specific_area: 1 (arm <area_number> and disarm others) - 0 (arm only <area_number> without changing the others)
 ```
 
-## Area Disarm
+### Area Disarm
 ``` yaml
 service: esphome.espkyogate_disarm_area
 data:
@@ -79,13 +80,13 @@ data:
   specific_area: 1 (disarm all areas) - 0 (disarm only <area_number> without changing the others)
 ```
 
-## Reset Alarm Memory
+### Reset Alarm Memory
 ``` yaml
 service: esphome.espkyogate_reset_alarms
 data: {}
 ```
 
-## Activate Output
+### Activate Output
 If an output is configured as 'Remote Command' (Comando Remoto) you can Activate or Deactivate
 ``` yaml
 service: esphome.espkyogate_activate_output
@@ -93,7 +94,7 @@ data:
   output_number: <output_number>
 ```
 
-## Deactivate Output
+### Deactivate Output
 If an output is configured as 'Remote Command' (Comando Remoto) you can Activate or Deactivate
 ``` yaml
 service: esphome.espkyogate_deactivate_output
@@ -101,7 +102,7 @@ data:
   output_number: <output_number>
 ```
 
-## Script to Arm more than one area
+### Arm more than one area
 If you want to arm several areas at the same time you have to call the same service several times, introducing a delay between one call and the next.
 Below is an example of a script that arms two areas.
 ``` yaml
