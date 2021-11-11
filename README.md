@@ -130,5 +130,24 @@ sequence:
 mode: single
 ```
 
+## Troubleshooting - FAQ
+Ff you have any problems, make the following checks:
+* Check that the cables are connected correctly
+* Check the 232 converter is properly powered
+* Try to reverse TX and RX
+* Verify that the central unit has firmware **2.13**
+
+### Diagnostics Service
+For diagnostics you can enable additional software logs through this service.
+If necessary, contact me with an extract of the logs so that I can help you better.
+
+``` yaml
+service: esphome.espkyogate_debug_command
+data:
+  serial_trace: 1
+  log_trace: 1
+```
+
+
 ## License
 GNU AGPLv3 © [Lorenzo De Luca][https://lorenzodeluca.dev]
