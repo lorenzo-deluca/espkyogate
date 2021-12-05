@@ -8,7 +8,6 @@ class Bentel_Kyo32 : public PollingComponent, public UARTDevice, public CustomAP
 public:
 	Bentel_Kyo32(UARTComponent *parent) : UARTDevice(parent) {}
 
-	// mapping zones array for lambda return
 	BinarySensor* zona = new BinarySensor[MAX_ZONE];
 	BinarySensor *zona_1 = &zona[0];
 	BinarySensor *zona_2 = &zona[1];
@@ -43,7 +42,6 @@ public:
 	BinarySensor *zona_31 = &zona[30];
 	BinarySensor *zona_32 = &zona[31];
 
-	// mapping zona_sabotaggio array for lambda return
 	BinarySensor* zona_sabotaggio = new BinarySensor[MAX_ZONE];
 	BinarySensor *zona_sabotaggio_1 = &zona_sabotaggio[0];
 	BinarySensor *zona_sabotaggio_2 = &zona_sabotaggio[1];
@@ -179,14 +177,6 @@ public:
 	BinarySensor *memoria_sabotaggio_zona_30 = &memoria_sabotaggio_zona[29];
 	BinarySensor *memoria_sabotaggio_zona_31 = &memoria_sabotaggio_zona[30];
 	BinarySensor *memoria_sabotaggio_zona_32 = &memoria_sabotaggio_zona[31];
-	
-	BinarySensor *warn_mancanza_rete = new BinarySensor("Warning Mancanza Rete");
-	BinarySensor *warn_scomparsa_bpi = new BinarySensor("Warning Scomparsa BPI");
-	BinarySensor *warn_fusibile = new BinarySensor("Warning Fusibile");
-	BinarySensor *warn_batteria_bassa = new BinarySensor("Warning Batteria Bassa");
-	BinarySensor *warn_guasto_linea_telefonica = new BinarySensor("Warning Guasto Linea Telefonica");
-	BinarySensor *warn_codici_default = new BinarySensor("Warning Codici Default");
-	BinarySensor *warn_wireless = new BinarySensor("Warning Wireless");
 
 	BinarySensor* allarme_area = new BinarySensor[MAX_AREE];
 	BinarySensor *allarme_area_1 = &allarme_area[0];
@@ -250,6 +240,14 @@ public:
 	
 	BinarySensor *kyo_comunication = new BinarySensor("Kyo Comunication");
 
+	BinarySensor *warn_mancanza_rete = new BinarySensor("Warning Mancanza Rete");
+	BinarySensor *warn_scomparsa_bpi = new BinarySensor("Warning Scomparsa BPI");
+	BinarySensor *warn_fusibile = new BinarySensor("Warning Fusibile");
+	BinarySensor *warn_batteria_bassa = new BinarySensor("Warning Batteria Bassa");
+	BinarySensor *warn_guasto_linea_telefonica = new BinarySensor("Warning Guasto Linea Telefonica");
+	BinarySensor *warn_codici_default = new BinarySensor("Warning Codici Default");
+	BinarySensor *warn_wireless = new BinarySensor("Warning Wireless");
+
 	BinarySensor *stato_sirena = new BinarySensor("stato sirena");
 	BinarySensor *sabotaggio_zona = new BinarySensor("Sabotaggio di Zona");
 	BinarySensor *sabotaggio_chiave_falsa = new BinarySensor("Sabotaggio Chiave Falsa");
@@ -263,7 +261,7 @@ public:
 	byte cmqGetSoftwareVersion[6] = {0xf0, 0x00, 0x00, 0x0b, 0x00, 0xfb}; // f0 00 00 0b 00 fb
 	byte cmdResetAllarms[9] = {0x0F, 0x05, 0xF0, 0x01, 0x00, 0x05, 0x07, 0x00, 0x07};
 
-	enum class PollingStateEnum { Init = 1, Status, Areas, Command };
+	enum class PollingStateEnum { Init = 1, Status };
 
 	bool serialTrace = false;
 	bool logTrace = false;
