@@ -265,8 +265,10 @@ binary_sensor:
         kyo32->warn_codici_default,
         kyo32->warn_wireless,
         kyo32->sabotaggio_bpi,
+        kyo32->sabotaggio_chiave_falsa,
         kyo32->sabotaggio_jam,
-        kyo32->sabotaggio_wireless};
+        kyo32->sabotaggio_wireless
+        };
     binary_sensors:
       - id: zona_1
         name: "Zona 1"
@@ -331,133 +333,133 @@ binary_sensor:
       - id: zona_32
         name: "Zona 32"
       - id: zona_sabotaggio_1
-        name: "Zona 1 Sabotaggio"
+        name: "Sabotaggio Zona 1"
       - id: zona_sabotaggio_2
-        name: "Zona 2 Sabotaggio"
+        name: "Sabotaggio Zona 2"
       - id: zona_sabotaggio_3
-        name: "Zona 3 Sabotaggio"
+        name: "Sabotaggio Zona 3"
       - id: zona_sabotaggio_4
-        name: "Zona 4 Sabotaggio"
+        name: "Sabotaggio Zona 4"
       - id: zona_sabotaggio_5
-        name: "Zona 5 Sabotaggio"
+        name: "Sabotaggio Zona 5"
       - id: zona_sabotaggio_6
-        name: "Zona 6 Sabotaggio"
+        name: "Sabotaggio Zona 6"
       - id: zona_sabotaggio_7
-        name: "Zona 7 Sabotaggio"
+        name: "Sabotaggio Zona 7"
       - id: zona_sabotaggio_8
-        name: "Zona 8 Sabotaggio"
+        name: "Sabotaggio Zona 8"
       - id: zona_sabotaggio_9
-        name: "Zona 9 Sabotaggio"
+        name: "Sabotaggio Zona 9"
       - id: zona_sabotaggio_10
-        name: "Zona 10 Sabotaggio"
+        name: "Sabotaggio Zona 10"
       - id: zona_sabotaggio_11
-        name: "Zona 11 Sabotaggio"
+        name: "Sabotaggio Zona 11"
       - id: zona_sabotaggio_12
-        name: "Zona 12 Sabotaggio"
+        name: "Sabotaggio Zona 12"
       - id: zona_sabotaggio_13
-        name: "Zona 13 Sabotaggio"
+        name: "Sabotaggio Zona 13"
       - id: zona_sabotaggio_14
-        name: "Zona 14 Sabotaggio"
+        name: "Sabotaggio Zona 14"
       - id: zona_sabotaggio_15
-        name: "Zona 15 Sabotaggio"
+        name: "Sabotaggio Zona 15"
       - id: zona_sabotaggio_16
-        name: "Zona 16 Sabotaggio"
+        name: "Sabotaggio Zona 16"
       - id: zona_sabotaggio_17
-        name: "Zona 17 Sabotaggio"
+        name: "Sabotaggio Zona 17"
       - id: zona_sabotaggio_18
-        name: "Zona 18 Sabotaggio"
+        name: "Sabotaggio Zona 18"
       - id: zona_sabotaggio_19
-        name: "Zona 19 Sabotaggio"
+        name: "Sabotaggio Zona 19"
       - id: zona_sabotaggio_20
-        name: "Zona 20 Sabotaggio"
+        name: "Sabotaggio Zona 20"
       - id: zona_sabotaggio_21
-        name: "Zona 21 Sabotaggio"
+        name: "Sabotaggio Zona 21"
       - id: zona_sabotaggio_22
-        name: "Zona 22 Sabotaggio"
+        name: "Sabotaggio Zona 22"
       - id: zona_sabotaggio_23
-        name: "Zona 23 Sabotaggio"
+        name: "Sabotaggio Zona 23"
       - id: zona_sabotaggio_24
-        name: "Zona 24 Sabotaggio"
+        name: "Sabotaggio Zona 24"
       - id: zona_sabotaggio_25
-        name: "Zona 25 Sabotaggio"
+        name: "Sabotaggio Zona 25"
       - id: zona_sabotaggio_26
-        name: "Zona 26 Sabotaggio"
+        name: "Sabotaggio Zona 26"
       - id: zona_sabotaggio_27
-        name: "Zona 27 Sabotaggio"
+        name: "Sabotaggio Zona 27"
       - id: zona_sabotaggio_28
-        name: "Zona 28 Sabotaggio"
+        name: "Sabotaggio Zona 28"
       - id: zona_sabotaggio_29
-        name: "Zona 29 Sabotaggio"
+        name: "Sabotaggio Zona 29"
       - id: zona_sabotaggio_30
-        name: "Zona 30 Sabotaggio"
+        name: "Sabotaggio Zona 30"
       - id: zona_sabotaggio_31
-        name: "Zona 31 Sabotaggio"
+        name: "Sabotaggio Zona 31"
       - id: zona_sabotaggio_32
-        name: "Zona 32 Sabotaggio"
+        name: "Sabotaggio Zona 32"
       - id: zona_esclusa_1
-        name: "Zona esclusa 1"
+        name: "Esclusa Zona 1"
       - id: zona_esclusa_2
-        name: "Zona esclusa 2"
+        name: "Esclusa Zona 2"
       - id: zona_esclusa_3
-        name: "Zona esclusa 3"
+        name: "Esclusa Zona 3"
       - id: zona_esclusa_4
-        name: "Zona esclusa 4"
+        name: "Esclusa Zona 4"
       - id: zona_esclusa_5
-        name: "Zona esclusa 5"
+        name: "Esclusa Zona 5"
       - id: zona_esclusa_6
-        name: "Zona esclusa 6"
+        name: "Esclusa Zona 6"
       - id: zona_esclusa_7
-        name: "Zona esclusa 7"
+        name: "Esclusa Zona 7"
       - id: zona_esclusa_8
-        name: "Zona esclusa 8"
+        name: "Esclusa Zona 8"
       - id: zona_esclusa_9
-        name: "Zona esclusa 9"
+        name: "Esclusa Zona 9"
       - id: zona_esclusa_10
-        name: "Zona esclusa 10"
+        name: "Esclusa Zona 10"
       - id: zona_esclusa_11
-        name: "Zona esclusa 11"
+        name: "Esclusa Zona 11"
       - id: zona_esclusa_12
-        name: "Zona esclusa 12"
+        name: "Esclusa Zona 12"
       - id: zona_esclusa_13
-        name: "Zona esclusa 13"
+        name: "Esclusa Zona 13"
       - id: zona_esclusa_14
-        name: "Zona esclusa 14"
+        name: "Esclusa Zona 14"
       - id: zona_esclusa_15
-        name: "Zona esclusa 15"
+        name: "Esclusa Zona 15"
       - id: zona_esclusa_16
-        name: "Zona esclusa 16"
+        name: "Esclusa Zona 16"
       - id: zona_esclusa_17
-        name: "Zona esclusa 17"
+        name: "Esclusa Zona 17"
       - id: zona_esclusa_18
-        name: "Zona esclusa 18"
+        name: "Esclusa Zona 18"
       - id: zona_esclusa_19
-        name: "Zona esclusa 19"
+        name: "Esclusa Zona 19"
       - id: zona_esclusa_20
-        name: "Zona esclusa 20"
+        name: "Esclusa Zona 20"
       - id: zona_esclusa_21
-        name: "Zona esclusa 21"
+        name: "Esclusa Zona 21"
       - id: zona_esclusa_22
-        name: "Zona esclusa 22"
+        name: "Esclusa Zona 22"
       - id: zona_esclusa_23
-        name: "Zona esclusa 23"
+        name: "Esclusa Zona 23"
       - id: zona_esclusa_24
-        name: "Zona esclusa 24"
+        name: "Esclusa Zona 24"
       - id: zona_esclusa_25
-        name: "Zona esclusa 25"
+        name: "Esclusa Zona 25"
       - id: zona_esclusa_26
-        name: "Zona esclusa 26"
+        name: "Esclusa Zona 26"
       - id: zona_esclusa_27
-        name: "Zona esclusa 27"
+        name: "Esclusa Zona 27"
       - id: zona_esclusa_28
-        name: "Zona esclusa 28"
+        name: "Esclusa Zona 28"
       - id: zona_esclusa_29
-        name: "Zona esclusa 29"
+        name: "Esclusa Zona 29"
       - id: zona_esclusa_30
-        name: "Zona esclusa 30"
+        name: "Esclusa Zona 30"
       - id: zona_esclusa_31
-        name: "Zona esclusa 31"
+        name: "Esclusa Zona 31"
       - id: zona_esclusa_32
-        name: "Zona esclusa 32"
+        name: "Esclusa Zona 32"
       - id: memoria_allarme_zona_1
         name: "Memoria Allarme Zona 1"
       - id: memoria_allarme_zona_2
@@ -587,101 +589,101 @@ binary_sensor:
       - id: memoria_sabotaggio_zona_32
         name: "Memoria Sabotaggio Zona 32"
       - id: allarme_area_1
-        name: "Allarme area 1"
+        name: "Allarme Area 1"
       - id: allarme_area_2
-        name: "Allarme area 2"
+        name: "Allarme Area 2"
       - id: allarme_area_3
-        name: "Allarme area 3"
+        name: "Allarme Area 3"
       - id: allarme_area_4
-        name: "Allarme area 4"
+        name: "Allarme Area 4"
       - id: allarme_area_5
-        name: "Allarme area 5"
+        name: "Allarme Area 5"
       - id: allarme_area_6
-        name: "Allarme area 6"
+        name: "Allarme Area 6"
       - id: allarme_area_7
-        name: "Allarme area 7"
+        name: "Allarme Area 7"
       - id: allarme_area_8
-        name: "Allarme area 8"
+        name: "Allarme Area 8"
       - id: inserimento_totale_area_1
-        name: "Inserimento totale area 1"
+        name: "Inserimento Totale Area 1"
       - id: inserimento_totale_area_2
-        name: "Inserimento totale area 2"
+        name: "Inserimento Totale Area 2"
       - id: inserimento_totale_area_3
-        name: "Inserimento totale area 3"
+        name: "Inserimento Totale Area 3"
       - id: inserimento_totale_area_4
-        name: "Inserimento totale area 4"
+        name: "Inserimento Totale Area 4"
       - id: inserimento_totale_area_5
-        name: "Inserimento totale area 5"
+        name: "Inserimento Totale Area 5"
       - id: inserimento_totale_area_6
-        name: "Inserimento totale area 6"
+        name: "Inserimento Totale Area 6"
       - id: inserimento_totale_area_7
-        name: "Inserimento totale area 7"
+        name: "Inserimento Totale Area 7"
       - id: inserimento_totale_area_8
-        name: "Inserimento totale area 8"
+        name: "Inserimento Totale Area 8"
       - id: inserimento_parziale_area_1
-        name: "Inserimento parziale area 1"
+        name: "Inserimento Parziale Area 1"
       - id: inserimento_parziale_area_2
-        name: "Inserimento parziale area 2"
+        name: "Inserimento Parziale Area 2"
       - id: inserimento_parziale_area_3
-        name: "Inserimento parziale area 3"
+        name: "Inserimento Parziale Area 3"
       - id: inserimento_parziale_area_4
-        name: "Inserimento parziale area 4"
+        name: "Inserimento Parziale Area 4"
       - id: inserimento_parziale_area_5
-        name: "Inserimento parziale area 5"
+        name: "Inserimento Parziale Area 5"
       - id: inserimento_parziale_area_6
-        name: "Inserimento parziale area 6"
+        name: "Inserimento Parziale Area 6"
       - id: inserimento_parziale_area_7
-        name: "Inserimento parziale area 7"
+        name: "Inserimento Parziale Area 7"
       - id: inserimento_parziale_area_8
-        name: "Inserimento parziale area 8"
+        name: "Inserimento Parziale Area 8"
       - id: inserimento_parziale_ritardo_0_area_1
-        name: "Inserimento parziale ritardo 0  area 1"
+        name: "Inserimento Parziale Ritardo 0  Area 1"
       - id: inserimento_parziale_ritardo_0_area_2
-        name: "Inserimento parziale ritardo 0  area 2"
+        name: "Inserimento Parziale Ritardo 0  Area 2"
       - id: inserimento_parziale_ritardo_0_area_3
-        name: "Inserimento parziale ritardo 0  area 3"
+        name: "Inserimento Parziale Ritardo 0  Area 3"
       - id: inserimento_parziale_ritardo_0_area_4
-        name: "Inserimento parziale ritardo 0  area 4"
+        name: "Inserimento Parziale Ritardo 0  Area 4"
       - id: inserimento_parziale_ritardo_0_area_5
-        name: "Inserimento parziale ritardo 0  area 5"
+        name: "Inserimento Parziale Ritardo 0  Area 5"
       - id: inserimento_parziale_ritardo_0_area_6
-        name: "Inserimento parziale ritardo 0  area 6"
+        name: "Inserimento Parziale Ritardo 0  Area 6"
       - id: inserimento_parziale_ritardo_0_area_7
-        name: "Inserimento parziale ritardo 0  area 7"
+        name: "Inserimento Parziale Ritardo 0  Area 7"
       - id: inserimento_parziale_ritardo_0_area_8
-        name: "Inserimento parziale ritardo 0  area 8"
+        name: "Inserimento Parziale Ritardo 0  Area 8"
       - id: disinserita_area_1
-        name: "Disinserita area 1"
+        name: "Disinserita Area 1"
       - id: disinserita_area_2
-        name: "Disinserita area 2"
+        name: "Disinserita Area 2"
       - id: disinserita_area_3
-        name: "Disinserita area 3"
+        name: "Disinserita Area 3"
       - id: disinserita_area_4
-        name: "Disinserita area 4"
+        name: "Disinserita Area 4"
       - id: disinserita_area_5
-        name: "Disinserita area 5"
+        name: "Disinserita Area 5"
       - id: disinserita_area_6
-        name: "Disinserita area 6"
+        name: "Disinserita Area 6"
       - id: disinserita_area_7
-        name: "Disinserita area 7"
+        name: "Disinserita Area 7"
       - id: disinserita_area_8
-        name: "Disinserita area 8"
+        name: "Disinserita Area 8"
       - id: stato_uscita_1
-        name: "Stato uscita 1"
+        name: "Stato Uscita 1"
       - id: stato_uscita_2
-        name: "Stato uscita 2"
+        name: "Stato Uscita 2"
       - id: stato_uscita_3
-        name: "Stato uscita 3"
+        name: "Stato Uscita 3"
       - id: stato_uscita_4
-        name: "Stato uscita 4"
+        name: "Stato Uscita 4"
       - id: stato_uscita_5
-        name: "Stato uscita 5"
+        name: "Stato Uscita 5"
       - id: stato_uscita_6
-        name: "Stato uscita 6"
+        name: "Stato Uscita 6"
       - id: stato_uscita_7
-        name: "Stato uscita 7"
+        name: "Stato Uscita 7"
       - id: stato_uscita_8
-        name: "Stato uscita 8"
+        name: "Stato Uscita 8"
       - id: kyo_comunication
         name: "Comunicazione Centrale"
       - id: stato_sirena
@@ -710,4 +712,5 @@ binary_sensor:
         name: "Sabotaggio Jam"
       - id: sabotaggio_wireless
         name: "Sabotaggio wireless"
-      
+      - id: sabotaggio_chiave_falsa
+        name: "Sabotaggio Chiave Falsa"
