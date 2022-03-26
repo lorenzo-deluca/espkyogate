@@ -3,10 +3,28 @@
 #define MAX_ZONE 32
 #define MAX_AREE 8
 
-class Bentel_Kyo32 : public PollingComponent, public UARTDevice, public CustomAPIDevice
+class Bentel_Kyo32 : public PollingComponent, public UARTDevice, public CustomAPIDevice, public Sensor
 {
 public:
 	Bentel_Kyo32(UARTComponent *parent) : UARTDevice(parent) {}
+
+	BinarySensor *kyo_comunication = new BinarySensor("Kyo Comunication");
+
+	BinarySensor *warn_mancanza_rete = new BinarySensor("Warning Mancanza Rete");
+	BinarySensor *warn_scomparsa_bpi = new BinarySensor("Warning Scomparsa BPI");
+	BinarySensor *warn_fusibile = new BinarySensor("Warning Fusibile");
+	BinarySensor *warn_batteria_bassa = new BinarySensor("Warning Batteria Bassa");
+	BinarySensor *warn_guasto_linea_telefonica = new BinarySensor("Warning Guasto Linea Telefonica");
+	BinarySensor *warn_codici_default = new BinarySensor("Warning Codici Default");
+	BinarySensor *warn_wireless = new BinarySensor("Warning Wireless");
+
+	BinarySensor *stato_sirena = new BinarySensor("stato sirena");
+	BinarySensor *sabotaggio_zona = new BinarySensor("Sabotaggio di Zona");
+	BinarySensor *sabotaggio_chiave_falsa = new BinarySensor("Sabotaggio Chiave Falsa");
+	BinarySensor *sabotaggio_bpi = new BinarySensor("Sabotaggio BPI");
+	BinarySensor *sabotaggio_sistema = new BinarySensor("Sabotaggio Sistema");
+	BinarySensor *sabotaggio_jam = new BinarySensor("Sabotaggio JAM");
+	BinarySensor *sabotaggio_wireless = new BinarySensor("Sabotaggio Wireless");
 
 	BinarySensor* zona = new BinarySensor[MAX_ZONE];
 	BinarySensor *zona_1 = &zona[0];
@@ -76,6 +94,42 @@ public:
 	BinarySensor *zona_sabotaggio_31 = &zona_sabotaggio[30];
 	BinarySensor *zona_sabotaggio_32 = &zona_sabotaggio[31];
 	
+	// IDLE, ESCLUSA, MEMORIA_ALLARMI, MEMORIA_SABOTAGGIO
+	Sensor* partition_status = new Sensor[MAX_ZONE];
+	Sensor *partition_status_1 = &partition_status[0];
+	Sensor *partition_status_2 = &partition_status[1];
+	Sensor *partition_status_3 = &partition_status[2];
+	Sensor *partition_status_4 = &partition_status[3];
+	Sensor *partition_status_5 = &partition_status[4];
+	Sensor *partition_status_6 = &partition_status[5];
+	Sensor *partition_status_7 = &partition_status[6];
+	Sensor *partition_status_8 = &partition_status[7];
+	Sensor *partition_status_9 = &partition_status[8];
+	Sensor *partition_status_10 = &partition_status[9];
+	Sensor *partition_status_11 = &partition_status[10];
+	Sensor *partition_status_12 = &partition_status[11];
+	Sensor *partition_status_13 = &partition_status[12];
+	Sensor *partition_status_14 = &partition_status[13];
+	Sensor *partition_status_15 = &partition_status[14];
+	Sensor *partition_status_16 = &partition_status[15];
+	Sensor *partition_status_17 = &partition_status[16];
+	Sensor *partition_status_18 = &partition_status[17];
+	Sensor *partition_status_19 = &partition_status[18];
+	Sensor *partition_status_20 = &partition_status[19];
+	Sensor *partition_status_21 = &partition_status[20];
+	Sensor *partition_status_22 = &partition_status[21];
+	Sensor *partition_status_23 = &partition_status[22];
+	Sensor *partition_status_24 = &partition_status[23];
+	Sensor *partition_status_25 = &partition_status[24];
+	Sensor *partition_status_26 = &partition_status[25];
+	Sensor *partition_status_27 = &partition_status[26];
+	Sensor *partition_status_28 = &partition_status[27];
+	Sensor *partition_status_29 = &partition_status[28];
+	Sensor *partition_status_30 = &partition_status[29];
+	Sensor *partition_status_31 = &partition_status[30];
+	Sensor *partition_status_32 = &partition_status[31];
+
+	/*
 	BinarySensor* zona_esclusa = new BinarySensor[MAX_ZONE];
 	BinarySensor *zona_esclusa_1 = &zona_esclusa[0];
 	BinarySensor *zona_esclusa_2 = &zona_esclusa[1];
@@ -177,6 +231,7 @@ public:
 	BinarySensor *memoria_sabotaggio_zona_30 = &memoria_sabotaggio_zona[29];
 	BinarySensor *memoria_sabotaggio_zona_31 = &memoria_sabotaggio_zona[30];
 	BinarySensor *memoria_sabotaggio_zona_32 = &memoria_sabotaggio_zona[31];
+	*/
 
 	BinarySensor* allarme_area = new BinarySensor[MAX_AREE];
 	BinarySensor *allarme_area_1 = &allarme_area[0];
@@ -237,36 +292,21 @@ public:
 	BinarySensor *stato_uscita_6 = &stato_uscita[5];
 	BinarySensor *stato_uscita_7 = &stato_uscita[6];
 	BinarySensor *stato_uscita_8 = &stato_uscita[7];
-	
-	BinarySensor *kyo_comunication = new BinarySensor("Kyo Comunication");
-
-	BinarySensor *warn_mancanza_rete = new BinarySensor("Warning Mancanza Rete");
-	BinarySensor *warn_scomparsa_bpi = new BinarySensor("Warning Scomparsa BPI");
-	BinarySensor *warn_fusibile = new BinarySensor("Warning Fusibile");
-	BinarySensor *warn_batteria_bassa = new BinarySensor("Warning Batteria Bassa");
-	BinarySensor *warn_guasto_linea_telefonica = new BinarySensor("Warning Guasto Linea Telefonica");
-	BinarySensor *warn_codici_default = new BinarySensor("Warning Codici Default");
-	BinarySensor *warn_wireless = new BinarySensor("Warning Wireless");
-
-	BinarySensor *stato_sirena = new BinarySensor("stato sirena");
-	BinarySensor *sabotaggio_zona = new BinarySensor("Sabotaggio di Zona");
-	BinarySensor *sabotaggio_chiave_falsa = new BinarySensor("Sabotaggio Chiave Falsa");
-	BinarySensor *sabotaggio_bpi = new BinarySensor("Sabotaggio BPI");
-	BinarySensor *sabotaggio_sistema = new BinarySensor("Sabotaggio Sistema");
-	BinarySensor *sabotaggio_jam = new BinarySensor("Sabotaggio JAM");
-	BinarySensor *sabotaggio_wireless = new BinarySensor("Sabotaggio Wireless");
 
 	byte cmdGetSensorStatus[6] = {0xf0, 0x04, 0xf0, 0x0a, 0x00, 0xee};	  // Read Realtime Status and Trouble Status
 	byte cmdGetPartitionStatus[6] = {0xf0, 0x02, 0x15, 0x12, 0x00, 0x19}; // Partitions Status (305) - Outputs Status - Tamper Memory - Bypassed Zones - Zone Alarm Memory - Zone Tamper Memory
 	byte cmqGetSoftwareVersion[6] = {0xf0, 0x00, 0x00, 0x0b, 0x00, 0xfb}; // f0 00 00 0b 00 fb
-	byte cmdResetAllarms[9] = {0x0F, 0x05, 0xF0, 0x01, 0x00, 0x05, 0xFF, 0x00, 0xFF};
+	byte cmdResetAllarms[9] = {0x0F, 0x05, 0xF0, 0x01, 0x00, 0x05, 0x07, 0x00, 0x07};
 
 	enum class PollingStateEnum { Init = 1, Status };
+	enum class PartitionStatusEnum { Idle = 1, Exclude, MemAlarm, MemSabotate};
 
 	bool serialTrace = false;
 	bool logTrace = false;
-	PollingStateEnum pollingState;
 	int centralInvalidMessageCount = 0;
+	
+	PollingStateEnum pollingState;
+	PartitionStatusEnum PartitionStatusInternal[MAX_ZONE];
 
 	int sendMessageToKyo(byte *cmd, int lcmd, byte ReadByes[], int waitForAnswer = 0)
 	{
@@ -499,9 +539,7 @@ public:
 					this->centralInvalidMessageCount = 0;
 				}
 				else
-				{
 					this->centralInvalidMessageCount++;
-				}
 
 				break;
 
@@ -538,6 +576,8 @@ public:
 		}
 
 		int StatoZona, i;
+		for(i = 0; i < MAX_ZONE; i++)
+			this->PartitionStatusInternal[i] = PartitionStatusEnum::Idle;
 
 		// Ciclo AREE INSERITE
 		for (i = 0; i < MAX_AREE; i++)
@@ -580,7 +620,10 @@ public:
 		}
 
 		// STATO SIRENA
-		stato_sirena->publish_state(((Rx[10] >> 5) & 1) == 1);
+		StatoZona = ((Rx[10] >> 5) & 1);
+		if (this->logTrace && (StatoZona == 1) != stato_sirena->state)
+			ESP_LOGD("stato_sirena", "Stato %i", StatoZona);
+		stato_sirena->publish_state(StatoZona == 1);
 
 		// CICLO STATO USCITE
 		for (i = 0; i < MAX_AREE; i++)
@@ -610,7 +653,9 @@ public:
 			else if (i <= 7)
 				StatoZona = (Rx[16] >> i) & 1;
 
-			zona_esclusa[i].publish_state(StatoZona == 1);
+			//zona_esclusa[i].publish_state(StatoZona == 1);
+			if (StatoZona == 1)
+				this->PartitionStatusInternal[i] = PartitionStatusEnum::Exclude;
 		}
 
 		// CICLO MEMORIA ALLARME ZONE
@@ -626,10 +671,9 @@ public:
 			else if (i <= 7)
 				StatoZona = (Rx[20] >> i) & 1;
 
-			if (this->logTrace && (StatoZona == 1) != memoria_allarme_zona[i].state)	
-				ESP_LOGD("memoria_allarme_zona", "Zona %i - Stato %i", i, StatoZona);
-
-			memoria_allarme_zona[i].publish_state(StatoZona == 1);
+			//memoria_allarme_zona[i].publish_state(StatoZona == 1);
+			if (StatoZona == 1)
+				this->PartitionStatusInternal[i] = PartitionStatusEnum::MemAlarm;
 		}
 
 		// CICLO MEMORIA SABOTAGGIO ZONE
@@ -645,10 +689,34 @@ public:
 			else if (i <= 7)
 				StatoZona = (Rx[24] >> i) & 1;
 
-			if (this->logTrace && (StatoZona == 1) != memoria_sabotaggio_zona[i].state)	
-				ESP_LOGD("memoria_sabotaggio_zona", "Zona %i - Stato %i", i, StatoZona);
+			//memoria_sabotaggio_zona[i].publish_state(StatoZona == 1);
+			if (StatoZona == 1)
+				this->PartitionStatusInternal[i] = PartitionStatusEnum::MemSabotate;
+		}
 
-			memoria_sabotaggio_zona[i].publish_state(StatoZona == 1);
+		for(i = 0; i < MAX_ZONE; i++)
+		{
+			switch(this->PartitionStatusInternal[i])
+			{
+				case PartitionStatusEnum::Idle:
+					this->partition_status[i].publish_state('I');
+					break;
+
+				case PartitionStatusEnum::MemAlarm:
+					this->partition_status[i].publish_state('A');
+					break;
+
+				case PartitionStatusEnum::Exclude:
+					this->partition_status[i].publish_state('E');
+					break;
+
+				case PartitionStatusEnum::MemSabotate:
+					this->partition_status[i].publish_state('S');
+					break;
+			}
+			
+			//if (this->logTrace && (StatoZona == 1) != memoria_sabotaggio_zona[i].state)	
+			//	ESP_LOGD("memoria_sabotaggio_zona", "Zona %i - Stato %i", i, StatoZona);
 		}
 		
 		return true;
@@ -682,6 +750,9 @@ public:
 				StatoZona = (Rx[8] >> (i - 8)) & 1;
 			else if (i <= 7)
 				StatoZona = (Rx[9] >> i) & 1;
+
+			if (this->logTrace && (StatoZona == 1) != zona[i].state)	
+				ESP_LOGD("stato_zona", "Zona %i - Stato %i", i, StatoZona);
 
 			//ESP_LOGD("custom", "The value of sensor is: %i", StatoZona);
 			zona[i].publish_state(StatoZona==1);
