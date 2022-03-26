@@ -635,7 +635,7 @@ public:
 				StatoZona = (Rx[12] >> i) & 1;
 
 			if (this->logTrace && (StatoZona == 1) != stato_uscita[i].state)
-				ESP_LOGD("stato_uscita", "Uscita %d - Stato %i", i, StatoZona);
+				ESP_LOGD("stato_uscita", "Uscita %i - Stato %i", i, StatoZona);
 
 			stato_uscita[i].publish_state(StatoZona == 1);
 		}
