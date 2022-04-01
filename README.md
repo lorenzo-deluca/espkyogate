@@ -45,8 +45,8 @@ You should see something similar.
 ![ESPHomeLogs](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/ESPHomeLogs.png)
 
 #### From esphome command line
-`python3 -m esphome espkyogate_configuration.yaml compile`
-`python3 -m esphome espkyogate_configuration.yaml run`
+`python3 -m esphome compile espkyogate_configuration.yaml`
+`python3 -m esphome run espkyogate_configuration.yaml`
 
 ##### Check logs
 See logs with this command 
@@ -147,7 +147,6 @@ data:
   serial_trace: 1
   log_trace: 1
 ```
-
 
 ## License
 GNU AGPLv3 © [Lorenzo De Luca][https://lorenzodeluca.dev]

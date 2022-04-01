@@ -1,0 +1,117 @@
+esphome:
+  name: espkyogatedev
+  platform: ESP8266
+  board: d1_mini
+  includes:
+    - bentel_kyo.h
+  comment: "Bentel KYO ESPHome Alarm Integration"
+  libraries:
+    - "td-er/RABurton ESP8266 Mutex @ ^1.0.2"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  ap:
+    ssid: "Esp32 Test Fallback Hotspot"
+    password: "12345678"
+
+captive_portal:
+
+# Enable logging
+logger:
+  level: VERBOSE
+  baud_rate: 0
+
+# Enable Home Assistant API
+api:
+  password: !secret ha_password
+
+ota:
+  password: !secret ota_password
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO1
+  rx_pin: GPIO3
+  baud_rate: 9600
+  data_bits: 8
+  parity: EVEN
+
+# Custom Kyo component
+custom_component:
+  - lambda: |-
+      auto kyo = new BentelKyoComponent(id(uart_bus));
+      App.register_component(kyo);
+      return {kyo};
+    components:
+      - id: kyo
+
+binary_sensor:
+  - platform: custom
+    lambda: |-
+      BentelKyoComponent* k = (BentelKyoComponent*) kyo;
+      return {
+        &k->zona[0],
+        k->kyo_comunication,
+        k->stato_sirena,
+        k->warn_mancanza_rete,
+        k->sabotaggio_zona, 
+        k->sabotaggio_sistema,
+        k->warn_scomparsa_bpi,
+        k->warn_fusibile,
+        k->warn_batteria_bassa,
+        k->warn_guasto_linea_telefonica,
+        k->warn_codici_default,
+        k->warn_wireless,
+        k->sabotaggio_bpi,
+        k->sabotaggio_chiave_falsa,
+        k->sabotaggio_jam,
+        k->sabotaggio_wireless
+      };
+
+    binary_sensors:
+      - id: zona_1
+        name: "Zona 1"
+        device_class: "garage_door"
+      - id: kyo_comunication
+        name: "Comunicazione Centrale"
+      - id: stato_sirena
+        name: "Stato Sirena"
+      - id: warn_mancanza_rete
+        name: "Mancanza Rete"
+      - id: sabotaggio_zona
+        name: "Sabotaggio Zona"
+      - id: sabotaggio_sistema
+        name: "Sabotaggio Sistema"
+      - id: warn_scomparsa_bpi
+        name: "Scomparsa BPI"
+      - id: warn_fusibile
+        name: "Fusibile"
+      - id: warn_batteria_bassa
+        name: "Batteria Bassa"
+      - id: warn_guasto_linea_telefonica
+        name: "Guasto Linea Telefonica"
+      - id: warn_codici_default
+        name: "Codici Default"
+      - id: warn_wireless
+        name: "Wireless"
+      - id: sabotaggio_bpi
+        name: "Sabotaggio BPI"
+      - id: sabotaggio_jam
+        name: "Sabotaggio Jam"
+      - id: sabotaggio_wireless
+        name: "Sabotaggio wireless"
+      - id: sabotaggio_chiave_falsa
+        name: "Sabotaggio Chiave Falsa"
+
+text_sensor:
+  # Alarm status
+  - platform: custom
+    lambda: |-
+      BentelKyoComponent* k = (BentelKyoComponent*) kyo;
+      return {k->alarmStatusSensor};
+    text_sensors:
+      - id: kyo_alarm_status
+        name: "Alarm Status"
+        icon: "mdi:shield"
