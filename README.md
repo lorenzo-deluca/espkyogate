@@ -49,11 +49,9 @@ binary_sensor:
       auto kyo32 = new Bentel_Kyo32(id(uart_bus));
       App.register_component(kyo32);
       return {
-        kyo32->kyo_comunication,
-		&kyo32->zona[0], &kyo32->zona[1],&kyo32->zona[2], &kyo32->zona[3]
-	};
+        kyo32->kyo_comunication, &kyo32->zona[0], &kyo32->zona[1],&kyo32->zona[2], &kyo32->zona[3]};
     binary_sensors:
-	  - id: kyo_comunication
+      - id: kyo_comunication
         name: "Comunicazione Centrale"
       - id: kyo_zone1
         name: "Zone 1"
