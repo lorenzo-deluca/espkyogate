@@ -50,11 +50,9 @@ binary_sensor:
       App.register_component(kyo32);
       return {
         kyo32->kyo_comunication,
-		&kyo32->zona[0], &kyo32->zona[1],
-		&kyo32->zona[2], &kyo32->zona[3]
+		&kyo32->zona[0], &kyo32->zona[1],&kyo32->zona[2], &kyo32->zona[3]
 	};
-	
-	binary_sensors:
+    binary_sensors:
 	  - id: kyo_comunication
         name: "Comunicazione Centrale"
       - id: kyo_zone1
@@ -88,7 +86,6 @@ wifi_password: "<your-wifi-password>"
 ota_password: "<your-ota-password>"
 api_encryption_key: "<your-encryption-key>"
 ```
-
 
 ### Build and Upload Firmware
 
