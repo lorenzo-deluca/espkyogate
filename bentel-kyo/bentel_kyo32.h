@@ -12,28 +12,16 @@
 
 #include <sstream>
 #include "esphome.h"
-#include "esp8266_mutex.h"
-
-#define KYO_MODEL_4   "KYO4"
-#define KYO_MODEL_8   "KYO8"
-#define KYO_MODEL_8G  "KYO8G"
-#define KYO_MODEL_32  "KYO32"
-#define KYO_MODEL_32G "KYO32G"
-#define KYO_MODEL_8W  "KYO8 W"
-#define KYO_MODEL_8GW "KYO8G W"
 
 #define KYO_MAX_ZONE 32
 #define KYO_MAX_AREE 8
+#define KYO_MAX_USCITE 8
 
 #define UPDATE_INT_MS 1000
 
-class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDevice, public api::CustomAPIDevice {
+class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, public api::CustomAPIDevice {
 	public:
-		BentelKyoComponent(UARTComponent *parent) : UARTDevice(parent) {}
-		
-		TextSensor *alarmStatusSensor = new TextSensor();
-		TextSensor *modelSensor = new TextSensor();
-		TextSensor *firmwareSensor = new TextSensor();
+		Bentel_Kyo32(UARTComponent *parent) : UARTDevice(parent) {}
 		
 		BinarySensor *kyo_comunication = new BinarySensor();
 
@@ -53,18 +41,21 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 		BinarySensor *sabotaggio_jam = new BinarySensor();
 		BinarySensor *sabotaggio_wireless = new BinarySensor();
 
+		// Zone
 		BinarySensor* zona = new BinarySensor[KYO_MAX_ZONE];
 		BinarySensor* zona_sabotaggio = new BinarySensor[KYO_MAX_ZONE];
-		
-		// IDLE, ESCLUSA, MEMORIA_ALLARMI, MEMORIA_SABOTAGGIO
-		TextSensor* partition_status = new TextSensor[KYO_MAX_ZONE];
-		
+		BinarySensor* zona_esclusa = new BinarySensor[KYO_MAX_ZONE];
+		BinarySensor* memoria_allarme_zona = new BinarySensor[KYO_MAX_ZONE];
+		BinarySensor* memoria_sabotaggio_zona = new BinarySensor[KYO_MAX_ZONE];
+
+		// Aree
 		BinarySensor* allarme_area = new BinarySensor[KYO_MAX_AREE];
 		BinarySensor* inserimento_totale_area = new BinarySensor[KYO_MAX_AREE];
 		BinarySensor* inserimento_parziale_area = new BinarySensor[KYO_MAX_AREE];
 		BinarySensor* inserimento_parziale_ritardo_0_area = new BinarySensor[KYO_MAX_AREE];
 		BinarySensor* disinserita_area = new BinarySensor[KYO_MAX_AREE];
-		BinarySensor* stato_uscita = new BinarySensor[KYO_MAX_AREE];
+
+		BinarySensor* stato_uscita = new BinarySensor[KYO_MAX_USCITE];
 
 		void setup() override
 		{
@@ -73,19 +64,16 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 			set_update_interval(UPDATE_INT_MS);
 			set_setup_priority(setup_priority::AFTER_CONNECTION);
 
-			CreateMutux(&uartMutex);
+			register_service(&Bentel_Kyo32::arm_area, "arm_area", {"area", "arm_type", "specific_area"});
+			register_service(&Bentel_Kyo32::disarm_area, "disarm_area", {"area", "specific_area"});
+			register_service(&Bentel_Kyo32::reset_alarms, "reset_alarms");
+			register_service(&Bentel_Kyo32::activate_output, "activate_output", {"output_number"});
+			register_service(&Bentel_Kyo32::deactivate_output, "deactivate_output", {"output_number"});
+			register_service(&Bentel_Kyo32::debug_command, "debug_command", {"serial_trace", "log_trace"});
 
-			register_service(&BentelKyoComponent::arm_area, "arm_area", {"area", "arm_type", "specific_area"});
-			register_service(&BentelKyoComponent::disarm_area, "disarm_area", {"area", "specific_area"});
-			register_service(&BentelKyoComponent::reset_alarms, "reset_alarms");
-			register_service(&BentelKyoComponent::activate_output, "activate_output", {"output_number"});
-			register_service(&BentelKyoComponent::deactivate_output, "deactivate_output", {"output_number"});
-			register_service(&BentelKyoComponent::debug_command, "debug_command", {"serial_trace", "log_trace"});
-
-			alarmStatusSensor->publish_state("unavailable");
 			kyo_comunication->publish_state(false);
 
-			ESP_LOGCONFIG("setup", "Bentel Kyo Setup");
+			ESP_LOGI("setup", "Bentel Kyo Setup");
 		}
 
 		void arm_area(int area, int arm_type, int specific_area)
@@ -96,7 +84,7 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 				return;
 			}
 			
-			ESP_LOGCONFIG("arm_area", "request arm type %d area %d", arm_type, area);
+			ESP_LOGI("arm_area", "request arm type %d area %d", arm_type, area);
 			byte cmdArmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0xCC, 0xFF};
 
 			byte total_insert_area_status = 0x00, partial_insert_area_status = 0x00;
@@ -121,7 +109,7 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 
 			byte Rx[255];
 			int Count = sendMessageToKyo(cmdArmPartition, sizeof(cmdArmPartition), Rx, 100);
-			ESP_LOGCONFIG("arm_area", "arm_area kyo respond %i", Count);
+			ESP_LOGD("arm_area", "arm_area kyo respond %i", Count);
 		}
 
 		void disarm_area(int area, int specific_area)
@@ -132,7 +120,7 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 				return;
 			}
 			
-			ESP_LOGCONFIG("disarm_area", "request disarm area %d", area);
+			ESP_LOGI("disarm_area", "request disarm area %d", area);
 			byte cmdDisarmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0xFF, 0xFF};
 
 			byte total_insert_area_status = 0x00, partial_insert_area_status = 0x00;
@@ -157,12 +145,12 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 
 			byte Rx[255];
 			int Count = sendMessageToKyo(cmdDisarmPartition, sizeof(cmdDisarmPartition), Rx, 80);
-			ESP_LOGCONFIG("disarm_area", "kyo respond %i", Count);
+			ESP_LOGD("disarm_area", "kyo respond %i", Count);
 		}
 
 		void reset_alarms()
 		{
-			ESP_LOGE("reset_alarms", "Reset Alarms.");
+			ESP_LOGI("reset_alarms", "Reset Alarms.");
 
 			byte Rx[255];
 			int Count = sendMessageToKyo(cmdResetAllarms, sizeof(cmdResetAllarms), Rx, 80);
@@ -174,18 +162,18 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 			this->serialTrace = (serial_trace == 1);
 			this->logTrace = (log_trace == 1);
 
-			ESP_LOGE("debug_command", "serial_trace %i log_trace %i", this->serialTrace, this->logTrace);
+			ESP_LOGI("debug_command", "serial_trace %i log_trace %i", this->serialTrace, this->logTrace);
 		}
 
 		void activate_output(int output_number)
 		{
-			if (output_number > KYO_MAX_AREE)
+			if (output_number > KYO_MAX_USCITE)
 			{
-				ESP_LOGE("activate_output", "invalid output %i, MAX %i", output_number, KYO_MAX_AREE);
+				ESP_LOGE("activate_output", "invalid output %i, MAX %i", output_number, KYO_MAX_USCITE);
 				return;
 			}
 
-			ESP_LOGE("activate_output", "activate Output Number: %d", output_number);
+			ESP_LOGI("activate_output", "activate Output Number: %d", output_number);
 			
 			byte cmdActivateOutput[9] = {0x0f, 0x06, 0xf0, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00};
 			
@@ -199,13 +187,13 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 
 		void deactivate_output(int output_number)
 		{
-			if (output_number > KYO_MAX_AREE)
+			if (output_number > KYO_MAX_USCITE)
 			{
-				ESP_LOGI("deactivate_output", "invalid output %i, MAX %i", output_number, KYO_MAX_AREE);
+				ESP_LOGE("deactivate_output", "invalid output %i, MAX %i", output_number, KYO_MAX_USCITE);
 				return;
 			}
 
-			ESP_LOGD("deactivate_output", "deactivate Output Number: %d", output_number);
+			ESP_LOGI("deactivate_output", "deactivate Output Number: %d", output_number);
 			
 			byte cmdDeactivateOutput[9] = {0x0f, 0x06, 0xf0, 0x01, 0x00, 0x06, 0x00, 0x00, 0xCC};
 			
@@ -219,35 +207,30 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 
 		void update() override
 		{
-			if (GetMutex(&uartMutex) == true) {
 
-                switch(this->pollingState)
-				{
-					case PollingStateEnum::Init:
-						if (this->update_kyo_status())
-						{
-							this->pollingState = PollingStateEnum::Status;
-							this->centralInvalidMessageCount = 0;
-						}
-						else
-							this->centralInvalidMessageCount++;
+			switch(this->pollingState)
+			{
+				case PollingStateEnum::Init:
+					if (this->update_kyo_status())
+					{
+						this->pollingState = PollingStateEnum::Status;
+						this->centralInvalidMessageCount = 0;
+					}
+					else
+						this->centralInvalidMessageCount++;
 
-						break;
+					break;
 
-					case PollingStateEnum::Status:
-						if (this->update_kyo_partitions())
-						{
-							this->pollingState = PollingStateEnum::Init;
-							this->centralInvalidMessageCount = 0;
-						}
-						else
-							this->centralInvalidMessageCount++;
-				
-						break;
-				}
-
-				// Release UART mutex
-				ReleaseMutex(&uartMutex);
+				case PollingStateEnum::Status:
+					if (this->update_kyo_partitions())
+					{
+						this->pollingState = PollingStateEnum::Init;
+						this->centralInvalidMessageCount = 0;
+					}
+					else
+						this->centralInvalidMessageCount++;
+			
+					break;
 			}
 
 			if (this->centralInvalidMessageCount == 0 && !this->kyo_comunication->state)
@@ -278,7 +261,6 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 		enum class PartitionStatusEnum { Idle = 1, Exclude, MemAlarm, MemSabotate};
 		PartitionStatusEnum PartitionStatusInternal[KYO_MAX_ZONE];
 
-		mutex_t uartMutex;
 		bool serialTrace = false;
 		bool logTrace = false;
 		int centralInvalidMessageCount = 0;
@@ -292,7 +274,7 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 			if (Count != 26)
 			{
 				if (this->logTrace)
-					ESP_LOGE("update_kyo_partitions", "invalid message length %i", Count);
+					ESP_LOGI("update_kyo_partitions", "invalid message length %i", Count);
 
 				return (false);
 			}
@@ -306,7 +288,7 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 			{
 				StatoZona = (Rx[6] >> i) & 1;
 				if (this->logTrace && (StatoZona == 1) != inserimento_totale_area[i].state)
-					ESP_LOGE("aree_totale", "Area %i - Stato %i", i, StatoZona);
+					ESP_LOGI("aree_totale", "Area %i - Stato %i", i, StatoZona);
 				
 				inserimento_totale_area[i].publish_state(StatoZona == 1);
 			}
@@ -316,7 +298,7 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 			{
 				StatoZona = (Rx[7] >> i) & 1;
 				if (this->logTrace && (StatoZona == 1) != inserimento_parziale_area[i].state)
-					ESP_LOGE("aree_parziale", "Area %i - Stato %i", i, StatoZona);
+					ESP_LOGI("aree_parziale", "Area %i - Stato %i", i, StatoZona);
 
 				inserimento_parziale_area[i].publish_state(StatoZona == 1);
 			}
@@ -326,7 +308,7 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 			{
 				StatoZona = (Rx[8] >> i) & 1;
 				if (this->logTrace && (StatoZona == 1) != inserimento_parziale_ritardo_0_area[i].state)
-					ESP_LOGE("inserimento_parziale_ritardo_0_area", "Area %i - Stato %i", i, StatoZona);
+					ESP_LOGI("inserimento_parziale_ritardo_0_area", "Area %i - Stato %i", i, StatoZona);
 
 				inserimento_parziale_ritardo_0_area[i].publish_state(StatoZona == 1);
 			}
@@ -336,7 +318,7 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 			{
 				StatoZona = (Rx[9] >> i) & 1;
 				if (this->logTrace && (StatoZona == 1) != disinserita_area[i].state)
-					ESP_LOGE("disinserita_area", "Area %i - Stato %i", i, StatoZona);
+					ESP_LOGI("disinserita_area", "Area %i - Stato %i", i, StatoZona);
 
 				disinserita_area[i].publish_state(StatoZona == 1);
 			}
@@ -344,12 +326,11 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 			// STATO SIRENA
 			StatoZona = ((Rx[10] >> 5) & 1);
 			if (this->logTrace && (StatoZona == 1) != stato_sirena->state)
-				ESP_LOGE("stato_sirena", "Stato %i", StatoZona);
+				ESP_LOGI("stato_sirena", "Stato %i", StatoZona);
 			stato_sirena->publish_state(StatoZona == 1);
 			
-
 			// CICLO STATO USCITE
-			for (i = 0; i < KYO_MAX_AREE; i++)
+			for (i = 0; i < KYO_MAX_USCITE; i++)
 			{
 				StatoZona = 0;
 				if (i >= 8 && i <= 15)
@@ -358,7 +339,7 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 					StatoZona = (Rx[12] >> i) & 1;
 
 				if (this->logTrace && (StatoZona == 1) != stato_uscita[i].state)
-					ESP_LOGE("stato_uscita", "Uscita %i - Stato %i", i, StatoZona);
+					ESP_LOGI("stato_uscita", "Uscita %i - Stato %i", i, StatoZona);
 
 				stato_uscita[i].publish_state(StatoZona == 1);
 			}
@@ -376,7 +357,7 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 				else if (i <= 7)
 					StatoZona = (Rx[16] >> i) & 1;
 
-				//zona_esclusa[i].publish_state(StatoZona == 1);
+				zona_esclusa[i].publish_state(StatoZona == 1);
 				if (StatoZona == 1)
 					this->PartitionStatusInternal[i] = PartitionStatusEnum::Exclude;
 			}
@@ -394,7 +375,7 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 				else if (i <= 7)
 					StatoZona = (Rx[20] >> i) & 1;
 
-				//memoria_allarme_zona[i].publish_state(StatoZona == 1);
+				memoria_allarme_zona[i].publish_state(StatoZona == 1);
 				if (StatoZona == 1)
 					this->PartitionStatusInternal[i] = PartitionStatusEnum::MemAlarm;
 			}
@@ -412,34 +393,9 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 				else if (i <= 7)
 					StatoZona = (Rx[24] >> i) & 1;
 
-				//memoria_sabotaggio_zona[i].publish_state(StatoZona == 1);
+				memoria_sabotaggio_zona[i].publish_state(StatoZona == 1);
 				if (StatoZona == 1)
 					this->PartitionStatusInternal[i] = PartitionStatusEnum::MemSabotate;
-			}
-
-			for(i = 0; i < KYO_MAX_ZONE; i++)
-			{
-				switch(this->PartitionStatusInternal[i])
-				{
-					case PartitionStatusEnum::Idle:
-						this->partition_status[i].publish_state("I");
-						break;
-
-					case PartitionStatusEnum::MemAlarm:
-						this->partition_status[i].publish_state("A");
-						break;
-
-					case PartitionStatusEnum::Exclude:
-						this->partition_status[i].publish_state("E");
-						break;
-
-					case PartitionStatusEnum::MemSabotate:
-						this->partition_status[i].publish_state("S");
-						break;
-				}
-				
-				//if (this->logTrace && (StatoZona == 1) != memoria_sabotaggio_zona[i].state)	
-				//	ESP_LOGD("memoria_sabotaggio_zona", "Zona %i - Stato %i", i, StatoZona);
 			}
 			
 			return true;
@@ -475,7 +431,7 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 					StatoZona = (Rx[9] >> i) & 1;
 
 				if (this->logTrace && (StatoZona == 1) != zona[i].state)	
-					ESP_LOGE("stato_zona", "Zona %i - Stato %i", i, StatoZona);
+					ESP_LOGI("stato_zona", "Zona %i - Stato %i", i, StatoZona);
 
 				zona[i].publish_state(StatoZona==1);
 			}
@@ -574,61 +530,6 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 			return true;
 		}
 		
-		uint8_t getChecksum(const std::vector<uint8_t> &data, size_t offset = 0) {
-            uint8_t ckSum = 0;
-
-            for (int i = offset; i < data.size(); i++) {
-                ckSum += data[i];
-            }
-
-            return (ckSum);
-        }
-
-		void appendChecksum(std::vector<uint8_t> &data, size_t offset = 0) {
-            data.push_back(getChecksum(const_cast<std::vector<uint8_t>&>(data), offset));
-        }
-
- 		bool getAlarmInfo() {
-            std::vector<uint8_t> request = cmdGetAlarmInfo;
-            std::vector<uint8_t> reply;
-
-            appendChecksum(request);
-
-            if (sendRequest(request, reply, 100) && reply.size() == RPL_GET_ALARM_INFO_SIZE) {
-                // Parse reply
-                std::ostringstream convert;
-                for (int i = 0; i < RPL_GET_ALARM_INFO_SIZE - 1; i++) {
-                    convert << reply[i];
-                }
-
-                // Trim spaces from model sub-string
-                std::string model = convert.str().substr(0, 7);
-                rtrim(model);
-
-                // Trim spaces from firmware substring
-                std::string firmware = convert.str().substr(8, 11);
-                rtrim(firmware);
-
-                modelSensor->publish_state(model.c_str());
-                firmwareSensor->publish_state(firmware.c_str());
-
-                if (model == KYO_MODEL_4) alarmModel = AlarmModel::KYO_4;
-                else if (model == KYO_MODEL_8) alarmModel = AlarmModel::KYO_8;
-                else if (model == KYO_MODEL_8G) alarmModel = AlarmModel::KYO_8G;
-                else if (model == KYO_MODEL_32) alarmModel = AlarmModel::KYO_32;
-                else if (model == KYO_MODEL_32G) alarmModel = AlarmModel::KYO_32G;
-                else if (model == KYO_MODEL_8W) alarmModel = AlarmModel::KYO_8W;
-                else if (model == KYO_MODEL_8GW) alarmModel = AlarmModel::KYO_8GW;
-                else alarmModel = AlarmModel::UNKNOWN;
-
-                ESP_LOGCONFIG("getAlarmInfo", "KYO model request completed [%s %s]", model.c_str(), firmware.c_str());
-                return (true);
-            }
-
-            ESP_LOGE("getAlarmInfo", "KYO model request failed");
-            return (false);
-        }
-		
 		int sendMessageToKyo(byte *cmd, int lcmd, byte ReadByes[], int waitForAnswer = 0)
 		{
 			// clean rx buffer
@@ -644,33 +545,18 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 			write_array(cmd, lcmd);
 			delay(waitForAnswer);
 
-			if (available() >= 6) {
-			
+			if (available() >= 6) 
+			{
 				// Read a single Byte
 				while (available() > 0)
 					RxBuff[index++] = read(); 
 
 				if (this->serialTrace)
-				{
-					/*
-					int i;
-					char txString[255];
-					char rxString[255];
-					memset(txString, 0, 255);
-					memset(rxString, 0, 255);
-
-					for (i = 0; i < lcmd; i++)
-						sprintf(txString, "%s %2x", txString, cmd[i]);
-
-					for (i = 0; i < index; i++)
-						sprintf(rxString, "%s %2x", rxString, RxBuff[i]);
-
-					ESP_LOGD("sendMessageToKyo", "TX [%d] '%s', RX [%d] '%s'", lcmd, txString, index, rxString);
-					*/
-					ESP_LOGE("sendMessageToKyo", "TX [%d] '%s', RX [%d] '%s'", lcmd, format_hex_pretty(cmd, lcmd).c_str(),
+					ESP_LOGI("sendMessageToKyo", "TX [%d] '%s', RX [%d] '%s'", lcmd, format_hex_pretty(cmd, lcmd).c_str(),
 													index, format_hex_pretty(RxBuff, index).c_str());
-				}
 			}
+			else
+				ESP_LOGE("sendMessageToKyo", "serial port not available");
 
 			if (index <= 0)
 				return -1;
@@ -687,58 +573,4 @@ class BentelKyoComponent : public esphome::PollingComponent, public uart::UARTDe
 
 			return (0x203 - sum);
 		}
-
-		bool verifyChecksum(const std::vector<uint8_t> &data, size_t offset = 0) {
-            uint8_t ckSum = 0;
-
-            for (int i = offset; i < data.size() - 1; i++) {
-                ckSum += data[i];
-            }
-
-            return (data.back() == ckSum);
-        }
-
-        static inline void rtrim(std::string &str) {
-            str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
-                return !std::isspace(ch);
-            }).base(), str.end());
-        }
-
-        bool sendRequest(std::vector<uint8_t> request, std::vector<uint8_t> &reply, uint wait = 0) {
-            ESP_LOGD("sendRequest", "Request: %s", format_hex_pretty(request).c_str());
-
-            // Empty receiveing buffer
-            while (available() > 0) {
-                read();
-            }
-
-            // Send request
-            write_array(reinterpret_cast<byte*> (request.data()), request.size());
-
-            delay(wait);
-
-            // Read reply
-            reply.clear();
-
-            // Wait for request echo
-            if (available() >= 6) {
-                while (available() > 0) {
-                    reply.push_back(read());
-                }
-
-                // Strip request echo
-                reply.erase(reply.begin(), reply.begin() + 6);
-
-                if (reply.size() > 0) {
-                    ESP_LOGD("sendRequest", "Reply: %s", format_hex_pretty(reply).c_str());
-
-                    // Verify checksum
-                    return (verifyChecksum(const_cast<std::vector<uint8_t>&>(reply)));
-                }
-
-                return (true);
-            }
-
-            return (false);
-        }
 };

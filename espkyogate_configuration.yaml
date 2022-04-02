@@ -1,9 +1,9 @@
 esphome:
-  name: espkyogate
+  name: espkyogatebox
   platform: ESP8266
   board: d1_mini
   includes:
-    - bentel_kyo32.h
+    - bentel-kyo/bentel_kyo32.h
 
 wifi:
   ssid: !secret wifi_ssid
@@ -18,7 +18,7 @@ captive_portal:
 
 # Enable logging
 logger:
-  level: VERBOSE
+  level: INFO
   baud_rate: 0
 
 # Enable Home Assistant API
@@ -42,28 +42,6 @@ binary_sensor:
       auto kyo32 = new Bentel_Kyo32(id(uart_bus));
       App.register_component(kyo32);
       return {
-        kyo32->zona_1,
-
-        kyo32->zona_sabotaggio_1,
-
-        kyo32->zona_esclusa_1,
-
-        kyo32->memoria_allarme_zona_1,
-
-        kyo32->memoria_sabotaggio_zona_1,
-
-        kyo32->allarme_area_1,
-
-        kyo32->inserimento_totale_area_1,
-
-        kyo32->inserimento_parziale_area_1,
-
-        kyo32->inserimento_parziale_ritardo_0_area_1,
-
-        kyo32->disinserita_area_1,
-
-        kyo32->stato_uscita_1,
-
         kyo32->kyo_comunication,
         kyo32->stato_sirena,
         kyo32->warn_mancanza_rete,
@@ -78,40 +56,23 @@ binary_sensor:
         kyo32->sabotaggio_bpi,
         kyo32->sabotaggio_chiave_falsa,
         kyo32->sabotaggio_jam,
-        kyo32->sabotaggio_wireless
-        };
+        kyo32->sabotaggio_wireless,
+
+        &kyo32->zona[0],
+        &kyo32->zona_sabotaggio[0],
+        &kyo32->zona_esclusa[0],
+        &kyo32->memoria_allarme_zona[0],
+        &kyo32->memoria_sabotaggio_zona[0],
+
+        &kyo32->allarme_area[0],
+        &kyo32->inserimento_totale_area[0],
+        &kyo32->inserimento_parziale_area[0],
+        &kyo32->inserimento_parziale_ritardo_0_area[0],
+        &kyo32->disinserita_area[0],
+
+        &kyo32->stato_uscita[0]
+      };
     binary_sensors:
-      - id: zona_1
-        name: "Zona 1"
-
-      - id: zona_sabotaggio_1
-        name: "Sabotaggio Zona 1"
-
-      - id: zona_esclusa_1
-        name: "Esclusa Zona 1"
-
-      - id: memoria_allarme_zona_1
-        name: "Memoria Allarme Zona 1"
-
-      - id: allarme_area_1
-        name: "Allarme Area 1"
-
-      - id: inserimento_totale_area_1
-        name: "Inserimento Totale Area 1"
-
-      - id: inserimento_parziale_area_1
-        name: "Inserimento Parziale Area 1"
-
-      - id: inserimento_parziale_ritardo_0_area_1
-        name: "Inserimento Parziale Ritardo 0  Area 1"
-
-      - id: disinserita_area_1
-        name: "Disinserita Area 1"
-
-      - id: stato_uscita_1
-        name: "Stato Uscita 1"
-
-
       - id: kyo_comunication
         name: "Comunicazione Centrale"
       - id: stato_sirena
@@ -142,3 +103,28 @@ binary_sensor:
         name: "Sabotaggio wireless"
       - id: sabotaggio_chiave_falsa
         name: "Sabotaggio Chiave Falsa"
+
+      - id: zona_1
+        name: "Zona 1"
+      - id: zona_1_sabotaggio
+        name: "Sabotaggio Zona 1"
+      - id: zona_1_esclusa
+        name: "Esclusa Zona 1"
+      - id: zona_1_memoria_allarme
+        name: "Memoria Allarme Zona 1"
+      - id: zona_1_memoria_sabotaggio
+        name: "Memoria Sabotaggio Zona 1"
+
+      - id: allarme_area_1
+        name: "Allarme Area 1"
+      - id: inserimento_totale_area_1
+        name: "Inserimento Totale Area 1"
+      - id: inserimento_parziale_area_1
+        name: "Inserimento Parziale Area 1"
+      - id: inserimento_parziale_ritardo_0_area_1
+        name: "Inserimento Parziale Ritardo 0 Area 1"
+      - id: disinserita_area_1
+        name: "Disinserita Area 1"
+
+      - id: stato_uscita_1
+        name: "Stato Uscita 1"
