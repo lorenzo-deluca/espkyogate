@@ -42,6 +42,13 @@ Finally edit `binary_sensors` you want to see on your Home Assistant as configur
 Map the available zones in your alarm, adding proper `device_class`. 
 
 ```yaml
+esphome:
+  name: espkyogatebox
+  platform: ESP8266
+  board: d1_mini
+  includes:
+    - bentel-kyo/bentel_kyo32.h
+
 binary_sensor:
   # Zones status
   - platform: custom

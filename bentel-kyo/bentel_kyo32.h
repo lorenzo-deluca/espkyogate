@@ -17,7 +17,7 @@
 #define KYO_MAX_AREE 8
 #define KYO_MAX_USCITE 8
 
-#define UPDATE_INT_MS 1000
+#define UPDATE_INT_MS 500
 
 class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, public api::CustomAPIDevice {
 	public:
@@ -59,11 +59,6 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 
 		void setup() override
 		{
-			pollingState = PollingStateEnum::Init;
-
-			set_update_interval(UPDATE_INT_MS);
-			set_setup_priority(setup_priority::AFTER_CONNECTION);
-
 			register_service(&Bentel_Kyo32::arm_area, "arm_area", {"area", "arm_type", "specific_area"});
 			register_service(&Bentel_Kyo32::disarm_area, "disarm_area", {"area", "specific_area"});
 			register_service(&Bentel_Kyo32::reset_alarms, "reset_alarms");
@@ -71,9 +66,9 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			register_service(&Bentel_Kyo32::deactivate_output, "deactivate_output", {"output_number"});
 			register_service(&Bentel_Kyo32::debug_command, "debug_command", {"serial_trace", "log_trace"});
 
+			pollingState = PollingStateEnum::Init;
 			kyo_comunication->publish_state(false);
-
-			ESP_LOGI("setup", "Bentel Kyo Setup");
+			set_update_interval(UPDATE_INT_MS);
 		}
 
 		void arm_area(int area, int arm_type, int specific_area)
@@ -280,8 +275,8 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			}
 
 			int StatoZona, i;
-			for(i = 0; i < KYO_MAX_ZONE; i++)
-				this->PartitionStatusInternal[i] = PartitionStatusEnum::Idle;
+			//for(i = 0; i < KYO_MAX_ZONE; i++)
+			//	this->PartitionStatusInternal[i] = PartitionStatusEnum::Idle;
 
 			// Ciclo AREE INSERITE
 			for (i = 0; i < KYO_MAX_AREE; i++)
@@ -545,22 +540,19 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			write_array(cmd, lcmd);
 			delay(waitForAnswer);
 
-			if (available() >= 6) 
-			{
-				// Read a single Byte
-				while (available() > 0)
-					RxBuff[index++] = read(); 
-
-				if (this->serialTrace)
-					ESP_LOGI("sendMessageToKyo", "TX [%d] '%s', RX [%d] '%s'", lcmd, format_hex_pretty(cmd, lcmd).c_str(),
-													index, format_hex_pretty(RxBuff, index).c_str());
-			}
-			else
-				ESP_LOGE("sendMessageToKyo", "serial port not available");
+			// Read a single Byte
+			while (available() > 0)
+				RxBuff[index++] = read(); 
 
 			if (index <= 0)
+			{
+				ESP_LOGE("sendMessageToKyo", "serial port not available");
 				return -1;
-
+			}
+				
+			if (this->serialTrace)
+				ESP_LOGI("sendMessageToKyo", "TX [%d] '%s', RX [%d] '%s'", lcmd, format_hex_pretty(cmd, lcmd).c_str(),
+												index, format_hex_pretty(RxBuff, index).c_str());
 			memcpy(ReadByes, RxBuff, index);
 			return index;
 		}
