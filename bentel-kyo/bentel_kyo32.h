@@ -598,6 +598,4 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 
 			return (0x203 - sum);
 		}
-
-		
 };
