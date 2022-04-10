@@ -64,7 +64,8 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			register_service(&Bentel_Kyo32::reset_alarms, "reset_alarms");
 			register_service(&Bentel_Kyo32::activate_output, "activate_output", {"output_number"});
 			register_service(&Bentel_Kyo32::deactivate_output, "deactivate_output", {"output_number"});
-			register_service(&Bentel_Kyo32::debug_command, "debug_command", {"serial_trace", "log_trace"});
+			register_service(&Bentel_Kyo32::debug_command, "debug_command", {"serial_trace", "log_trace", "polling_kyo"});
+			register_service(&Bentel_Kyo32::update_datetime, "update_datetime", {"day", "month", "year", "hours", "minutes", "seconds"});
 
 			pollingState = PollingStateEnum::Init;
 			kyo_comunication->publish_state(false);
@@ -152,12 +153,13 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			ESP_LOGE("reset_alarms", "kyo respond %i", Count);
 		}
 
-		void debug_command(int serial_trace, int log_trace)
+		void debug_command(int serial_trace, int log_trace, int polling_kyo)
 		{
 			this->serialTrace = (serial_trace == 1);
 			this->logTrace = (log_trace == 1);
+			this->polling_kyo = (polling_kyo == 1);
 
-			ESP_LOGI("debug_command", "serial_trace %i log_trace %i", this->serialTrace, this->logTrace);
+			ESP_LOGI("debug_command", "serial_trace %i log_trace %i polling_kyo %i ", this->serialTrace, this->logTrace, this->polling_kyo);
 		}
 
 		void activate_output(int output_number)
@@ -200,8 +202,37 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			ESP_LOGD("deactivate_output", "kyo respond %i", Count);
 		}
 
+		void update_datetime(int day, int month, int year, int hours, int minutes, int seconds)
+		{
+			if (day <= 0 || day > 31 || month <= 0 || month > 12 || year < 2000 || year > 2099 ||
+				minutes < 0 || minutes > 59 || seconds < 0 ||  seconds > 59)
+			{
+				ESP_LOGE("update_datetime", "invalid datetime");
+				return;
+			}
+
+			ESP_LOGI("update_datetime", "recive %d/%d/%d %d:%d:%d",  day, month, year, hours, minutes, seconds);
+		
+			byte cmdUpdateDateTime[13] = {0x0f, 0x03, 0xf0, 0x05, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF};
+			
+			cmdUpdateDateTime[6] = day;
+			cmdUpdateDateTime[7] = month;
+			cmdUpdateDateTime[8] = year-2000;
+			cmdUpdateDateTime[9] = hours;
+			cmdUpdateDateTime[10] = minutes;
+			cmdUpdateDateTime[11] = seconds;
+
+			cmdUpdateDateTime[12] = calculateChecksum(cmdUpdateDateTime, 11);
+
+			byte Rx[255];
+			int Count = sendMessageToKyo(cmdUpdateDateTime, sizeof(cmdUpdateDateTime), Rx, 200);
+			ESP_LOGD("update_datetime", "kyo respond %i", Count);
+		}
+		
 		void update() override
 		{
+			if (!this->polling_kyo)
+				return;
 
 			switch(this->pollingState)
 			{
@@ -258,6 +289,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 
 		bool serialTrace = false;
 		bool logTrace = false;
+		bool polling_kyo = true;
 		int centralInvalidMessageCount = 0;
 
 		bool update_kyo_partitions()
@@ -531,8 +563,6 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			while (available() > 0)
 				read();
 
-			delay(10);
-
 			int index = 0;
 			byte RxBuff[255];
 			memset(ReadByes, 0, 254);
@@ -542,17 +572,20 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 
 			// Read a single Byte
 			while (available() > 0)
-				RxBuff[index++] = read(); 
+				RxBuff[index++] = read();
+
+			if (this->serialTrace)
+				ESP_LOGI("sendMessageToKyo", "TX '%s'", format_hex_pretty(cmd, lcmd).c_str());
 
 			if (index <= 0)
 			{
-				ESP_LOGE("sendMessageToKyo", "serial port not available");
+				ESP_LOGE("sendMessageToKyo", "no answer from serial port");
 				return -1;
 			}
 				
 			if (this->serialTrace)
-				ESP_LOGI("sendMessageToKyo", "TX [%d] '%s', RX [%d] '%s'", lcmd, format_hex_pretty(cmd, lcmd).c_str(),
-												index, format_hex_pretty(RxBuff, index).c_str());
+				ESP_LOGI("sendMessageToKyo", "RX '%s'", format_hex_pretty(RxBuff, index).c_str());
+			
 			memcpy(ReadByes, RxBuff, index);
 			return index;
 		}

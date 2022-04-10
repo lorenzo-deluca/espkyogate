@@ -27,14 +27,18 @@ api:
 
 ota:
   password: !secret ota_password
-
+  
 uart:
   id: uart_bus
-  tx_pin: GPIO1
-  rx_pin: GPIO3
+  tx_pin: GPIO5
+  rx_pin: GPIO4
   baud_rate: 9600
   data_bits: 8
   parity: EVEN
+  
+switch:
+  - platform: safe_mode
+    name: "ESPKyoGate (Safe Mode)"
 
 binary_sensor:
   - platform: custom

@@ -49,6 +49,18 @@ esphome:
   includes:
     - bentel-kyo/bentel_kyo32.h
 
+uart:
+  id: uart_bus
+  tx_pin: GPIO5
+  rx_pin: GPIO4
+  baud_rate: 9600
+  data_bits: 8
+  parity: EVEN
+  
+switch:
+  - platform: safe_mode
+    name: "ESPKyoGate (Safe Mode)"
+
 binary_sensor:
   # Zones status
   - platform: custom
@@ -117,6 +129,76 @@ Previously configured sensors will be automatically created and associated to th
 ![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/HomeAssistant-Lovelace.png)
 
 Here the code to build this Panel
+``` yaml
+type: vertical-stack
+title: Allarme Bentel Casa
+cards:
+  - type: horizontal-stack
+    cards:
+      - type: button
+        name: Arma in casa
+        tap_action:
+          action: call-service
+          service: esphome.espkyogate_arm_area
+          service_data:
+            arm_type: 1
+            area: 3
+            specific_area: 1
+        show_state: true
+        show_icon: true
+        show_name: true
+        icon: mdi:shield-home-outline
+        icon_height: 25px
+      - type: button
+        name: Arma Fuori Casa
+        tap_action:
+          action: call-service
+          service: script.bentel_arma_fuori_casa
+          service_data: {}
+          target: {}
+        show_icon: true
+        show_state: true
+        icon: mdi:shield-lock-outline
+        icon_height: 25px
+      - type: button
+        name: Disarma
+        tap_action:
+          action: call-service
+          service: esphome.espkyogate_disarm_area
+          service_data:
+            area: 1
+            specific_area: 0
+        show_state: true
+        show_icon: true
+        icon_height: 25px
+        icon: mdi:alarm-note-off
+  - type: entities
+    entities:
+      - entity: binary_sensor.porta_ingresso
+        secondary_info: last-updated
+      - entity: binary_sensor.radar_living
+        secondary_info: last-updated
+      - entity: binary_sensor.radar_camera
+        secondary_info: last-updated
+      - entity: binary_sensor.radar_mansarda
+        secondary_info: last-updated
+      - entity: binary_sensor.radar_lavanderia
+        secondary_info: last-updated
+      - entity: binary_sensor.persiana_bagno
+        secondary_info: last-updated
+      - entity: binary_sensor.persiana_cucina
+        secondary_info: last-updated
+      - entity: binary_sensor.persiana_living
+        secondary_info: last-updated
+    state_color: true
+    show_header_toggle: false
+```
+
+## Avaiable Services
+These methods will be available in the services
+
+### Area Arm
+=======
 ``` yaml
 type: vertical-stack
 title: Allarme Bentel Casa
