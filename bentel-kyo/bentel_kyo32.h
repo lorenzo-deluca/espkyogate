@@ -59,6 +59,9 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 
 		void setup() override
 		{
+ 			set_update_interval(UPDATE_INT_MS);
+            set_setup_priority(setup_priority::AFTER_CONNECTION);
+
 			register_service(&Bentel_Kyo32::arm_area, "arm_area", {"area", "arm_type", "specific_area"});
 			register_service(&Bentel_Kyo32::disarm_area, "disarm_area", {"area", "specific_area"});
 			register_service(&Bentel_Kyo32::reset_alarms, "reset_alarms");
@@ -69,7 +72,6 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 
 			pollingState = PollingStateEnum::Init;
 			kyo_comunication->publish_state(false);
-			set_update_interval(UPDATE_INT_MS);
 		}
 
 		void arm_area(int area, int arm_type, int specific_area)
@@ -213,7 +215,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 
 			ESP_LOGI("update_datetime", "recive %d/%d/%d %d:%d:%d",  day, month, year, hours, minutes, seconds);
 		
-			byte cmdUpdateDateTime[13] = {0x0f, 0x03, 0xf0, 0x05, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF};
+			byte cmdUpdateDateTime[13] = {0x0f, 0x03, 0xf0, 0x05, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 			
 			cmdUpdateDateTime[6] = day;
 			cmdUpdateDateTime[7] = month;
@@ -221,8 +223,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			cmdUpdateDateTime[9] = hours;
 			cmdUpdateDateTime[10] = minutes;
 			cmdUpdateDateTime[11] = seconds;
-
-			cmdUpdateDateTime[12] = calculateChecksum(cmdUpdateDateTime, 11);
+			cmdUpdateDateTime[12] = getChecksum(cmdUpdateDateTime, 6, 12);
 
 			byte Rx[255];
 			int Count = sendMessageToKyo(cmdUpdateDateTime, sizeof(cmdUpdateDateTime), Rx, 200);
@@ -599,5 +600,11 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			return (0x203 - sum);
 		}
 
-		
+		uint8_t getChecksum(byte *data, int offset, int len) {
+            uint8_t ckSum = 0x00;
+            for (int i = offset; i < len; i++)
+                ckSum += data[i];
+
+            return (ckSum);
+        }
 };
