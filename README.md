@@ -198,70 +198,70 @@ cards:
 These methods will be available in the services
 
 ### Area Arm
-=======
 ``` yaml
-type: vertical-stack
-title: Allarme Bentel Casa
-cards:
-  - type: horizontal-stack
-    cards:
-      - type: button
-        name: Arma in casa
-        tap_action:
-          action: call-service
-          service: esphome.espkyogate_arm_area
-          service_data:
-            arm_type: 1
-            area: 3
-            specific_area: 1
-        show_state: true
-        show_icon: true
-        show_name: true
-        icon: mdi:shield-home-outline
-        icon_height: 25px
-      - type: button
-        name: Arma Fuori Casa
-        tap_action:
-          action: call-service
-          service: script.bentel_arma_fuori_casa
-          service_data: {}
-          target: {}
-        show_icon: true
-        show_state: true
-        icon: mdi:shield-lock-outline
-        icon_height: 25px
-      - type: button
-        name: Disarma
-        tap_action:
-          action: call-service
-          service: esphome.espkyogate_disarm_area
-          service_data:
-            area: 1
-            specific_area: 0
-        show_state: true
-        show_icon: true
-        icon_height: 25px
-        icon: mdi:alarm-note-off
-  - type: entities
-    entities:
-      - entity: binary_sensor.porta_ingresso
-        secondary_info: last-updated
-      - entity: binary_sensor.radar_living
-        secondary_info: last-updated
-      - entity: binary_sensor.radar_camera
-        secondary_info: last-updated
-      - entity: binary_sensor.radar_mansarda
-        secondary_info: last-updated
-      - entity: binary_sensor.radar_lavanderia
-        secondary_info: last-updated
-      - entity: binary_sensor.persiana_bagno
-        secondary_info: last-updated
-      - entity: binary_sensor.persiana_cucina
-        secondary_info: last-updated
-      - entity: binary_sensor.persiana_living
-        secondary_info: last-updated
-    state_color: true
-    show_header_toggle: false
+service: esphome.espkyogate_arm_area
+data:
+  arm_type: 1 (total arm) - 2 (partially arm)
+  area: <area_number>
+  specific_area: 1 (arm <area_number> and disarm others) - 0 (arm only <area_number> without changing the others)
+```
+
+### Area Disarm
+``` yaml
+service: esphome.espkyogate_disarm_area
+data:
+  area: <area_number>
+  specific_area: 1 (disarm all areas) - 0 (disarm only <area_number> without changing the others)
+```
+
+### Reset Alarm Memory
+``` yaml
+service: esphome.espkyogate_reset_alarms
+data: {}
+```
+
+### Activate Output
+If an output is configured as 'Remote Command' (Comando Remoto) you can Activate or Deactivate
+``` yaml
+service: esphome.espkyogate_activate_output
+data:
+  output_number: <output_number>
+```
+
+### Deactivate Output
+If an output is configured as 'Remote Command' (Comando Remoto) you can Activate or Deactivate
+``` yaml
+service: esphome.espkyogate_deactivate_output
+data:
+  output_number: <output_number>
+```
+
+### Arm more than one area
+If you want to arm several areas at the same time you have to call the same service several times, introducing a delay between one call and the next.
+Below is an example of a script that arms two areas.
+``` yaml
+alias: Bentel Arma Fuori Casa
+sequence:
+  - service: esphome.espkyogate_arm_area
+    data:
+      area: 1
+      arm_type: 1
+      specific_area: 1
+  - wait_template: ''
+    timeout: '00:00:05'
+  - service: esphome.espkyogate_arm_area
+    data:
+      area: 2
+      arm_type: 1
+      specific_area: 1
+  - wait_template: ''
+    timeout: '00:00:05'
+  - service: esphome.espkyogate_arm_area
+    data:
+      area: 3
+      arm_type: 1
+      specific_area: 1
+mode: single
 ```
 
 ## Troubleshooting - FAQ
