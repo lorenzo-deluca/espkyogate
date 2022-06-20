@@ -203,7 +203,7 @@ service: esphome.espkyogate_arm_area
 data:
   arm_type: 1 (total arm) - 2 (partially arm)
   area: <area_number>
-  specific_area: 1 (arm only <area_number> and disarm others) - 0 (arm only <area_number> without changing the others)
+  specific_area: 1 (arm only <area_number> without changing the others) - 0 (arm only <area_number> and disarm others)
 ```
 
 ### Area Disarm
@@ -283,9 +283,9 @@ data:
   log_trace: 1
   polling_kyo: 1
 ```
-* serial_trace * Enable or Disable Serial Log communication to central unit
-* log_trace * Enable or Disable Application Log 
-* polling_kyo * Enable or Disable continuative polling to central unit (default always Enable)
+* **serial_trace** Enable or Disable Serial Log communication to central unit
+* **log_trace** Enable or Disable Application Log 
+* **polling_kyo** Enable or Disable continuative polling to central unit (default always Enable)
 
 ## License
 GNU AGPLv3 © [Lorenzo De Luca][https://lorenzodeluca.dev]
