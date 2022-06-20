@@ -203,7 +203,7 @@ service: esphome.espkyogate_arm_area
 data:
   arm_type: 1 (total arm) - 2 (partially arm)
   area: <area_number>
-  specific_area: 1 (arm <area_number> and disarm others) - 0 (arm only <area_number> without changing the others)
+  specific_area: 1 (arm only <area_number> and disarm others) - 0 (arm only <area_number> without changing the others)
 ```
 
 ### Area Disarm
@@ -211,7 +211,7 @@ data:
 service: esphome.espkyogate_disarm_area
 data:
   area: <area_number>
-  specific_area: 1 (disarm all areas) - 0 (disarm only <area_number> without changing the others)
+  specific_area: 0 (disarm all areas) - 1 (disarm only <area_number> without changing the others)
 ```
 
 ### Reset Alarm Memory
@@ -269,7 +269,8 @@ Ff you have any problems, make the following checks:
 * Check that the cables are connected correctly
 * Check the 232 converter is properly powered
 * Try to reverse TX and RX
-* Verify that the central unit has firmware **2.13**
+* Verify that the central unit has firmware **2.13**, if it isn't you've to update central unit firmware to this version.
+
 
 ### Diagnostics Service
 For diagnostics you can enable additional software logs through this service.
@@ -280,7 +281,11 @@ service: esphome.espkyogate_debug_command
 data:
   serial_trace: 1
   log_trace: 1
+  polling_kyo: 1
 ```
+* serial_trace * Enable or Disable Serial Log communication to central unit
+* log_trace * Enable or Disable Application Log 
+* polling_kyo * Enable or Disable continuative polling to central unit (default always Enable)
 
 ## License
 GNU AGPLv3 © [Lorenzo De Luca][https://lorenzodeluca.dev]

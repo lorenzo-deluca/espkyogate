@@ -82,7 +82,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 				return;
 			}
 			
-			ESP_LOGI("arm_area", "request arm type %d area %d", arm_type, area);
+			ESP_LOGI("arm_area", "request arm type %d area %d specific %d", arm_type, area, specific_area);
 			byte cmdArmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0xCC, 0xFF};
 
 			byte total_insert_area_status = 0x00, partial_insert_area_status = 0x00;
@@ -118,7 +118,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 				return;
 			}
 			
-			ESP_LOGI("disarm_area", "request disarm area %d", area);
+			ESP_LOGI("disarm_area", "request disarm area %d , specific %d", area, specific_area);
 			byte cmdDisarmPartition[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0xFF, 0xFF};
 
 			byte total_insert_area_status = 0x00, partial_insert_area_status = 0x00;
@@ -131,10 +131,8 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 					partial_insert_area_status |= (this->inserimento_parziale_area[i].state) << i;
 				}
 
-				if (this->inserimento_totale_area[area - 1].state)
-					total_insert_area_status |= 0 << (area - 1);
-				else
-					partial_insert_area_status |= 1 << (area - 1);
+				total_insert_area_status |= 0 << (area - 1);
+				partial_insert_area_status |= 0 << (area - 1);
 			}
 
 			cmdDisarmPartition[6] = total_insert_area_status;
@@ -142,7 +140,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			cmdDisarmPartition[9] = calculateCRC(cmdDisarmPartition, 8);
 
 			byte Rx[255];
-			int Count = sendMessageToKyo(cmdDisarmPartition, sizeof(cmdDisarmPartition), Rx, 80);
+			int Count = sendMessageToKyo(cmdDisarmPartition, sizeof(cmdDisarmPartition), Rx, 100);
 			ESP_LOGD("disarm_area", "kyo respond %i", Count);
 		}
 
