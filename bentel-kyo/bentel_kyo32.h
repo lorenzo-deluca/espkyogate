@@ -131,8 +131,10 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 					partial_insert_area_status |= (this->inserimento_parziale_area[i].state) << i;
 				}
 
-				total_insert_area_status &= 0 << (area - 1);
-				partial_insert_area_status &= 0 << (area - 1);
+				if (this->inserimento_totale_area[area - 1].state)
+					total_insert_area_status &= ~(1 << (area - 1));
+				else
+					partial_insert_area_status &= ~(1 << (area - 1));
 			}
 
 			cmdDisarmPartition[6] = total_insert_area_status;
