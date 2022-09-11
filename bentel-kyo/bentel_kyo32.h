@@ -290,6 +290,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 		bool logTrace = false;
 		bool polling_kyo = true;
 		int centralInvalidMessageCount = 0;
+		int MaxZone = KYO_MAX_ZONE;
 
 		bool update_kyo_partitions()
 		{
@@ -371,7 +372,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			}
 
 			// CICLO ZONE ESCLUSE
-			for (i = 0; i < KYO_MAX_ZONE; i++)
+			for (i = 0; i < MaxZone; i++)
 			{
 				StatoZona = 0;
 				if (i >= 24)
@@ -389,7 +390,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			}
 
 			// CICLO MEMORIA ALLARME ZONE
-			for (i = 0; i < KYO_MAX_ZONE; i++)
+			for (i = 0; i < MaxZone; i++)
 			{
 				StatoZona = 0;
 				if (i >= 24)
@@ -407,7 +408,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			}
 
 			// CICLO MEMORIA SABOTAGGIO ZONE
-			for (i = 0; i < KYO_MAX_ZONE; i++)
+			for (i = 0; i < MaxZone; i++)
 			{
 				StatoZona = 0;
 				if (i >= 24)
@@ -433,8 +434,16 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			int Count = 0;
 
 			Count = sendMessageToKyo(cmdGetSensorStatus, sizeof(cmdGetSensorStatus), Rx, 100);
-			if (Count != 18)
+			switch(Count)
 			{
+				case 18: // Kyo 32G (default)
+					MaxZone = KYO_MAX_ZONE;
+					break;
+				case 12: // Kyo 8 and Kyo 4
+					MaxZone = 8;
+					break;
+					
+			default:
 				if (this->logTrace)
 					ESP_LOGE("update_kyo_status", "invalid message length %i", Count);
 				
@@ -444,7 +453,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			int StatoZona, i;
 
 			// Ciclo ZONE
-			for (i = 0; i < KYO_MAX_ZONE; i++)
+			for (i = 0; i < MaxZone; i++)
 			{
 				StatoZona = 0;
 				if (i >= 24)
@@ -463,7 +472,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			}
 
 			// Ciclo SABOTAGGIO ZONE
-			for (i = 0; i < KYO_MAX_ZONE; i++)
+			for (i = 0; i < MaxZone; i++)
 			{
 				StatoZona = 0;
 				if (i >= 24)
