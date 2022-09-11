@@ -14,6 +14,7 @@
 #include "esphome.h"
 
 #define KYO_MAX_ZONE 32
+#define KYO_MAX_ZONE_8 8
 #define KYO_MAX_AREE 8
 #define KYO_MAX_USCITE 8
 
@@ -440,7 +441,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 					MaxZone = KYO_MAX_ZONE;
 					break;
 				case 12: // Kyo 8 and Kyo 4
-					MaxZone = 8;
+					MaxZone = KYO_MAX_ZONE_8;
 					break;
 					
 			default:
@@ -456,14 +457,21 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			for (i = 0; i < MaxZone; i++)
 			{
 				StatoZona = 0;
-				if (i >= 24)
-					StatoZona = (Rx[6] >> (i - 24)) & 1;
-				else if (i >= 16 && i <= 23)
-					StatoZona = (Rx[7] >> (i - 16)) & 1;
-				else if (i >= 8 && i <= 15)
-					StatoZona = (Rx[8] >> (i - 8)) & 1;
-				else if (i <= 7)
-					StatoZona = (Rx[9] >> i) & 1;
+				if (MaxZone == KYO_MAX_ZONE_8)
+                {
+                    StatoZona = (Rx[6] >> i) & 1;
+                }
+                else
+                {
+					if (i >= 24)
+						StatoZona = (Rx[6] >> (i - 24)) & 1;
+					else if (i >= 16 && i <= 23)
+						StatoZona = (Rx[7] >> (i - 16)) & 1;
+					else if (i >= 8 && i <= 15)
+						StatoZona = (Rx[8] >> (i - 8)) & 1;
+					else if (i <= 7)
+						StatoZona = (Rx[9] >> i) & 1;
+				}
 
 				if (this->logTrace && (StatoZona == 1) != zona[i].state)	
 					ESP_LOGI("stato_zona", "Zona %i - Stato %i", i, StatoZona);
@@ -475,14 +483,21 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			for (i = 0; i < MaxZone; i++)
 			{
 				StatoZona = 0;
-				if (i >= 24)
-					StatoZona = (Rx[10] >> (i - 24)) & 1;
-				else if (i >= 16 && i <= 23)
-					StatoZona = (Rx[11] >> (i - 16)) & 1;
-				else if (i >= 8 && i <= 15)
-					StatoZona = (Rx[12] >> (i - 8)) & 1;
-				else if (i <= 7)
-					StatoZona = (Rx[13] >> i) & 1;
+				if (MaxZone == KYO_MAX_ZONE_8)
+                {
+                    StatoZona = (Rx[10] >> i) & 1;
+                }
+                else
+                {
+					if (i >= 24)
+						StatoZona = (Rx[10] >> (i - 24)) & 1;
+					else if (i >= 16 && i <= 23)
+						StatoZona = (Rx[11] >> (i - 16)) & 1;
+					else if (i >= 8 && i <= 15)
+						StatoZona = (Rx[12] >> (i - 8)) & 1;
+					else if (i <= 7)
+						StatoZona = (Rx[13] >> i) & 1;
+				}
 
 				zona_sabotaggio[i].publish_state(StatoZona == 1);
 			}
