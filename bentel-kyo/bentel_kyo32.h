@@ -485,7 +485,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 				StatoZona = 0;
 				if (MaxZone == KYO_MAX_ZONE_8)
                 {
-                    StatoZona = (Rx[10] >> i) & 1;
+                    StatoZona = (Rx[7] >> i) & 1;
                 }
                 else
                 {
@@ -505,14 +505,22 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			// Ciclo ALLARME AREA
 			for (i = 0; i < KYO_MAX_AREE; i++)
 			{
-				StatoZona = (Rx[15] >> i) & 1;
+				if (MaxZone == KYO_MAX_ZONE_8)
+                    StatoZona = (Rx[9] >> i) & 1;
+                else
+					StatoZona = (Rx[15] >> i) & 1;
+
 				allarme_area[i].publish_state(StatoZona == 1);
 			}
 
 			// Ciclo WARNINGS
 			for (i = 0; i < 8; i++)
 			{
-				StatoZona = (Rx[14] >> i) & 1;
+				if (MaxZone == KYO_MAX_ZONE_8)
+					StatoZona = (Rx[8] >> i) & 1;
+				else
+					StatoZona = (Rx[14] >> i) & 1;
+
 				switch(i)
 				{
 					case 0:
@@ -548,7 +556,11 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			// Ciclo SABOTAGGI
 			for (i = 0; i < 8; i++)
 			{
-				StatoZona = (Rx[16] >> i) & 1;
+				if (MaxZone == KYO_MAX_ZONE_8)
+					StatoZona = (Rx[9] >> i) & 1;
+				else
+					StatoZona = (Rx[16] >> i) & 1;
+
 				switch(i)
 				{
 					case 2:
