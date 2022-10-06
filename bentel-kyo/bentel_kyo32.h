@@ -299,10 +299,10 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			int Count = 0;
 
 			Count = sendMessageToKyo(cmdGetPartitionStatus, sizeof(cmdGetPartitionStatus), Rx, 100);
-			if (Count != 26)
+			if (Count != 26 && Count != 15)
 			{
 				if (this->logTrace)
-					ESP_LOGI("update_kyo_partitions", "invalid message length %i", Count);
+					ESP_LOGE("update_kyo_partitions", "invalid message length %i", Count);
 
 				return (false);
 			}
@@ -357,34 +357,44 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 				ESP_LOGI("stato_sirena", "Stato %i", StatoZona);
 			stato_sirena->publish_state(StatoZona == 1);
 			
-			// CICLO STATO USCITE
-			for (i = 0; i < KYO_MAX_USCITE; i++)
+			if (alarmModel == AlarmModel::KYO_32)
 			{
-				StatoZona = 0;
-				if (i >= 8 && i <= 15)
-					StatoZona = (Rx[11] >> (i - 8)) & 1;
-				else if (i <= 7)
-					StatoZona = (Rx[12] >> i) & 1;
+				// CICLO STATO USCITE
+				for (i = 0; i < KYO_MAX_USCITE; i++)
+				{
+					StatoZona = 0;
+					if (i >= 8 && i <= 15)
+						StatoZona = (Rx[11] >> (i - 8)) & 1;
+					else if (i <= 7)
+						StatoZona = (Rx[12] >> i) & 1;
 
-				if (this->logTrace && (StatoZona == 1) != stato_uscita[i].state)
-					ESP_LOGI("stato_uscita", "Uscita %i - Stato %i", i, StatoZona);
+					if (this->logTrace && (StatoZona == 1) != stato_uscita[i].state)
+						ESP_LOGI("stato_uscita", "Uscita %i - Stato %i", i, StatoZona);
 
-				stato_uscita[i].publish_state(StatoZona == 1);
+					stato_uscita[i].publish_state(StatoZona == 1);
+				}
 			}
 
 			// CICLO ZONE ESCLUSE
 			for (i = 0; i < MaxZone; i++)
 			{
 				StatoZona = 0;
-				if (i >= 24)
-					StatoZona = (Rx[13] >> (i - 24)) & 1;
-				else if (i >= 16 && i <= 23)
-					StatoZona = (Rx[14] >> (i - 16)) & 1;
-				else if (i >= 8 && i <= 15)
-					StatoZona = (Rx[15] >> (i - 8)) & 1;
-				else if (i <= 7)
-					StatoZona = (Rx[16] >> i) & 1;
-
+				if (alarmModel == AlarmModel::KYO_8)
+				{
+					StatoZona = (Rx[11] >> i) & 1;	
+				}
+				else
+				{
+					if (i >= 24)
+						StatoZona = (Rx[13] >> (i - 24)) & 1;
+					else if (i >= 16 && i <= 23)
+						StatoZona = (Rx[14] >> (i - 16)) & 1;
+					else if (i >= 8 && i <= 15)
+						StatoZona = (Rx[15] >> (i - 8)) & 1;
+					else if (i <= 7)
+						StatoZona = (Rx[16] >> i) & 1;	
+				}
+				
 				zona_esclusa[i].publish_state(StatoZona == 1);
 				if (StatoZona == 1)
 					this->PartitionStatusInternal[i] = PartitionStatusEnum::Exclude;
@@ -394,15 +404,22 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			for (i = 0; i < MaxZone; i++)
 			{
 				StatoZona = 0;
-				if (i >= 24)
-					StatoZona = (Rx[17] >> (i - 24)) & 1;
-				else if (i >= 16 && i <= 23)
-					StatoZona = (Rx[18] >> (i - 16)) & 1;
-				else if (i >= 8 && i <= 15)
-					StatoZona = (Rx[19] >> (i - 8)) & 1;
-				else if (i <= 7)
-					StatoZona = (Rx[20] >> i) & 1;
-
+				if (alarmModel == AlarmModel::KYO_8)
+				{
+					StatoZona = (Rx[12] >> i) & 1;	
+				}
+				else
+				{
+					if (i >= 24)
+						StatoZona = (Rx[17] >> (i - 24)) & 1;
+					else if (i >= 16 && i <= 23)
+						StatoZona = (Rx[18] >> (i - 16)) & 1;
+					else if (i >= 8 && i <= 15)
+						StatoZona = (Rx[19] >> (i - 8)) & 1;
+					else if (i <= 7)
+						StatoZona = (Rx[20] >> i) & 1;
+				}
+				
 				memoria_allarme_zona[i].publish_state(StatoZona == 1);
 				if (StatoZona == 1)
 					this->PartitionStatusInternal[i] = PartitionStatusEnum::MemAlarm;
@@ -412,14 +429,22 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			for (i = 0; i < MaxZone; i++)
 			{
 				StatoZona = 0;
-				if (i >= 24)
-					StatoZona = (Rx[21] >> (i - 24)) & 1;
-				else if (i >= 16 && i <= 23)
-					StatoZona = (Rx[22] >> (i - 16)) & 1;
-				else if (i >= 8 && i <= 15)
-					StatoZona = (Rx[23] >> (i - 8)) & 1;
-				else if (i <= 7)
-					StatoZona = (Rx[24] >> i) & 1;
+				
+				if (alarmModel == AlarmModel::KYO_8)
+				{
+					StatoZona = (Rx[13] >> i) & 1;	
+				}
+				else
+				{
+					if (i >= 24)
+						StatoZona = (Rx[21] >> (i - 24)) & 1;
+					else if (i >= 16 && i <= 23)
+						StatoZona = (Rx[22] >> (i - 16)) & 1;
+					else if (i >= 8 && i <= 15)
+						StatoZona = (Rx[23] >> (i - 8)) & 1;
+					else if (i <= 7)
+						StatoZona = (Rx[24] >> i) & 1;
+				}
 
 				memoria_sabotaggio_zona[i].publish_state(StatoZona == 1);
 				if (StatoZona == 1)
@@ -439,9 +464,11 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			{
 				case 18: // Kyo 32G (default)
 					MaxZone = KYO_MAX_ZONE;
+					alarmModel = AlarmModel::KYO_32G;
 					break;
 				case 12: // Kyo 8 and Kyo 4
 					MaxZone = KYO_MAX_ZONE_8;
+					alarmModel = AlarmModel::KYO_8;
 					break;
 					
 			default:
@@ -457,7 +484,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			for (i = 0; i < MaxZone; i++)
 			{
 				StatoZona = 0;
-				if (MaxZone == KYO_MAX_ZONE_8)
+				if (alarmModel == AlarmModel::KYO_8)
                 {
                     StatoZona = (Rx[6] >> i) & 1;
                 }
@@ -483,7 +510,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			for (i = 0; i < MaxZone; i++)
 			{
 				StatoZona = 0;
-				if (MaxZone == KYO_MAX_ZONE_8)
+				if (alarmModel == AlarmModel::KYO_8)
                 {
                     StatoZona = (Rx[7] >> i) & 1;
                 }
@@ -505,7 +532,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			// Ciclo ALLARME AREA
 			for (i = 0; i < KYO_MAX_AREE; i++)
 			{
-				if (MaxZone == KYO_MAX_ZONE_8)
+				if (alarmModel == AlarmModel::KYO_8)
                     StatoZona = (Rx[9] >> i) & 1;
                 else
 					StatoZona = (Rx[15] >> i) & 1;
@@ -516,7 +543,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			// Ciclo WARNINGS
 			for (i = 0; i < 8; i++)
 			{
-				if (MaxZone == KYO_MAX_ZONE_8)
+				if (alarmModel == AlarmModel::KYO_8)
 					StatoZona = (Rx[8] >> i) & 1;
 				else
 					StatoZona = (Rx[14] >> i) & 1;
@@ -556,7 +583,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			// Ciclo SABOTAGGI
 			for (i = 0; i < 8; i++)
 			{
-				if (MaxZone == KYO_MAX_ZONE_8)
+				if (alarmModel == AlarmModel::KYO_8)
 					StatoZona = (Rx[9] >> i) & 1;
 				else
 					StatoZona = (Rx[16] >> i) & 1;
