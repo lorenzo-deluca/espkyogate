@@ -115,7 +115,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 		{
 			if (area > KYO_MAX_AREE)
 			{
-				ESP_LOGE("arm_area", "invalid Area %i, MAX %i", area, KYO_MAX_AREE);
+				ESP_LOGE("disarm_area", "invalid area %i, MAX %i", area, KYO_MAX_AREE);
 				return;
 			}
 			
@@ -132,8 +132,10 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 					partial_insert_area_status |= (this->inserimento_parziale_area[i].state) << i;
 				}
 
-				total_insert_area_status &= 0 << (area - 1);
-				partial_insert_area_status &= 0 << (area - 1);
+				if (this->inserimento_totale_area[area - 1].state)
+					total_insert_area_status &= ~(1 << (area - 1));
+				else
+					partial_insert_area_status &= ~(1 << (area - 1));
 			}
 
 			cmdDisarmPartition[6] = total_insert_area_status;
@@ -144,6 +146,8 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			int Count = sendMessageToKyo(cmdDisarmPartition, sizeof(cmdDisarmPartition), Rx, 100);
 			ESP_LOGD("disarm_area", "kyo respond %i", Count);
 		}
+
+
 
 		void reset_alarms()
 		{
