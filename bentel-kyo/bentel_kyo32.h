@@ -273,6 +273,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 
 		byte cmdGetSensorStatus[6] = {0xf0, 0x04, 0xf0, 0x0a, 0x00, 0xee};	  // Read Realtime Status and Trouble Status
 		byte cmdGetPartitionStatus[6] = {0xf0, 0x02, 0x15, 0x12, 0x00, 0x19}; // Partitions Status (305) - Outputs Status - Tamper Memory - Bypassed Zones - Zone Alarm Memory - Zone Tamper Memory
+		byte cmdGetPartitionStatus_Kyo8[6] = {0xf0, 0x68, 0x0e, 0x09, 0x00, 0x6f}; // Partitions Status (305) - Outputs Status - Tamper Memory - Bypassed Zones - Zone Alarm Memory - Zone Tamper Memory
 		byte cmqGetSoftwareVersion[6] = {0xf0, 0x00, 0x00, 0x0b, 0x00, 0xfb}; // f0 00 00 0b 00 fb
 		byte cmdResetAllarms[9] = {0x0F, 0x05, 0xF0, 0x01, 0x00, 0x05, 0x07, 0x00, 0x07};
 
@@ -302,8 +303,12 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			byte Rx[255];
 			int Count = 0;
 
-			Count = sendMessageToKyo(cmdGetPartitionStatus, sizeof(cmdGetPartitionStatus), Rx, 100);
-			if (Count != 26 && Count != 15)
+			if (alarmModel == AlarmModel::KYO_8)
+				Count = sendMessageToKyo(cmdGetPartitionStatus_Kyo8, sizeof(cmdGetPartitionStatus_Kyo8), Rx, 100);
+			else
+				Count = sendMessageToKyo(cmdGetPartitionStatus, sizeof(cmdGetPartitionStatus), Rx, 100);
+
+			if (Count != 26 && Count != 17)
 			{
 				if (this->logTrace)
 					ESP_LOGE("update_kyo_partitions", "invalid message length %i", Count);
