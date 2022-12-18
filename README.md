@@ -1,4 +1,4 @@
-# ESPhome for BENTEL KYO32G
+# ESPhome for BENTEL KYO Units
 [![buy me a coffee](https://img.shields.io/badge/support-buymeacoffee-222222.svg?style=flat-square)](https://www.buymeacoffee.com/lorenzodeluca)
 
 Serial Bridge for **Bentel Kyo32G Alarm Central**, based on **ESP8266** Board and **ESPHome** Open Source Firmware.
@@ -10,9 +10,22 @@ If you like this project you can support me with :coffee: or simply put a :star:
   <img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy Me A Coffee" width="150px">
 </a>
 
-> **disclaimer** This software was developed by analyzing serial messages from/to central, it was not sponsored or officially supported by **Bentel**
+> **Warning**
+> :warning: This software was developed by analyzing serial messages from/to central, it was not sponsored or officially supported by **Bentel**
+> If someone from **Bentel** would like to contribute or collaborate please contact me at [me@lorenzodeluca.dev](mailto:me@lorenzodeluca.dev?subject=[GitHub]ESPKyoGate)
 
-If someone from **Bentel** would like to contribute or collaborate please contact me at [me@lorenzodeluca.dev](mailto:me@lorenzodeluca.dev?subject=[GitHub]ESPKyoGate)
+### Tested on Kyo Unit
+- [x] Bentel Kyo 32G
+- [x] Bentel Kyo 8
+- [x] Bentel Kyo 8W
+- [ ] If you have another Bentel Kyo unit test and let me know :)
+
+## Contents
+- [Hardware Connections](#hardware-connections)
+- [ESPHome Preparation](#esphome-preparation)
+- [Build and Upload Firmware](#build-and-upload-firmware)
+- [Home Assistant Integration](#home-assistant-integration)
+- [Troubleshooting - FAQ](#troubleshooting-faq)
 
 ## Hardware Connections
 As board I used a **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine.
@@ -268,12 +281,11 @@ cards:
 ```
 
 ## Troubleshooting - FAQ
-Ff you have any problems, make the following checks:
-* Check that the cables are connected correctly
-* Check the 232 converter is properly powered
-* Try to reverse TX and RX
-* Verify that the central unit has firmware **2.13**, if it isn't you've to update central unit firmware to this version.
-
+If you have any problems, make the following checks:
+- [x] Check that the cables are connected correctly
+- [x] Check the 232 converter is properly powered
+- [x] Try to reverse TX and RX
+- [x] (Only for Kyo32G) Verify that the central unit has firmware **2.13**, if it isn't you've to update central unit firmware to this version.
 
 ### Diagnostics Service
 For diagnostics you can enable additional software logs through this service.
