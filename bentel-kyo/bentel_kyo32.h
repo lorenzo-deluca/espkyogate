@@ -107,7 +107,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			cmdArmPartition[9] = calculateCRC(cmdArmPartition, 8);
 
 			byte Rx[255];
-			int Count = sendMessageToKyo(cmdArmPartition, sizeof(cmdArmPartition), Rx, 100);
+			int Count = sendMessageToKyo(cmdArmPartition, sizeof(cmdArmPartition), Rx, 250);
 			ESP_LOGD("arm_area", "arm_area kyo respond %i", Count);
 		}
 
@@ -154,7 +154,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			ESP_LOGI("reset_alarms", "Reset Alarms.");
 
 			byte Rx[255];
-			int Count = sendMessageToKyo(cmdResetAllarms, sizeof(cmdResetAllarms), Rx, 80);
+			int Count = sendMessageToKyo(cmdResetAllarms, sizeof(cmdResetAllarms), Rx, 250);
 			ESP_LOGE("reset_alarms", "kyo respond %i", Count);
 		}
 
@@ -183,7 +183,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			cmdActivateOutput[8] = cmdActivateOutput[6];
 
 			byte Rx[255];
-			int Count = sendMessageToKyo(cmdActivateOutput, sizeof(cmdActivateOutput), Rx, 80);
+			int Count = sendMessageToKyo(cmdActivateOutput, sizeof(cmdActivateOutput), Rx, 250);
 			ESP_LOGD("activate_output", "kyo respond %i", Count);
 		}
 
@@ -203,7 +203,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			cmdDeactivateOutput[8] = cmdDeactivateOutput[7];
 
 			byte Rx[255];
-			int Count = sendMessageToKyo(cmdDeactivateOutput, sizeof(cmdDeactivateOutput), Rx, 80);
+			int Count = sendMessageToKyo(cmdDeactivateOutput, sizeof(cmdDeactivateOutput), Rx, 250);
 			ESP_LOGD("deactivate_output", "kyo respond %i", Count);
 		}
 
@@ -229,7 +229,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			cmdUpdateDateTime[12] = getChecksum(cmdUpdateDateTime, 6, 12);
 
 			byte Rx[255];
-			int Count = sendMessageToKyo(cmdUpdateDateTime, sizeof(cmdUpdateDateTime), Rx, 200);
+			int Count = sendMessageToKyo(cmdUpdateDateTime, sizeof(cmdUpdateDateTime), Rx, 300);
 			ESP_LOGD("update_datetime", "kyo respond %i", Count);
 		}
 		
@@ -628,7 +628,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			return true;
 		}
 		
-		int sendMessageToKyo(byte *cmd, int lcmd, byte ReadByes[], int waitForAnswer = 0)
+		int sendMessageToKyo(byte *cmd, int lcmd, byte ReadByes[], int waitForAnswer = 100)
 		{
 			// clean rx buffer
 			while (available() > 0)
@@ -645,7 +645,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			while (available() > 0)
 				RxBuff[index++] = read();
 
-			if (this->serialTrace)
+			if (this->serialTrace || waitForAnswer > 100)
 				ESP_LOGI("sendMessageToKyo", "TX '%s'", format_hex_pretty(cmd, lcmd).c_str());
 
 			if (index <= 0)
@@ -654,7 +654,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 				return -1;
 			}
 				
-			if (this->serialTrace)
+			if (this->serialTrace || waitForAnswer > 100)
 				ESP_LOGI("sendMessageToKyo", "RX '%s'", format_hex_pretty(RxBuff, index).c_str());
 			
 			memcpy(ReadByes, RxBuff, index);
