@@ -184,6 +184,20 @@ data:
   output_number: <output_number>
 ```
 
+### Update Unit Date and Time
+You can update the Kyo Date and Time internal Clock
+
+``` yaml
+service: esphome.espkyogate_update_datetime
+data:
+  day: 22
+  month: 12
+  year: 2022
+  hours: 18
+  minutes: 15
+  seconds: 00
+```
+
 ### Arm more than one area
 If you want to arm several areas at the same time you have to call the same service several times, introducing a delay between one call and the next.
 Below is an example of a script that arms two areas.
