@@ -20,6 +20,8 @@ captive_portal:
 logger:
   level: INFO
   baud_rate: 0
+  logs:
+    component: ERROR
 
 # Enable Home Assistant API
 api:
