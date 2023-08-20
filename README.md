@@ -28,7 +28,7 @@ If you like this project you can support me with :coffee: or simply put a :star:
 - [Troubleshooting - FAQ](#troubleshooting-faq)
 
 ## Hardware Connections
-As board I used a **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine.
+As board I used a **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine. If you encounter disconnections, you might want to try a more powerful one based on the ESP32 instead.
 
 ![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/wiring.png)
 
@@ -37,69 +37,22 @@ This connector should be connected to the classic **TX/RX of the ESP board** and
 
 ![Central Connections](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/BentelKYO32G-Connections.jpg)
 
-The WeMos can be powered with USB directly from the 12V output of the control unit by connecting any 12V->USB converter.
+The WeMos can be powered with USB directly from the 12V output of the control unit (the +/- pins on the lower left, powering the sensors) by connecting any 12V->USB converter.
 Like this one: 
 https://www.amazon.it/FTVOGUE-Regolatore-Trasformatore-Caricabatterie-smartphone/dp/B07NQKBRG1/
 
-Which I recommend because in this way, even in case of power failure, the ESP is powered by the battery of the control unit.
+Which I recommend because in this way, even in case of power failure, the ESP is powered by the control unit's battery.
 
 ## ESPHome Preparation
-The file `espkyogate_configuration.yaml` is already present in this repo.
-I suggest you start from this.
+I suggest using the file `espkyogate_configuration.yaml` as a template and put your customizations there.
 
-Set your WiFi ssid and password in `wifi` section.
+* Set `uart` settings in base depending on the board you use, example file is for Wemos D1 mini.
+* Set `name`, `friendly_name` (how it will be presented in HA).
+* Edit `binary_sensors` to configure how you want to present the sensors to Home Assistant.
+  * All inputs have to be declared in both `lambda` and `binary_sensors`. Add only the ones you need to minimize overhead and complexity.
+  * Make sure the order is respected between the two lists
 
-Set `uart` settings in base depending on the board you use, example file is for Wemos D1 mini.
-Finally edit `binary_sensors` you want to see on your Home Assistant as configured in the example file.
-
-Map the available zones in your alarm, adding proper `device_class`. 
-
-```yaml
-esphome:
-  name: espkyogatebox
-  platform: ESP8266
-  board: d1_mini
-  includes:
-    - bentel-kyo/bentel_kyo32.h
-
-uart:
-  id: uart_bus
-  tx_pin: GPIO5
-  rx_pin: GPIO4
-  baud_rate: 9600
-  data_bits: 8
-  parity: EVEN
-  
-switch:
-  - platform: safe_mode
-    name: "ESPKyoGate (Safe Mode)"
-
-binary_sensor:
-  # Zones status
-  - platform: custom
-    lambda: |-
-      auto kyo32 = new Bentel_Kyo32(id(uart_bus));
-      App.register_component(kyo32);
-      return {
-        kyo32->kyo_comunication, &kyo32->zona[0], &kyo32->zona[1],&kyo32->zona[2], &kyo32->zona[3]};
-    binary_sensors:
-      - id: kyo_comunication
-        name: "Comunicazione Centrale"
-      - id: kyo_zone1
-        name: "Zone 1"
-        device_class: "motion"
-      - id: kyo_zone2
-        name: "Zone 2"
-        device_class: "window"
-      - id: kyo_zone3
-        name: "Zone 3"
-        device_class: "door"
-      - id: kyo_zone4
-        name: "Zone 4"
-        device_class: "garage_door"
-```
-
-Appropriate device classes are (among all device classes supportedf by Home Assistant):
+Appropriate device classes are (among all device classes supported by Home Assistant):
 
 | Device class | Home Assistant icons                                                                                          |
 | ------------ | :-----------------------------------------------------------------------------------------------------------: |
@@ -108,14 +61,19 @@ Appropriate device classes are (among all device classes supportedf by Home Assi
 | door         | ![mdi-door-closed](images/icons/mdi-door-closed.png) ![mdi-door](images/icons/mdi-door.png)                   |
 | garage_door  | ![mdi-garage](images/icons/mdi-garage.png) ![mdi-garage-open](images/icons/mdi-garage-open.png)               |
 
-A `secrets.yaml` file is required with the following keys:
 
+Finally, create a `secrets.yaml` file with the following contents:
 ```yaml
 wifi_ssid: "<your-wifi-ssid>"
 wifi_password: "<your-wifi-password>"
 ota_password: "<your-ota-password>"
 api_encryption_key: "<your-encryption-key>"
 ```
+
+* Populate `wifi_ssid` and `wifi_password` with details on how to connect to your network.
+* Write a random password in `ota_password`, which will be used to update the board remotely.
+* Generate an encryption key from [ESPHome](https://esphome.io/components/api.html) and set it in `api_encryption_key`
+
 
 ### Build and Upload Firmware
 
@@ -124,23 +82,27 @@ This way is the easiest, just copy the files from this repository to the esphome
 You should see something similar.
 ![ESPHomeLogs](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/ESPHomeLogs.png)
 
+The [ESPHome interface](https://web.esphome.io/) can help if you never used it before. 
+
 #### From esphome command line
 `python3 -m esphome compile espkyogate_configuration.yaml`
 
 `python3 -m esphome run espkyogate_configuration.yaml`
 
+The above command uploads the new firmware and automatically waits for a connection to read logs. It's strongly suggested to set the `logger.level` to `DEBUG` at the first run to troubleshoot connection mistakes. Then set it back to `INFO` once it's stable.
+
 ##### Check logs
 See logs with this command 
 `python3 -m esphome logs espkyogate_configuration.yaml`
 
-Output should be the same as above.
+Make sure you always connect OTA instead of with the serial to USB port becaues it might be disabled due to a [bug](https://github.com/lorenzo-deluca/espkyogate/issues/16).
 
 # Home Assistant Integration
-If everything went well now you should find a new device in Home Assistant, called **espkyogate**.
+If everything went well now you should find a new autodiscovered device in Home Assistant, called **Allarme**.
 
-Previously configured sensors will be automatically created and associated to the device.
+All sensors configured in `espkyogate_configuration.yaml` will be automatically created and associated to the device.
 
-![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/HomeAssistant-Lovelace.png)
+![Lovelace card](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/HomeAssistant-Lovelace.png)
 
 ## Avaiable Services
 These methods will be available in the services
