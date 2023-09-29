@@ -1,5 +1,7 @@
 esphome:
   name: espkyogatebox
+  friendly_name: Allarme
+  comment: Alarm System Serial to HA controller
   platform: ESP8266
   board: d1_mini
   includes:
@@ -25,7 +27,8 @@ logger:
 
 # Enable Home Assistant API
 api:
-  password: !secret ha_password
+  encryption:
+    key: !secret api_encryption_key
 
 ota:
   password: !secret ota_password
@@ -60,23 +63,64 @@ binary_sensor:
         kyo32->warn_codici_default,
         kyo32->warn_wireless,
         kyo32->sabotaggio_bpi,
-        kyo32->sabotaggio_chiave_falsa,
         kyo32->sabotaggio_jam,
         kyo32->sabotaggio_wireless,
+        kyo32->sabotaggio_chiave_falsa,
 
         &kyo32->zona[0],
+        &kyo32->zona[1],
+        &kyo32->zona[2],
+        &kyo32->zona[3],
+
         &kyo32->zona_sabotaggio[0],
+        &kyo32->zona_sabotaggio[1],
+        &kyo32->zona_sabotaggio[2],
+        &kyo32->zona_sabotaggio[3],
+
         &kyo32->zona_esclusa[0],
+        &kyo32->zona_esclusa[1],
+        &kyo32->zona_esclusa[2],
+        &kyo32->zona_esclusa[3],
+
         &kyo32->memoria_allarme_zona[0],
+        &kyo32->memoria_allarme_zona[1],
+        &kyo32->memoria_allarme_zona[2],
+        &kyo32->memoria_allarme_zona[3],
+
         &kyo32->memoria_sabotaggio_zona[0],
+        &kyo32->memoria_sabotaggio_zona[1],
+        &kyo32->memoria_sabotaggio_zona[2],
+        &kyo32->memoria_sabotaggio_zona[3],
 
         &kyo32->allarme_area[0],
+        &kyo32->allarme_area[1],
+        &kyo32->allarme_area[2],
+        &kyo32->allarme_area[3],
+
         &kyo32->inserimento_totale_area[0],
+        &kyo32->inserimento_totale_area[1],
+        &kyo32->inserimento_totale_area[2],
+        &kyo32->inserimento_totale_area[3],
+
         &kyo32->inserimento_parziale_area[0],
+        &kyo32->inserimento_parziale_area[1],
+        &kyo32->inserimento_parziale_area[2],
+        &kyo32->inserimento_parziale_area[3],
+
         &kyo32->inserimento_parziale_ritardo_0_area[0],
+        &kyo32->inserimento_parziale_ritardo_0_area[1],
+        &kyo32->inserimento_parziale_ritardo_0_area[2],
+        &kyo32->inserimento_parziale_ritardo_0_area[3],.
+
         &kyo32->disinserita_area[0],
+        &kyo32->disinserita_area[1],
+        &kyo32->disinserita_area[2],
+        &kyo32->disinserita_area[3],
 
         &kyo32->stato_uscita[0]
+        &kyo32->stato_uscita[1]
+        &kyo32->stato_uscita[2]
+        &kyo32->stato_uscita[3]
       };
     binary_sensors:
       - id: kyo_comunication
@@ -111,26 +155,104 @@ binary_sensor:
         name: "Sabotaggio Chiave Falsa"
 
       - id: zona_1
-        name: "Zona 1"
+        name: "Sensore DT Taverna"
+        device_class: "motion"
+      - id: zone_2
+        name: "Finestra Taverna"
+        device_class: "window"
+      - id: zone_3
+        name: "Sensore DT Garage"
+        device_class: "motion"
+      - id: zone_4
+        name: "Scuretto Finestra Lavanderia"
+        device_class: "window"
+
       - id: zona_1_sabotaggio
-        name: "Sabotaggio Zona 1"
-      - id: zona_1_esclusa
-        name: "Esclusa Zona 1"
-      - id: zona_1_memoria_allarme
-        name: "Memoria Allarme Zona 1"
-      - id: zona_1_memoria_sabotaggio
-        name: "Memoria Sabotaggio Zona 1"
+        name: "Sabot. Sensore DT Taverna"
+      - id: zona_2_sabotaggio
+        name: "Sabot. Finestra Taverna"
+      - id: zona_3_sabotaggio
+        name: "Sabot. Sensore DT Garage"
+      - id: zona_4_sabotaggio
+        name: "Sabot. Scuretto Finestra Lavanderia"
 
-      - id: allarme_area_1
-        name: "Allarme Area 1"
-      - id: inserimento_totale_area_1
-        name: "Inserimento Totale Area 1"
-      - id: inserimento_parziale_area_1
-        name: "Inserimento Parziale Area 1"
-      - id: inserimento_parziale_ritardo_0_area_1
-        name: "Inserimento Parziale Ritardo 0 Area 1"
-      - id: disinserita_area_1
-        name: "Disinserita Area 1"
+      - id: excluded_zone_1
+        name: "Escl. Sensore DT Taverna"
+      - id: excluded_zone_2
+        name: "Escl. Finestra Taverna"
+      - id: excluded_zone_3
+        name: "Escl. Sensore DT Garage"
+      - id: excluded_zone_4
+        name: "Escl. Scuretto Finestra Lavanderia"
 
-      - id: stato_uscita_1
+      - id: alarm_memory_zone_1
+        name: "Mem. Allarme Sensore DT Taverna"
+      - id: alarm_memory_zone_2
+        name: "Mem. Allarme Finestra Taverna"
+      - id: alarm_memory_zone_3
+        name: "Mem. Allarme Sensore DT Garage"
+      - id: alarm_memory_zone_4
+        name: "Mem. Allarme Scuretto Finestra Lavanderia"
+
+      - id: sabotage_memory_zone_1
+        name: "Mem. Sabotaggio Sensore DT Taverna"
+      - id: sabotage_memory_zone_2
+        name: "Mem. Sabotaggio Finestra Taverna"
+      - id: sabotage_memory_zone_3
+        name: "Mem. Sabotaggio Sensore DT Garage"
+      - id: sabotage_memory_zone_4
+        name: "Mem. Sabotaggio Scuretto Finestra Lavanderia"
+
+      - id: alarm_area_1
+        name: "Allarme Finestre"
+      - id: alarm_area_2
+        name: "Allarme Area 2"
+      - id: alarm_area_3
+        name: "Allarme Area 3"
+      - id: alarm_area_4
+        name: "Allarme Area Sensori Interni"
+
+      - id: enabled_total_area_1
+        name: "Ins. Totale Finestre"
+      - id: enabled_total_area_2
+        name: "Ins. Totale Porte"
+      - id: enabled_total_area_3
+        name: "Ins. Totale Sensori Giardino"
+      - id: enabled_total_area_4
+        name: "Ins. Totale Sensori Interni"
+
+      - id: enabled_partial_area_1
+        name: "Ins. Parziale Finestre"
+      - id: enabled_partial_area_2
+        name: "Ins. Parziale Porte"
+      - id: enabled_partial_area_3
+        name: "Ins. Parziale Sensori Giardino"
+      - id: enabled_partial_area_4
+        name: "Ins. Parziale Sensori Interni"        
+
+      - id: enabled_partial_delay_0_area_1
+        name: "Ins. Parziale Ritardo 0 Finestre"
+      - id: enabled_partial_delay_0_area_2
+        name: "Ins. Parziale Ritardo 0 Porte"
+      - id: enabled_partial_delay_0_area_3
+        name: "Ins. Parziale Ritardo 0 Sensori Giardino"
+      - id: enabled_partial_delay_0_area_4
+        name: "Ins. Parziale Ritardo 0 Sensori Interni"
+
+      - id: disabled_area_1
+        name: "Disins. Finestre"
+      - id: disabled_area_2
+        name: "Disins. Porte"
+      - id: disabled_area_3
+        name: "Disins. Sensori Giardino"
+      - id: disabled_area_4
+        name: "Disins. Sensori Interni"
+
+      - id: exit_status_1
+        name: "Stato Uscita 1"
+      - id: exit_status_1
+        name: "Stato Uscita 1"
+      - id: exit_status_1
+        name: "Stato Uscita 1"
+      - id: exit_status_1
         name: "Stato Uscita 1"
