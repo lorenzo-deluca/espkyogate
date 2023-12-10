@@ -110,16 +110,16 @@ binary_sensor:
         &kyo32->inserimento_parziale_ritardo_0_area[0],
         &kyo32->inserimento_parziale_ritardo_0_area[1],
         &kyo32->inserimento_parziale_ritardo_0_area[2],
-        &kyo32->inserimento_parziale_ritardo_0_area[3],.
+        &kyo32->inserimento_parziale_ritardo_0_area[3],
 
         &kyo32->disinserita_area[0],
         &kyo32->disinserita_area[1],
         &kyo32->disinserita_area[2],
         &kyo32->disinserita_area[3],
 
-        &kyo32->stato_uscita[0]
-        &kyo32->stato_uscita[1]
-        &kyo32->stato_uscita[2]
+        &kyo32->stato_uscita[0],
+        &kyo32->stato_uscita[1],
+        &kyo32->stato_uscita[2],
         &kyo32->stato_uscita[3]
       };
     binary_sensors:
