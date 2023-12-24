@@ -250,9 +250,3 @@ binary_sensor:
 
       - id: exit_status_1
         name: "Stato Uscita 1"
-      - id: exit_status_1
-        name: "Stato Uscita 1"
-      - id: exit_status_1
-        name: "Stato Uscita 1"
-      - id: exit_status_1
-        name: "Stato Uscita 1"
