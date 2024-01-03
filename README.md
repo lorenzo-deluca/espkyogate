@@ -32,7 +32,7 @@ As board I used a **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.
 
 ![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/wiring.png)
 
-In order to connect to the serial port of the Kyo32 Unit I recommend a connector based on **MAX3232** chip, like this https://it.aliexpress.com/item/32722395554.html
+In order to connect to the serial port of the KYO Unit I recommend a connector based on [**MAX3232**](https://it.aliexpress.com/item/696400942.html) module chip with DB9 connector.
 This connector should be connected to the classic **TX/RX of the ESP board** and to the power supply (GND, 5V) on WeMos.
 
 ![Central Connections](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/BentelKYO32G-Connections.jpg)
