@@ -13,8 +13,8 @@ wifi:
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: "Esp32 Test Fallback Hotspot"
-    password: "12345678"
+    ssid: !secret hotspot_wifi_ssid
+    password: !secret hotspot_wifi_password
 
 captive_portal:
 
@@ -154,7 +154,7 @@ binary_sensor:
       - id: sabotaggio_chiave_falsa
         name: "Sabotaggio Chiave Falsa"
 
-      - id: zona_1
+      - id: zone_1
         name: "Sensore DT Taverna"
         device_class: "motion"
       - id: zone_2
@@ -167,13 +167,13 @@ binary_sensor:
         name: "Scuretto Finestra Lavanderia"
         device_class: "window"
 
-      - id: zona_1_sabotaggio
+      - id: zone_1_sabotaggio
         name: "Sabot. Sensore DT Taverna"
-      - id: zona_2_sabotaggio
+      - id: zone_2_sabotaggio
         name: "Sabot. Finestra Taverna"
-      - id: zona_3_sabotaggio
+      - id: zone_3_sabotaggio
         name: "Sabot. Sensore DT Garage"
-      - id: zona_4_sabotaggio
+      - id: zone_4_sabotaggio
         name: "Sabot. Scuretto Finestra Lavanderia"
 
       - id: excluded_zone_1
