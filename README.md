@@ -66,11 +66,14 @@ Finally, create a `secrets.yaml` file with the following contents:
 ```yaml
 wifi_ssid: "<your-wifi-ssid>"
 wifi_password: "<your-wifi-password>"
+hotspot_wifi_ssid: "<fallback-hotspot-wifi-ssid>"
+hotspot_wifi_password: "<fallback-hotspot-wifi-password>"
 ota_password: "<your-ota-password>"
 api_encryption_key: "<your-encryption-key>"
 ```
 
 * Populate `wifi_ssid` and `wifi_password` with details on how to connect to your network.
+* Choose and write a `hotspot_wifi_ssid` and `hotspot_wifi_password` so the board can create a fallback hotspot in case of a failure of the main wifi network.
 * Write a random password in `ota_password`, which will be used to update the board remotely.
 * Generate an encryption key from [ESPHome](https://esphome.io/components/api.html) and set it in `api_encryption_key`
 
