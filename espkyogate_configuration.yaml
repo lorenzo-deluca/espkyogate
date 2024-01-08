@@ -167,13 +167,13 @@ binary_sensor:
         name: "Scuretto Finestra Lavanderia"
         device_class: "window"
 
-      - id: zone_1_sabotaggio
+      - id: zone_1_tampering
         name: "Sabot. Sensore DT Taverna"
-      - id: zone_2_sabotaggio
+      - id: zone_2_tampering
         name: "Sabot. Finestra Taverna"
-      - id: zone_3_sabotaggio
+      - id: zone_3_tampering
         name: "Sabot. Sensore DT Garage"
-      - id: zone_4_sabotaggio
+      - id: zone_4_tampering
         name: "Sabot. Scuretto Finestra Lavanderia"
 
       - id: excluded_zone_1
