@@ -28,7 +28,8 @@ If you like this project you can support me with :coffee: or simply put a :star:
 - [Troubleshooting - FAQ](#troubleshooting-faq)
 
 ## Hardware Connections
-As board I used a **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine. If you encounter disconnections, you might want to try a more powerful one based on the ESP32 instead.
+As board I used a **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine. 
+If you encounter disconnections, you might want to try a more powerful one based on the **ESP32** instead.
 
 ![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/wiring.png)
 
@@ -42,6 +43,9 @@ Like this one:
 https://www.amazon.it/FTVOGUE-Regolatore-Trasformatore-Caricabatterie-smartphone/dp/B07NQKBRG1/
 
 Which I recommend because in this way, even in case of power failure, the ESP is powered by the control unit's battery.
+For connecting the power supply to the control unit I recommend taking the power supply from the terminal for auxiliary devices (+B/AUX).
+Negative/common can be taken from any negative.
+![KyoManual-Connections](images/KyoManual_Connections.png)   
 
 ## ESPHome Preparation
 I suggest using the file `espkyogate_configuration.yaml` as a template and put your customizations there.
