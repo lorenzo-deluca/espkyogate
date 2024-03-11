@@ -45,7 +45,8 @@ https://www.amazon.it/FTVOGUE-Regolatore-Trasformatore-Caricabatterie-smartphone
 Which I recommend because in this way, even in case of power failure, the ESP is powered by the control unit's battery.
 For connecting the power supply to the control unit I recommend taking the power supply from the terminal for auxiliary devices (+B/AUX).
 Negative/common can be taken from any negative.
-<img src="images/KyoManual_Connections.png" alt="KyoManual-Connections" height="200"/>
+
+<img src="images/KyoManual_Connections.png" alt="KyoManual-Connections" height="400"/>
 
 ## ESPHome Preparation
 I suggest using the file `espkyogate_configuration.yaml` as a template and put your customizations there.
