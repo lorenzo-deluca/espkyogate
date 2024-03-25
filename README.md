@@ -25,7 +25,7 @@ If you like this project you can support me with :coffee: or simply put a :star:
 - [ESPHome Preparation](#esphome-preparation)
 - [Build and Upload Firmware](#build-and-upload-firmware)
 - [Home Assistant Integration](#home-assistant-integration)
-- [Troubleshooting - FAQ](#troubleshooting-faq)
+- [Troubleshooting - FAQ](#troubleshooting---faq)
 
 ## Hardware Connections
 As board I used a **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine. 
@@ -264,8 +264,9 @@ cards:
     show_header_toggle: false
 ```
 
-## Troubleshooting - FAQ
+## Troubleshooting-FAQ
 If you have any problems, make the following checks:
+- [x] Exit the programming mode of the control unit, the serial line does not work in programming mode
 - [x] Check that the cables are connected correctly
 - [x] Check the 232 converter is properly powered
 - [x] Try to reverse TX and RX
