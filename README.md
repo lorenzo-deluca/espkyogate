@@ -156,6 +156,16 @@ data:
   output_number: <output_number>
 ```
 
+### Pulse Output
+If an output is configured as 'Remote Command' (Comando Remoto) you can use as Pulse Signal: form Inactive to Active and Inactive after some time
+You can choose how many milliseconds the signal should remain high level.
+``` yaml
+service: esphome.espkyogate_pulse_output
+data:
+  output_number: <output_number>
+  pulse_time: <pulse_time>
+```
+
 ### Update Unit Date and Time
 You can update the Kyo Date and Time internal Clock
 

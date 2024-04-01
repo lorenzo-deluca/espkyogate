@@ -1,6 +1,6 @@
 /*
 * espkyogate - ESPHome custom component for Bentel KYO alarms
-* Copyright (C) 2023 Lorenzo De Luca (me@lorenzodeluca.dev)
+* Copyright (C) 2024 Lorenzo De Luca (me@lorenzodeluca.dev)
 * 
 * This program is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
