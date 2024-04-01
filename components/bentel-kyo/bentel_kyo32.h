@@ -1,6 +1,6 @@
 /*
 * espkyogate - ESPHome custom component for Bentel KYO alarms
-* Copyright (C) 2022 Lorenzo De Luca (me@lorenzodeluca.dev)
+* Copyright (C) 2023 Lorenzo De Luca (me@lorenzodeluca.dev)
 * 
 * This program is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
@@ -68,6 +68,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			register_service(&Bentel_Kyo32::reset_alarms, "reset_alarms");
 			register_service(&Bentel_Kyo32::activate_output, "activate_output", {"output_number"});
 			register_service(&Bentel_Kyo32::deactivate_output, "deactivate_output", {"output_number"});
+			register_service(&Bentel_Kyo32::pulse_output, "pulse_output", {"output_number", "pulse_time"});
 			register_service(&Bentel_Kyo32::debug_command, "debug_command", {"serial_trace", "log_trace", "polling_kyo"});
 			register_service(&Bentel_Kyo32::update_datetime, "update_datetime", {"day", "month", "year", "hours", "minutes", "seconds"});
 
@@ -206,6 +207,24 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			int Count = sendMessageToKyo(cmdDeactivateOutput, sizeof(cmdDeactivateOutput), Rx, 250);
 			ESP_LOGD("deactivate_output", "kyo respond %i", Count);
 		}
+
+
+		void pulse_output(int output_number, int pulse_time)
+		{
+			if (output_number > KYO_MAX_USCITE)
+			{
+				ESP_LOGE("pulse_output", "invalid output %i, MAX %i", output_number, KYO_MAX_USCITE);
+				return;
+			}
+			ESP_LOGI("pulse_output", "pulse Output Number: %d for pulse_time", output_number, pulse_time);
+
+			activate_output(output_number);
+			delay(pulse_time);
+			deactivate_output(output_number);
+			
+			ESP_LOGD("pulse_output", "end");
+		}
+
 
 		void update_datetime(int day, int month, int year, int hours, int minutes, int seconds)
 		{
