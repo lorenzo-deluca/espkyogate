@@ -16,6 +16,7 @@ If you like this project you can support me with :coffee: or simply put a :star:
 
 ### Tested on Kyo Unit
 - [x] Bentel Kyo 32G
+- [x] Bentel Kyo 32
 - [x] Bentel Kyo 8
 - [x] Bentel Kyo 8W
 - [x] Bentel Kyo 8WG
