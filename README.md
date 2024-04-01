@@ -18,6 +18,7 @@ If you like this project you can support me with :coffee: or simply put a :star:
 - [x] Bentel Kyo 32G
 - [x] Bentel Kyo 8
 - [x] Bentel Kyo 8W
+- [x] Bentel Kyo 8WG
 - [ ] If you have another Bentel Kyo unit test and let me know :)
 
 ## Contents
@@ -65,7 +66,7 @@ Appropriate device classes are (among all device classes supported by Home Assis
 | window       | ![mdi-window-closed](images/icons/mdi-window-closed.png) ![mdi-window-open](images/icons/mdi-window-open.png) |
 | door         | ![mdi-door-closed](images/icons/mdi-door-closed.png) ![mdi-door](images/icons/mdi-door.png)                   |
 | garage_door  | ![mdi-garage](images/icons/mdi-garage.png) ![mdi-garage-open](images/icons/mdi-garage-open.png)               |
-| smoke        | ![mdi-smoke]                                                                                                  |
+| smoke        | ![mdi-smoke-detector-alert](images/icons/smoke-detector-alert.png)                                            |
 
 Finally, create a `secrets.yaml` file with the following contents:
 ```yaml
