@@ -1,5 +1,5 @@
 esphome:
-  name: espkyogatebox
+  name: espkyogate
   friendly_name: Allarme
   comment: Alarm System Serial to HA controller
   platform: ESP8266
