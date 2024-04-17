@@ -385,17 +385,12 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 				ESP_LOGI("stato_sirena", "Stato %i", StatoZona);
 			stato_sirena->publish_state(StatoZona == 1);
 			
-			if (alarmModel == AlarmModel::KYO_32)
+			if (alarmModel == AlarmModel::KYO_32G)
 			{
 				// CICLO STATO USCITE
 				for (i = 0; i < KYO_MAX_USCITE; i++)
 				{
-					StatoZona = 0;
-					if (i >= 8 && i <= 15)
-						StatoZona = (Rx[11] >> (i - 8)) & 1;
-					else if (i <= 7)
-						StatoZona = (Rx[12] >> i) & 1;
-
+					StatoZona = (Rx[12] >> i) & 1;
 					if (this->logTrace && (StatoZona == 1) != stato_uscita[i].state)
 						ESP_LOGI("stato_uscita", "Uscita %i - Stato %i", i, StatoZona);
 
