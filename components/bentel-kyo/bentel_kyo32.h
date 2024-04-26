@@ -72,9 +72,15 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			register_service(&Bentel_Kyo32::debug_command, "debug_command", {"serial_trace", "log_trace", "polling_kyo"});
 			register_service(&Bentel_Kyo32::update_datetime, "update_datetime", {"day", "month", "year", "hours", "minutes", "seconds"});
 
+			register_service(&Bentel_Kyo32::include_zone, "include_zone", {"zone_number"});
+			register_service(&Bentel_Kyo32::exclude_zone, "exclude_zone", {"zone_number"});
+
 			pollingState = PollingStateEnum::Init;
 			kyo_comunication->publish_state(false);
 		}
+
+		// ========================================= 
+		// START COMMANDS 
 
 		void arm_area(int area, int arm_type, int specific_area)
 		{
@@ -147,8 +153,6 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			int Count = sendMessageToKyo(cmdDisarmPartition, sizeof(cmdDisarmPartition), Rx, 100);
 			ESP_LOGD("disarm_area", "kyo respond %i", Count);
 		}
-
-
 
 		void reset_alarms()
 		{
@@ -251,6 +255,79 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			int Count = sendMessageToKyo(cmdUpdateDateTime, sizeof(cmdUpdateDateTime), Rx, 300);
 			ESP_LOGD("update_datetime", "kyo respond %i", Count);
 		}
+
+		void include_zone(int zone_number)
+		{
+			if (zone_number > KYO_MAX_ZONE)
+			{
+				ESP_LOGE("include_zone", "invalid zone %i, MAX %i", zone_number, KYO_MAX_ZONE);
+				return;
+			}
+
+			ESP_LOGI("include_zone", "request Include Zone  Number: %d", zone_number);
+			
+			// 0f 01 f0 07 00 07 00 00 00 00 00 00 00 01 01
+			byte cmdIncludeZone[15] = {0x0f, 0x01, 0xf0, 0x07, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+			
+			if (zone_number > 24){
+				cmdIncludeZone[10] |= 1 << (zone_number - 25);
+				cmdIncludeZone[14] = cmdIncludeZone[10];
+			}
+			else if (zone_number > 16 && zone_number <= 24){
+				cmdIncludeZone[11] |= 1 << (zone_number - 17);	
+				cmdIncludeZone[14] = cmdIncludeZone[11];
+			}
+			else if (zone_number > 8 && zone_number <= 16){
+				cmdIncludeZone[12] |= 1 << (zone_number - 9);
+				cmdIncludeZone[14] = cmdIncludeZone[12];
+			}
+			else if (zone_number <= 8){
+				cmdIncludeZone[13] |= 1 << zone_number - 1;
+				cmdIncludeZone[14] = cmdIncludeZone[13];
+			}
+
+			byte Rx[255];
+			int Count = sendMessageToKyo(cmdIncludeZone, sizeof(cmdIncludeZone), Rx, 250);
+			ESP_LOGD("include_zone", "kyo respond %i", Count);
+		}
+
+		void exclude_zone(int zone_number)
+		{
+			if (zone_number > KYO_MAX_ZONE)
+			{
+				ESP_LOGE("exclude_zone", "invalid zone %i, MAX %i", zone_number, KYO_MAX_ZONE);
+				return;
+			}
+
+			ESP_LOGI("exclude_zone", "request Exclude Zone  Number: %d", zone_number);
+			
+			// 0f 01 f0 07 00 07 00 00 00 00 00 00 00 01 01
+			byte cmdExcludeZone[15] = {0x0f, 0x01, 0xf0, 0x07, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+			
+			if (zone_number > 24){
+				cmdExcludeZone[6] |= 1 << (zone_number - 25);
+				cmdExcludeZone[14] = cmdExcludeZone[6];
+			}
+			else if (zone_number > 16 && zone_number <= 24){
+				cmdExcludeZone[7] |= 1 << (zone_number - 17);	
+				cmdExcludeZone[14] = cmdExcludeZone[7];
+			}
+			else if (zone_number > 8 && zone_number <= 16){
+				cmdExcludeZone[8] |= 1 << (zone_number - 9);
+				cmdExcludeZone[14] = cmdExcludeZone[8];
+			}
+			else if (zone_number <= 8){
+				cmdExcludeZone[9] |= 1 << zone_number - 1;
+				cmdExcludeZone[14] = cmdExcludeZone[9];
+			}
+
+			byte Rx[255];
+			int Count = sendMessageToKyo(cmdExcludeZone, sizeof(cmdExcludeZone), Rx, 250);
+			ESP_LOGD("exclude_zone", "kyo respond %i", Count);
+		}
+
+		// END COMMANDS 
+		// ========================================= 
 		
 		void update() override
 		{
