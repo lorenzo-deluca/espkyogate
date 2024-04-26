@@ -30,8 +30,8 @@ If you like this project you can support me with :coffee: or simply put a :star:
 - [Troubleshooting - FAQ](#troubleshooting-faq)
 
 ## Hardware Connections
-As board I used a **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine. 
-If you encounter disconnections, you might want to try a more powerful one based on the **ESP32** instead.
+I strongly recommend using an **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine. 
+If you encounter disconnections, you might want to try a more powerful one based on the **ESP32** instead, like this one https://it.aliexpress.com/item/4001340660273.html.
 
 ![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/wiring.png)
 
@@ -132,6 +132,20 @@ service: esphome.espkyogate_disarm_area
 data:
   area: <area_number>
   specific_area: 0 (disarm all areas) - 1 (disarm only <area_number> without changing the others)
+```
+
+### Zone Include
+``` yaml
+service: esphome.espkyogate_include_zone
+data:
+  zone_number: <zone_number>
+```
+
+### Zone Exclude
+``` yaml
+service: esphome.espkyogate_exclude_zone
+data:
+  zone_number: <zone_number>
 ```
 
 ### Reset Alarm Memory
