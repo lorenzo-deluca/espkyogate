@@ -1,11 +1,13 @@
 # ESPhome for BENTEL KYO Units
+[![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/lorenzo-deluca)
 [![buy me a coffee](https://img.shields.io/badge/support-buymeacoffee-222222.svg?style=flat-square)](https://www.buymeacoffee.com/lorenzodeluca)
 
 Serial Bridge for **Bentel Kyo32G Alarm Central**, based on **ESP8266** Board and **ESPHome** Open Source Firmware.
 Thanks to @dario81 for initial porting to ESPHome and to @lcavalli for code refactor inspiration ;)
 
-If you like this project you can support me with :coffee: or simply put a :star: to this repository :blush:
+If you like this project you can support me with :coffee: , with **GitHub Sponsor** or simply put a :star: to this repository :blush:
 
+[![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/lorenzo-deluca)
 <a href="https://www.buymeacoffee.com/lorenzodeluca" target="_blank">
   <img src="https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png" alt="Buy Me A Coffee" width="150px">
 </a>
