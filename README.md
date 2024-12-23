@@ -34,16 +34,16 @@ If you like this project you can support me with :coffee: , with **GitHub Sponso
 ## Hardware Connections
 I strongly recommend using an **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine. 
 
-![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/wiring.png)
+<img src="images/wiring.png" alt="ESP-Wiring"/>
 
 If you encounter disconnections, you might want to try a more powerful one based on the **ESP32** instead, like this one https://it.aliexpress.com/item/4001340660273.html.
 
-![ESP32 Wiring](https://raw.githubusercontent.com/adepiero/espkyogate/master/images/wiring_esp32.png)
+<img src="images/wiring_esp32.png" alt="ESP32-Wiring"/>
 
 In order to connect to the serial port of the KYO Unit I recommend a connector based on [**MAX3232**](https://it.aliexpress.com/item/696400942.html) module chip with DB9 connector.
 This connector should be connected to the classic **TX/RX of the ESP board** and to the power supply (GND, 5V) on WeMos.
 
-![Central Connections](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/BentelKYO32G-Connections.jpg)
+<img src="images/BentelKYO32G-Connections.jpg" alt="Central-Connections"/>
 
 The WeMos can be powered with USB directly from the 12V output of the control unit (the +/- pins on the lower left, powering the sensors) by connecting any 12V->USB converter.
 Like this one: 
@@ -55,10 +55,12 @@ Negative/common can be taken from any negative.
 
 <img src="images/KyoManual_Connections.png" alt="KyoManual-Connections" height="400"/>
 
+**ESP32 boards:** All the hardware setup instructions applies to ESP32 boards, as well.
+
 ## ESPHome Preparation
 I suggest using the file `espkyogate_configuration.yaml` as a template and put your customizations there.
 
-* Set `uart` settings in base depending on the board you use, example file is for Wemos D1 mini.
+* Set `esphome` and `uart` settings in base depending on the board you use; example file is for Wemos D1 mini, with included, commented settings for ESP32 Devkit 1 board
 * Set `name`, `friendly_name` (how it will be presented in HA).
 * Edit `binary_sensors` to configure how you want to present the sensors to Home Assistant.
   * All inputs have to be declared in both `lambda` and `binary_sensors`. Add only the ones you need to minimize overhead and complexity.
