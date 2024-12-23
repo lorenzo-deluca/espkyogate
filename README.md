@@ -33,9 +33,12 @@ If you like this project you can support me with :coffee: , with **GitHub Sponso
 
 ## Hardware Connections
 I strongly recommend using an **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine. 
-If you encounter disconnections, you might want to try a more powerful one based on the **ESP32** instead, like this one https://it.aliexpress.com/item/4001340660273.html.
 
 ![ESP Wiring](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/wiring.png)
+
+If you encounter disconnections, you might want to try a more powerful one based on the **ESP32** instead, like this one https://it.aliexpress.com/item/4001340660273.html.
+
+![ESP32 Wiring](https://raw.githubusercontent.com/adepiero/espkyogate/master/images/wiring_esp32.png)
 
 In order to connect to the serial port of the KYO Unit I recommend a connector based on [**MAX3232**](https://it.aliexpress.com/item/696400942.html) module chip with DB9 connector.
 This connector should be connected to the classic **TX/RX of the ESP board** and to the power supply (GND, 5V) on WeMos.
