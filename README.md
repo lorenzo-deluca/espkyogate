@@ -96,8 +96,9 @@ api_encryption_key: "<your-encryption-key>"
 
 #### With ESPHome 
 This way is the easiest, just copy the files from this repository to the esphome folder, edit the `espkyogate_configuration.yaml` file as above, upload and see if everything works from the logs.
-You should see something similar.
-![ESPHomeLogs](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/ESPHomeLogs.png)
+You should see something similar:
+
+<img src="images/ESPHomeLogs.png" alt="ESPHomeLogs" />
 
 The [ESPHome interface](https://web.esphome.io/) can help if you never used it before. 
 
@@ -119,7 +120,7 @@ If everything went well now you should find a new autodiscovered device in Home 
 
 All sensors configured in `espkyogate_configuration.yaml` will be automatically created and associated to the device.
 
-![Lovelace card](https://raw.githubusercontent.com/lorenzo-deluca/espkyogate/master/images/HomeAssistant-Lovelace.png)
+<img src="images/HomeAssistant-Lovelace.png" alt="Lovelace card"/>
 
 ## Avaiable Services
 These methods will be available in the services
