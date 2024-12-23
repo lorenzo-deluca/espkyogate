@@ -60,7 +60,7 @@ Negative/common can be taken from any negative.
 ## ESPHome Preparation
 I suggest using the file `espkyogate_configuration.yaml` as a template and put your customizations there.
 
-* Set `esphome` and `uart` settings in base depending on the board you use; example file is for Wemos D1 mini, with included, commented settings for ESP32 Devkit 1 board
+* Set `esphome` and `uart` settings depending on the board you use; example file is for Wemos D1 mini with included, commented settings for ESP32 Devkit 1 board
 * Set `name`, `friendly_name` (how it will be presented in HA).
 * Edit `binary_sensors` to configure how you want to present the sensors to Home Assistant.
   * All inputs have to be declared in both `lambda` and `binary_sensors`. Add only the ones you need to minimize overhead and complexity.
