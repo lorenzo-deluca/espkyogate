@@ -4,8 +4,22 @@ esphome:
   comment: Alarm System Serial to HA controller
   platform: ESP8266
   board: d1_mini
+  # ESP32 boards alternative directives
+  # platform: ESP32
+  # board: esp32doit-devkit-v1
   includes:
     - components/bentel-kyo/bentel_kyo32.h
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO5
+  rx_pin: GPIO4
+  # ESP32 boards alternative directives
+  # tx_pin: GPIO17
+  # rx_pin: GPIO16
+  baud_rate: 9600
+  data_bits: 8
+  parity: EVEN  
 
 wifi:
   ssid: !secret wifi_ssid
@@ -33,14 +47,6 @@ api:
 ota:
   platform: esphome
   password: !secret ota_password
-  
-uart:
-  id: uart_bus
-  tx_pin: GPIO5
-  rx_pin: GPIO4
-  baud_rate: 9600
-  data_bits: 8
-  parity: EVEN
   
 switch:
   - platform: safe_mode
