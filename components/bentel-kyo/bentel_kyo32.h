@@ -22,7 +22,12 @@
 
 class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, public api::CustomAPIDevice {
 	public:
-		Bentel_Kyo32(UARTComponent *parent) : UARTDevice(parent) {}
+		Bentel_Kyo32(UARTComponent *parent, bool _isKyo4or8 = false) : UARTDevice(parent) {
+			IsKyo4or8 = _isKyo4or8;
+			if (_isKyo4or8) {
+				ESP_LOGD("Bentel_Kyo32", "Kyo4-8 enabled");
+			}
+		}
 		
 		BinarySensor *kyo_comunication = new BinarySensor();
 
@@ -212,7 +217,6 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			ESP_LOGD("deactivate_output", "kyo respond %i", Count);
 		}
 
-
 		void pulse_output(int output_number, int pulse_time)
 		{
 			if (output_number > KYO_MAX_USCITE)
@@ -228,7 +232,6 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			
 			ESP_LOGD("pulse_output", "end");
 		}
-
 
 		void update_datetime(int day, int month, int year, int hours, int minutes, int seconds)
 		{
@@ -393,6 +396,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 		bool polling_kyo = true;
 		int centralInvalidMessageCount = 0;
 		int MaxZone = KYO_MAX_ZONE;
+		bool IsKyo4or8 = false;
 
 		bool update_kyo_partitions()
 		{
@@ -456,99 +460,141 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 				disinserita_area[i].publish_state(StatoZona == 1);
 			}
 
-			// STATO SIRENA
-			StatoZona = ((Rx[10] >> 5) & 1);
-			if (this->logTrace && (StatoZona == 1) != stato_sirena->state)
-				ESP_LOGI("stato_sirena", "Stato %i", StatoZona);
-			stato_sirena->publish_state(StatoZona == 1);
-			
-			if (alarmModel == AlarmModel::KYO_32G)
+			if (IsKyo4or8)
 			{
+				// STATO SIRENA
+				StatoZona = (Rx[10] >> 5);
+				if (this->logTrace && (StatoZona == 1) != stato_sirena->state)
+					ESP_LOGI("stato_sirena", "Stato %i", StatoZona);
+				stato_sirena->publish_state(StatoZona == 1);
+				
 				// CICLO STATO USCITE
-				for (i = 0; i < KYO_MAX_USCITE; i++)
+				for (i = 0; i < 4; i++)
 				{
-					StatoZona = (Rx[12] >> i) & 1;
+					StatoZona = (Rx[10] >> i) & 1;
 					if (this->logTrace && (StatoZona == 1) != stato_uscita[i].state)
 						ESP_LOGI("stato_uscita", "Uscita %i - Stato %i", i, StatoZona);
 
 					stato_uscita[i].publish_state(StatoZona == 1);
 				}
-			}
-
-			// CICLO ZONE ESCLUSE
-			for (i = 0; i < MaxZone; i++)
-			{
-				StatoZona = 0;
-				if (alarmModel == AlarmModel::KYO_8)
+			
+				// CICLO ZONE ESCLUSE
+				for (i = 0; i < MaxZone; i++)
 				{
 					StatoZona = (Rx[11] >> i) & 1;	
+					zona_esclusa[i].publish_state(StatoZona == 1);
 				}
-				else
-				{
-					if (i >= 24)
-						StatoZona = (Rx[13] >> (i - 24)) & 1;
-					else if (i >= 16 && i <= 23)
-						StatoZona = (Rx[14] >> (i - 16)) & 1;
-					else if (i >= 8 && i <= 15)
-						StatoZona = (Rx[15] >> (i - 8)) & 1;
-					else if (i <= 7)
-						StatoZona = (Rx[16] >> i) & 1;	
-				}
-				
-				zona_esclusa[i].publish_state(StatoZona == 1);
-				if (StatoZona == 1)
-					this->PartitionStatusInternal[i] = PartitionStatusEnum::Exclude;
-			}
 
-			// CICLO MEMORIA ALLARME ZONE
-			for (i = 0; i < MaxZone; i++)
-			{
-				StatoZona = 0;
-				if (alarmModel == AlarmModel::KYO_8)
+				// CICLO MEMORIA ALLARME ZONE
+				for (i = 0; i < MaxZone; i++)
 				{
 					StatoZona = (Rx[12] >> i) & 1;	
+					memoria_allarme_zona[i].publish_state(StatoZona == 1);
 				}
-				else
-				{
-					if (i >= 24)
-						StatoZona = (Rx[17] >> (i - 24)) & 1;
-					else if (i >= 16 && i <= 23)
-						StatoZona = (Rx[18] >> (i - 16)) & 1;
-					else if (i >= 8 && i <= 15)
-						StatoZona = (Rx[19] >> (i - 8)) & 1;
-					else if (i <= 7)
-						StatoZona = (Rx[20] >> i) & 1;
-				}
-				
-				memoria_allarme_zona[i].publish_state(StatoZona == 1);
-				if (StatoZona == 1)
-					this->PartitionStatusInternal[i] = PartitionStatusEnum::MemAlarm;
-			}
 
-			// CICLO MEMORIA SABOTAGGIO ZONE
-			for (i = 0; i < MaxZone; i++)
-			{
-				StatoZona = 0;
-				
-				if (alarmModel == AlarmModel::KYO_8)
+				// CICLO MEMORIA SABOTAGGIO ZONE
+				for (i = 0; i < MaxZone; i++)
 				{
 					StatoZona = (Rx[13] >> i) & 1;	
+					memoria_sabotaggio_zona[i].publish_state(StatoZona == 1);
 				}
-				else
+			}
+			else
+			{
+				// STATO SIRENA
+				StatoZona = ((Rx[10] >> 5) & 1);
+				if (this->logTrace && (StatoZona == 1) != stato_sirena->state)
+					ESP_LOGI("stato_sirena", "Stato %i", StatoZona);
+				stato_sirena->publish_state(StatoZona == 1);
+				
+				if (alarmModel == AlarmModel::KYO_32G)
 				{
-					if (i >= 24)
-						StatoZona = (Rx[21] >> (i - 24)) & 1;
-					else if (i >= 16 && i <= 23)
-						StatoZona = (Rx[22] >> (i - 16)) & 1;
-					else if (i >= 8 && i <= 15)
-						StatoZona = (Rx[23] >> (i - 8)) & 1;
-					else if (i <= 7)
-						StatoZona = (Rx[24] >> i) & 1;
+					// CICLO STATO USCITE
+					for (i = 0; i < KYO_MAX_USCITE; i++)
+					{
+						StatoZona = (Rx[12] >> i) & 1;
+						if (this->logTrace && (StatoZona == 1) != stato_uscita[i].state)
+							ESP_LOGI("stato_uscita", "Uscita %i - Stato %i", i, StatoZona);
+
+						stato_uscita[i].publish_state(StatoZona == 1);
+					}
 				}
 
-				memoria_sabotaggio_zona[i].publish_state(StatoZona == 1);
-				if (StatoZona == 1)
-					this->PartitionStatusInternal[i] = PartitionStatusEnum::MemSabotate;
+				// CICLO ZONE ESCLUSE
+				for (i = 0; i < MaxZone; i++)
+				{
+					StatoZona = 0;
+					if (alarmModel == AlarmModel::KYO_8)
+					{
+						StatoZona = (Rx[16] >> i) & 1;	
+					}
+					else
+					{
+						if (i >= 24)
+							StatoZona = (Rx[13] >> (i - 24)) & 1;
+						else if (i >= 16 && i <= 23)
+							StatoZona = (Rx[14] >> (i - 16)) & 1;
+						else if (i >= 8 && i <= 15)
+							StatoZona = (Rx[15] >> (i - 8)) & 1;
+						else if (i <= 7)
+							StatoZona = (Rx[16] >> i) & 1;	
+					}
+					
+					zona_esclusa[i].publish_state(StatoZona == 1);
+					if (StatoZona == 1)
+						this->PartitionStatusInternal[i] = PartitionStatusEnum::Exclude;
+				}
+
+				// CICLO MEMORIA ALLARME ZONE
+				for (i = 0; i < MaxZone; i++)
+				{
+					StatoZona = 0;
+					if (alarmModel == AlarmModel::KYO_8)
+					{
+						StatoZona = (Rx[20] >> i) & 1;	
+					}
+					else
+					{
+						if (i >= 24)
+							StatoZona = (Rx[17] >> (i - 24)) & 1;
+						else if (i >= 16 && i <= 23)
+							StatoZona = (Rx[18] >> (i - 16)) & 1;
+						else if (i >= 8 && i <= 15)
+							StatoZona = (Rx[19] >> (i - 8)) & 1;
+						else if (i <= 7)
+							StatoZona = (Rx[20] >> i) & 1;
+					}
+					
+					memoria_allarme_zona[i].publish_state(StatoZona == 1);
+					if (StatoZona == 1)
+						this->PartitionStatusInternal[i] = PartitionStatusEnum::MemAlarm;
+				}
+
+				// CICLO MEMORIA SABOTAGGIO ZONE
+				for (i = 0; i < MaxZone; i++)
+				{
+					StatoZona = 0;
+					
+					if (alarmModel == AlarmModel::KYO_8)
+					{
+						StatoZona = (Rx[24] >> i) & 1;	
+					}
+					else
+					{
+						if (i >= 24)
+							StatoZona = (Rx[21] >> (i - 24)) & 1;
+						else if (i >= 16 && i <= 23)
+							StatoZona = (Rx[22] >> (i - 16)) & 1;
+						else if (i >= 8 && i <= 15)
+							StatoZona = (Rx[23] >> (i - 8)) & 1;
+						else if (i <= 7)
+							StatoZona = (Rx[24] >> i) & 1;
+					}
+
+					memoria_sabotaggio_zona[i].publish_state(StatoZona == 1);
+					if (StatoZona == 1)
+						this->PartitionStatusInternal[i] = PartitionStatusEnum::MemSabotate;
+				}
 			}
 			
 			return true;
