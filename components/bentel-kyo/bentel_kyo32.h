@@ -684,7 +684,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			for (i = 0; i < 8; i++)
 			{
 				if (alarmModel == AlarmModel::KYO_8)
-					StatoZona = (Rx[9] >> i) & 1;
+					StatoZona = (Rx[10] >> i) & 1;
 				else
 					StatoZona = (Rx[16] >> i) & 1;
 
