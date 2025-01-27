@@ -643,40 +643,72 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			// Ciclo WARNINGS
 			for (i = 0; i < 8; i++)
 			{
-				if (alarmModel == AlarmModel::KYO_8)
+				if (alarmModel == AlarmModel::KYO_8) 
+				{
 					StatoZona = (Rx[8] >> i) & 1;
+					// ciclo su bit di warning
+					switch(i)
+					{
+						case 0:
+							warn_mancanza_rete->publish_state(StatoZona == 1);
+							break;
+
+						case 1:
+							warn_scomparsa_bpi->publish_state(StatoZona == 1);
+							break;
+
+						case 2:
+							warn_fusibile->publish_state(StatoZona == 1);
+							break;
+
+						case 3:
+							warn_batteria_bassa->publish_state(StatoZona == 1);
+							break;
+
+						case 5:
+							warn_guasto_linea_telefonica->publish_state(StatoZona == 1);
+							break;
+
+						case 6:
+							warn_codici_default->publish_state(StatoZona == 1);
+							break;
+					}
+				}
 				else
+				{
 					StatoZona = (Rx[14] >> i) & 1;
 
-				switch(i)
-				{
-					case 0:
-						warn_mancanza_rete->publish_state(StatoZona == 1);
-						break;
+					// ciclo su bit di warning
+					switch(i)
+					{
+						case 0:
+							warn_mancanza_rete->publish_state(StatoZona == 1);
+							break;
 
-					case 1:
-						warn_scomparsa_bpi->publish_state(StatoZona == 1);
-						break;
+						case 1:
+							warn_scomparsa_bpi->publish_state(StatoZona == 1);
+							break;
 
-					case 2:
-						warn_fusibile->publish_state(StatoZona == 1);
-						break;
+						case 2:
+							warn_fusibile->publish_state(StatoZona == 1);
+							break;
 
-					case 3:
-						warn_batteria_bassa->publish_state(StatoZona == 1);
-						break;
+						case 3:
+							warn_batteria_bassa->publish_state(StatoZona == 1);
+							break;
 
-					case 4:
-						warn_guasto_linea_telefonica->publish_state(StatoZona == 1);
-						break;
+						case 4:
+							warn_guasto_linea_telefonica->publish_state(StatoZona == 1);
+							break;
 
-					case 5:
-						warn_codici_default->publish_state(StatoZona == 1);
-						break;
+						case 5:
+							warn_codici_default->publish_state(StatoZona == 1);
+							break;
 
-					case 6:
-						warn_wireless->publish_state(StatoZona == 1);
-						break;
+						case 6:
+							warn_wireless->publish_state(StatoZona == 1);
+							break;
+					}
 				}
 			}
 
@@ -684,35 +716,56 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			for (i = 0; i < 8; i++)
 			{
 				if (alarmModel == AlarmModel::KYO_8)
-					StatoZona = (Rx[10] >> i) & 1;
-				else
-					StatoZona = (Rx[16] >> i) & 1;
-
-				switch(i)
 				{
-					case 2:
-						sabotaggio_zona->publish_state(StatoZona == 1);
-						break;
+					StatoZona = (Rx[10] >> i) & 1;
+					switch(i)
+					{
+						case 4:
+							sabotaggio_zona->publish_state(StatoZona == 1);
+							break;
 
-					case 3:
-						sabotaggio_chiave_falsa->publish_state(StatoZona == 1);
-						break;
+						case 5:
+							sabotaggio_chiave_falsa->publish_state(StatoZona == 1);
+							break;
 
-					case 4:
-						sabotaggio_bpi->publish_state(StatoZona == 1);
-						break;
+						case 6:
+							sabotaggio_bpi->publish_state(StatoZona == 1);
+							break;
 
-					case 5:
-						sabotaggio_sistema->publish_state(StatoZona == 1);
-						break;
-					
-					case 6:
-						sabotaggio_jam->publish_state(StatoZona == 1);
-						break;
+						case 7:
+							sabotaggio_sistema->publish_state(StatoZona == 1);
+							break;
+					}
+				}
+				else
+				{
+					StatoZona = (Rx[16] >> i) & 1;
+					switch(i)
+					{
+						case 2:
+							sabotaggio_zona->publish_state(StatoZona == 1);
+							break;
 
-					case 7:
-						sabotaggio_wireless->publish_state(StatoZona == 1);
-						break;
+						case 3:
+							sabotaggio_chiave_falsa->publish_state(StatoZona == 1);
+							break;
+
+						case 4:
+							sabotaggio_bpi->publish_state(StatoZona == 1);
+							break;
+
+						case 5:
+							sabotaggio_sistema->publish_state(StatoZona == 1);
+							break;
+						
+						case 6:
+							sabotaggio_jam->publish_state(StatoZona == 1);
+							break;
+
+						case 7:
+							sabotaggio_wireless->publish_state(StatoZona == 1);
+							break;
+					}
 				}
 			}
 
