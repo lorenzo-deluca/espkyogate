@@ -282,7 +282,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 				cmdIncludeZone[14] = cmdIncludeZone[12];
 			}
 			else if (zone_number <= 8){
-				cmdIncludeZone[13] |= 1 << zone_number - 1;
+				cmdIncludeZone[13] |= 1 << (zone_number - 1);
 				cmdIncludeZone[14] = cmdIncludeZone[13];
 			}
 
@@ -317,7 +317,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 				cmdExcludeZone[14] = cmdExcludeZone[8];
 			}
 			else if (zone_number <= 8){
-				cmdExcludeZone[9] |= 1 << zone_number - 1;
+				cmdExcludeZone[9] |= 1 << (zone_number - 1);
 				cmdExcludeZone[14] = cmdExcludeZone[9];
 			}
 
