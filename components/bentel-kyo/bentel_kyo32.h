@@ -465,7 +465,13 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 				// STATO SIRENA
 				StatoZona = ((Rx[10] >> 4) & 1);
 				if (this->logTrace && (StatoZona == 1) != stato_sirena->state)
-					ESP_LOGI("stato_sirena", "Stato Sirena %i", StatoZona);
+					ESP_LOGI("stato_sirena", "Stato Sirena #1 %i", StatoZona);
+
+				StatoZona = ((Rx[10] >> 5) & 1);
+					ESP_LOGI("stato_sirena", "Stato Sirena #2 %i", StatoZona);
+
+				StatoZona = ((Rx[10] >> 6) & 1);
+					ESP_LOGI("stato_sirena", "Stato Sirena #3  %i", StatoZona);
 				
 				stato_sirena->publish_state(StatoZona == 1);
 				
