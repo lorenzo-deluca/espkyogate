@@ -19,10 +19,13 @@ If you like this project you can support me with :coffee: , with **GitHub Sponso
 ### Tested on Kyo Unit
 - [x] Bentel Kyo 32G
 - [x] Bentel Kyo 32
-- [x] Bentel Kyo 8
 - [x] Bentel Kyo 8W
 - [x] Bentel Kyo 8WG
+- [x] Bentel Kyo 8 (*)
+- [x] Bentel Kyo 4 (*)
 - [ ] If you have another Bentel Kyo unit test and let me know :)
+
+**(*) for Kyo 8 (no W or WG) and Kyo 4 you have to use the bentel_kyo.h file!**
 
 ## Contents
 - [Hardware Connections](#hardware-connections)
@@ -116,7 +119,7 @@ See logs with this command
 Make sure you always connect OTA instead of with the serial to USB port becaues it might be disabled due to a [bug](https://github.com/lorenzo-deluca/espkyogate/issues/16).
 
 # Home Assistant Integration
-If everything went well now you should find a new autodiscovered device in Home Assistant, called **Allarme**.
+If everything went well now you should find a new autodiscovered device in Home Assistant, called **Allarm**.
 
 All sensors configured in `espkyogate_configuration.yaml` will be automatically created and associated to the device.
 

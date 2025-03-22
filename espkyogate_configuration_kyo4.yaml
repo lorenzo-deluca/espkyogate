@@ -1,0 +1,265 @@
+esphome:
+  name: espkyogate
+  friendly_name: Allarme
+  comment: Alarm System Serial to HA controller
+  platform: ESP8266
+  board: d1_mini
+  # ESP32 boards alternative directives
+  # platform: ESP32
+  # board: esp32doit-devkit-v1
+  includes:
+    - components/bentel-kyo/bentel_kyo4.h
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO5
+  rx_pin: GPIO4
+  # ESP32 boards alternative directives
+  # tx_pin: GPIO17
+  # rx_pin: GPIO16
+  baud_rate: 9600
+  data_bits: 8
+  parity: EVEN  
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: !secret hotspot_wifi_ssid
+    password: !secret hotspot_wifi_password
+
+captive_portal:
+
+# Enable logging
+logger:
+  level: INFO
+  baud_rate: 0
+  logs:
+    component: ERROR
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  platform: esphome
+  password: !secret ota_password
+  
+switch:
+  - platform: safe_mode
+    name: "ESPKyoGate (Safe Mode)"
+
+binary_sensor:
+  - platform: custom
+    lambda: |-
+      auto kyo4 = new Bentel_Kyo4(id(uart_bus));
+      App.register_component(kyo4);
+      return {
+        kyo4->kyo_comunication,
+        kyo4->stato_sirena,
+        kyo4->warn_mancanza_rete,
+        kyo4->sabotaggio_zona, 
+        kyo4->sabotaggio_sistema,
+        kyo4->warn_scomparsa_bpi,
+        kyo4->warn_fusibile,
+        kyo4->warn_batteria_bassa,
+        kyo4->warn_guasto_linea_telefonica,
+        kyo4->warn_codici_default,
+        kyo4->warn_wireless,
+        kyo4->sabotaggio_bpi,
+        kyo4->sabotaggio_jam,
+        kyo4->sabotaggio_wireless,
+        kyo4->sabotaggio_chiave_falsa,
+
+        &kyo4->zona[0],
+        &kyo4->zona[1],
+        &kyo4->zona[2],
+        &kyo4->zona[3],
+
+        &kyo4->zona_sabotaggio[0],
+        &kyo4->zona_sabotaggio[1],
+        &kyo4->zona_sabotaggio[2],
+        &kyo4->zona_sabotaggio[3],
+
+        &kyo4->zona_esclusa[0],
+        &kyo4->zona_esclusa[1],
+        &kyo4->zona_esclusa[2],
+        &kyo4->zona_esclusa[3],
+
+        &kyo4->memoria_allarme_zona[0],
+        &kyo4->memoria_allarme_zona[1],
+        &kyo4->memoria_allarme_zona[2],
+        &kyo4->memoria_allarme_zona[3],
+
+        &kyo4->memoria_sabotaggio_zona[0],
+        &kyo4->memoria_sabotaggio_zona[1],
+        &kyo4->memoria_sabotaggio_zona[2],
+        &kyo4->memoria_sabotaggio_zona[3],
+
+        &kyo4->allarme_area[0],
+        &kyo4->allarme_area[1],
+        &kyo4->allarme_area[2],
+        &kyo4->allarme_area[3],
+
+        &kyo4->inserimento_totale_area[0],
+        &kyo4->inserimento_totale_area[1],
+        &kyo4->inserimento_totale_area[2],
+        &kyo4->inserimento_totale_area[3],
+
+        &kyo4->inserimento_parziale_area[0],
+        &kyo4->inserimento_parziale_area[1],
+        &kyo4->inserimento_parziale_area[2],
+        &kyo4->inserimento_parziale_area[3],
+
+        &kyo4->inserimento_parziale_ritardo_0_area[0],
+        &kyo4->inserimento_parziale_ritardo_0_area[1],
+        &kyo4->inserimento_parziale_ritardo_0_area[2],
+        &kyo4->inserimento_parziale_ritardo_0_area[3],
+
+        &kyo4->disinserita_area[0],
+        &kyo4->disinserita_area[1],
+        &kyo4->disinserita_area[2],
+        &kyo4->disinserita_area[3],
+
+        &kyo4->stato_uscita[0],
+        &kyo4->stato_uscita[1],
+        &kyo4->stato_uscita[2],
+        &kyo4->stato_uscita[3]
+      };
+    binary_sensors:
+      - id: kyo_comunication
+        name: "Comunicazione Centrale"
+      - id: stato_sirena
+        name: "Stato Sirena"
+      - id: warn_mancanza_rete
+        name: "Mancanza Rete"
+      - id: sabotaggio_zona
+        name: "Sabotaggio Zona"
+      - id: sabotaggio_sistema
+        name: "Sabotaggio Sistema"
+      - id: warn_scomparsa_bpi
+        name: "Scomparsa BPI"
+      - id: warn_fusibile
+        name: "Fusibile"
+      - id: warn_batteria_bassa
+        name: "Batteria Bassa"
+      - id: warn_guasto_linea_telefonica
+        name: "Guasto Linea Telefonica"
+      - id: warn_codici_default
+        name: "Codici Default"
+      - id: warn_wireless
+        name: "Wireless"
+      - id: sabotaggio_bpi
+        name: "Sabotaggio BPI"
+      - id: sabotaggio_jam
+        name: "Sabotaggio Jam"
+      - id: sabotaggio_wireless
+        name: "Sabotaggio wireless"
+      - id: sabotaggio_chiave_falsa
+        name: "Sabotaggio Chiave Falsa"
+
+      - id: zone_1
+        name: "Sensore DT Taverna"
+        device_class: "motion"
+      - id: zone_2
+        name: "Finestra Taverna"
+        device_class: "window"
+      - id: zone_3
+        name: "Sensore DT Garage"
+        device_class: "motion"
+      - id: zone_4
+        name: "Scuretto Finestra Lavanderia"
+        device_class: "window"
+
+      - id: zone_1_tampering
+        name: "Sabot. Sensore DT Taverna"
+      - id: zone_2_tampering
+        name: "Sabot. Finestra Taverna"
+      - id: zone_3_tampering
+        name: "Sabot. Sensore DT Garage"
+      - id: zone_4_tampering
+        name: "Sabot. Scuretto Finestra Lavanderia"
+
+      - id: excluded_zone_1
+        name: "Escl. Sensore DT Taverna"
+      - id: excluded_zone_2
+        name: "Escl. Finestra Taverna"
+      - id: excluded_zone_3
+        name: "Escl. Sensore DT Garage"
+      - id: excluded_zone_4
+        name: "Escl. Scuretto Finestra Lavanderia"
+
+      - id: alarm_memory_zone_1
+        name: "Mem. Allarme Sensore DT Taverna"
+      - id: alarm_memory_zone_2
+        name: "Mem. Allarme Finestra Taverna"
+      - id: alarm_memory_zone_3
+        name: "Mem. Allarme Sensore DT Garage"
+      - id: alarm_memory_zone_4
+        name: "Mem. Allarme Scuretto Finestra Lavanderia"
+
+      - id: sabotage_memory_zone_1
+        name: "Mem. Sabotaggio Sensore DT Taverna"
+      - id: sabotage_memory_zone_2
+        name: "Mem. Sabotaggio Finestra Taverna"
+      - id: sabotage_memory_zone_3
+        name: "Mem. Sabotaggio Sensore DT Garage"
+      - id: sabotage_memory_zone_4
+        name: "Mem. Sabotaggio Scuretto Finestra Lavanderia"
+
+      - id: alarm_area_1
+        name: "Allarme Finestre"
+      - id: alarm_area_2
+        name: "Allarme Area 2"
+      - id: alarm_area_3
+        name: "Allarme Area 3"
+      - id: alarm_area_4
+        name: "Allarme Area Sensori Interni"
+
+      - id: enabled_total_area_1
+        name: "Ins. Totale Finestre"
+      - id: enabled_total_area_2
+        name: "Ins. Totale Porte"
+      - id: enabled_total_area_3
+        name: "Ins. Totale Sensori Giardino"
+      - id: enabled_total_area_4
+        name: "Ins. Totale Sensori Interni"
+
+      - id: enabled_partial_area_1
+        name: "Ins. Parziale Finestre"
+      - id: enabled_partial_area_2
+        name: "Ins. Parziale Porte"
+      - id: enabled_partial_area_3
+        name: "Ins. Parziale Sensori Giardino"
+      - id: enabled_partial_area_4
+        name: "Ins. Parziale Sensori Interni"        
+
+      - id: enabled_partial_delay_0_area_1
+        name: "Ins. Parziale Ritardo 0 Finestre"
+      - id: enabled_partial_delay_0_area_2
+        name: "Ins. Parziale Ritardo 0 Porte"
+      - id: enabled_partial_delay_0_area_3
+        name: "Ins. Parziale Ritardo 0 Sensori Giardino"
+      - id: enabled_partial_delay_0_area_4
+        name: "Ins. Parziale Ritardo 0 Sensori Interni"
+
+      - id: disabled_area_1
+        name: "Disins. Finestre"
+      - id: disabled_area_2
+        name: "Disins. Porte"
+      - id: disabled_area_3
+        name: "Disins. Sensori Giardino"
+      - id: disabled_area_4
+        name: "Disins. Sensori Interni"
+
+      - id: exit_status_1
+        name: "Stato Uscita 1"
+      - id: exit_status_2
+        name: "Stato Uscita 2"
+      - id: exit_status_3
+        name: "Stato Uscita 3"
+      - id: exit_status_4
+        name: "Stato Uscita 4"

@@ -13,16 +13,15 @@
 #include <sstream>
 #include "esphome.h"
 
-#define KYO_MAX_ZONE 32
-#define KYO_MAX_ZONE_8 8
+#define KYO_MAX_ZONE 8
 #define KYO_MAX_AREE 8
 #define KYO_MAX_USCITE 8
 
 #define UPDATE_INT_MS 500
 
-class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, public api::CustomAPIDevice {
+class Bentel_Kyo4 : public esphome::PollingComponent, public uart::UARTDevice, public api::CustomAPIDevice {
 	public:
-		Bentel_Kyo32(UARTComponent *parent) : UARTDevice(parent) {}
+		Bentel_Kyo4(UARTComponent *parent) : UARTDevice(parent) {}
 		
 		BinarySensor *kyo_comunication = new BinarySensor();
 
@@ -63,17 +62,17 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
  			set_update_interval(UPDATE_INT_MS);
             set_setup_priority(setup_priority::AFTER_CONNECTION);
 
-			register_service(&Bentel_Kyo32::arm_area, "arm_area", {"area", "arm_type", "specific_area"});
-			register_service(&Bentel_Kyo32::disarm_area, "disarm_area", {"area", "specific_area"});
-			register_service(&Bentel_Kyo32::reset_alarms, "reset_alarms");
-			register_service(&Bentel_Kyo32::activate_output, "activate_output", {"output_number"});
-			register_service(&Bentel_Kyo32::deactivate_output, "deactivate_output", {"output_number"});
-			register_service(&Bentel_Kyo32::pulse_output, "pulse_output", {"output_number", "pulse_time"});
-			register_service(&Bentel_Kyo32::debug_command, "debug_command", {"serial_trace", "log_trace", "polling_kyo"});
-			register_service(&Bentel_Kyo32::update_datetime, "update_datetime", {"day", "month", "year", "hours", "minutes", "seconds"});
+			register_service(&Bentel_Kyo4::arm_area, "arm_area", {"area", "arm_type", "specific_area"});
+			register_service(&Bentel_Kyo4::disarm_area, "disarm_area", {"area", "specific_area"});
+			register_service(&Bentel_Kyo4::reset_alarms, "reset_alarms");
+			register_service(&Bentel_Kyo4::activate_output, "activate_output", {"output_number"});
+			register_service(&Bentel_Kyo4::deactivate_output, "deactivate_output", {"output_number"});
+			register_service(&Bentel_Kyo4::pulse_output, "pulse_output", {"output_number", "pulse_time"});
+			register_service(&Bentel_Kyo4::debug_command, "debug_command", {"serial_trace", "log_trace", "polling_kyo"});
+			register_service(&Bentel_Kyo4::update_datetime, "update_datetime", {"day", "month", "year", "hours", "minutes", "seconds"});
 
-			register_service(&Bentel_Kyo32::include_zone, "include_zone", {"zone_number"});
-			register_service(&Bentel_Kyo32::exclude_zone, "exclude_zone", {"zone_number"});
+			register_service(&Bentel_Kyo4::include_zone, "include_zone", {"zone_number"});
+			register_service(&Bentel_Kyo4::exclude_zone, "exclude_zone", {"zone_number"});
 
 			pollingState = PollingStateEnum::Init;
 			kyo_comunication->publish_state(false);
@@ -212,7 +211,6 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			ESP_LOGD("deactivate_output", "kyo respond %i", Count);
 		}
 
-
 		void pulse_output(int output_number, int pulse_time)
 		{
 			if (output_number > KYO_MAX_USCITE)
@@ -228,7 +226,6 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			
 			ESP_LOGD("pulse_output", "end");
 		}
-
 
 		void update_datetime(int day, int month, int year, int hours, int minutes, int seconds)
 		{
@@ -393,17 +390,14 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 		bool polling_kyo = true;
 		int centralInvalidMessageCount = 0;
 		int MaxZone = KYO_MAX_ZONE;
+		bool IsKyo4or8 = false;
 
 		bool update_kyo_partitions()
 		{
 			byte Rx[255];
 			int Count = 0;
 
-			if (alarmModel == AlarmModel::KYO_8)
-				Count = sendMessageToKyo(cmdGetPartitionStatus_Kyo8, sizeof(cmdGetPartitionStatus_Kyo8), Rx, 100);
-			else
-				Count = sendMessageToKyo(cmdGetPartitionStatus, sizeof(cmdGetPartitionStatus), Rx, 100);
-
+			Count = sendMessageToKyo(cmdGetPartitionStatus_Kyo8, sizeof(cmdGetPartitionStatus_Kyo8), Rx, 100);
 			if (Count != 26 && Count != 17)
 			{
 				if (this->logTrace)
@@ -455,102 +449,45 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 
 				disinserita_area[i].publish_state(StatoZona == 1);
 			}
-
+			
 			// STATO SIRENA
-			StatoZona = ((Rx[10] >> 5) & 1);
+			StatoZona = ((Rx[10] >> 4) & 1);
 			if (this->logTrace && (StatoZona == 1) != stato_sirena->state)
-				ESP_LOGI("stato_sirena", "Stato %i", StatoZona);
+				ESP_LOGI("stato_sirena", "Stato Sirena #1 %i", StatoZona);
+
 			stato_sirena->publish_state(StatoZona == 1);
 			
-			if (alarmModel == AlarmModel::KYO_32G)
+			// CICLO STATO USCITE
+			for (i = 0; i < 4; i++)
 			{
-				// CICLO STATO USCITE
-				for (i = 0; i < KYO_MAX_USCITE; i++)
-				{
-					StatoZona = (Rx[12] >> i) & 1;
-					if (this->logTrace && (StatoZona == 1) != stato_uscita[i].state)
-						ESP_LOGI("stato_uscita", "Uscita %i - Stato %i", i, StatoZona);
+				StatoZona = (Rx[10] >> i) & 1;
+				if (this->logTrace && (StatoZona == 1) != stato_uscita[i].state)
+					ESP_LOGI("stato_uscita", "Uscita %i - Stato %i", i, StatoZona);
 
-					stato_uscita[i].publish_state(StatoZona == 1);
-				}
+				stato_uscita[i].publish_state(StatoZona == 1);
 			}
-
+		
 			// CICLO ZONE ESCLUSE
 			for (i = 0; i < MaxZone; i++)
 			{
-				StatoZona = 0;
-				if (alarmModel == AlarmModel::KYO_8)
-				{
-					StatoZona = (Rx[11] >> i) & 1;	
-				}
-				else
-				{
-					if (i >= 24)
-						StatoZona = (Rx[13] >> (i - 24)) & 1;
-					else if (i >= 16 && i <= 23)
-						StatoZona = (Rx[14] >> (i - 16)) & 1;
-					else if (i >= 8 && i <= 15)
-						StatoZona = (Rx[15] >> (i - 8)) & 1;
-					else if (i <= 7)
-						StatoZona = (Rx[16] >> i) & 1;	
-				}
-				
+				StatoZona = (Rx[11] >> i) & 1;	
 				zona_esclusa[i].publish_state(StatoZona == 1);
-				if (StatoZona == 1)
-					this->PartitionStatusInternal[i] = PartitionStatusEnum::Exclude;
 			}
 
 			// CICLO MEMORIA ALLARME ZONE
 			for (i = 0; i < MaxZone; i++)
 			{
-				StatoZona = 0;
-				if (alarmModel == AlarmModel::KYO_8)
-				{
-					StatoZona = (Rx[12] >> i) & 1;	
-				}
-				else
-				{
-					if (i >= 24)
-						StatoZona = (Rx[17] >> (i - 24)) & 1;
-					else if (i >= 16 && i <= 23)
-						StatoZona = (Rx[18] >> (i - 16)) & 1;
-					else if (i >= 8 && i <= 15)
-						StatoZona = (Rx[19] >> (i - 8)) & 1;
-					else if (i <= 7)
-						StatoZona = (Rx[20] >> i) & 1;
-				}
-				
+				StatoZona = (Rx[12] >> i) & 1;	
 				memoria_allarme_zona[i].publish_state(StatoZona == 1);
-				if (StatoZona == 1)
-					this->PartitionStatusInternal[i] = PartitionStatusEnum::MemAlarm;
 			}
 
 			// CICLO MEMORIA SABOTAGGIO ZONE
 			for (i = 0; i < MaxZone; i++)
 			{
-				StatoZona = 0;
-				
-				if (alarmModel == AlarmModel::KYO_8)
-				{
-					StatoZona = (Rx[13] >> i) & 1;	
-				}
-				else
-				{
-					if (i >= 24)
-						StatoZona = (Rx[21] >> (i - 24)) & 1;
-					else if (i >= 16 && i <= 23)
-						StatoZona = (Rx[22] >> (i - 16)) & 1;
-					else if (i >= 8 && i <= 15)
-						StatoZona = (Rx[23] >> (i - 8)) & 1;
-					else if (i <= 7)
-						StatoZona = (Rx[24] >> i) & 1;
-				}
-
+				StatoZona = (Rx[13] >> i) & 1;	
 				memoria_sabotaggio_zona[i].publish_state(StatoZona == 1);
-				if (StatoZona == 1)
-					this->PartitionStatusInternal[i] = PartitionStatusEnum::MemSabotate;
 			}
-			
+		
 			return true;
 		}
 
@@ -562,13 +499,9 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			Count = sendMessageToKyo(cmdGetSensorStatus, sizeof(cmdGetSensorStatus), Rx, 100);
 			switch(Count)
 			{
-				case 18: // Kyo 32G (default)
-					MaxZone = KYO_MAX_ZONE;
-					alarmModel = AlarmModel::KYO_32G;
-					break;
 				case 12: // Kyo 8 and Kyo 4
-					MaxZone = KYO_MAX_ZONE_8;
-					alarmModel = AlarmModel::KYO_8;
+					MaxZone = KYO_MAX_ZONE;
+					alarmModel = AlarmModel::KYO_4;
 					break;
 					
 			default:
@@ -583,23 +516,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			// Ciclo ZONE
 			for (i = 0; i < MaxZone; i++)
 			{
-				StatoZona = 0;
-				if (alarmModel == AlarmModel::KYO_8)
-                {
-                    StatoZona = (Rx[6] >> i) & 1;
-                }
-                else
-                {
-					if (i >= 24)
-						StatoZona = (Rx[6] >> (i - 24)) & 1;
-					else if (i >= 16 && i <= 23)
-						StatoZona = (Rx[7] >> (i - 16)) & 1;
-					else if (i >= 8 && i <= 15)
-						StatoZona = (Rx[8] >> (i - 8)) & 1;
-					else if (i <= 7)
-						StatoZona = (Rx[9] >> i) & 1;
-				}
-
+				StatoZona = (Rx[6] >> i) & 1;
 				if (this->logTrace && (StatoZona == 1) != zona[i].state)	
 					ESP_LOGI("stato_zona", "Zona %i - Stato %i", i, StatoZona);
 
@@ -609,164 +526,73 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			// Ciclo SABOTAGGIO ZONE
 			for (i = 0; i < MaxZone; i++)
 			{
-				StatoZona = 0;
-				if (alarmModel == AlarmModel::KYO_8)
-                {
-                    StatoZona = (Rx[7] >> i) & 1;
-                }
-                else
-                {
-					if (i >= 24)
-						StatoZona = (Rx[10] >> (i - 24)) & 1;
-					else if (i >= 16 && i <= 23)
-						StatoZona = (Rx[11] >> (i - 16)) & 1;
-					else if (i >= 8 && i <= 15)
-						StatoZona = (Rx[12] >> (i - 8)) & 1;
-					else if (i <= 7)
-						StatoZona = (Rx[13] >> i) & 1;
-				}
-
+				StatoZona = (Rx[7] >> i) & 1;               
 				zona_sabotaggio[i].publish_state(StatoZona == 1);
 			}
 
 			// Ciclo ALLARME AREA
 			for (i = 0; i < KYO_MAX_AREE; i++)
 			{
-				if (alarmModel == AlarmModel::KYO_8)
-                    StatoZona = (Rx[9] >> i) & 1;
-                else
-					StatoZona = (Rx[15] >> i) & 1;
-
+				StatoZona = (Rx[9] >> i) & 1;
 				allarme_area[i].publish_state(StatoZona == 1);
 			}
 
 			// Ciclo WARNINGS
 			for (i = 0; i < 8; i++)
 			{
-				if (alarmModel == AlarmModel::KYO_8) 
+				StatoZona = (Rx[8] >> i) & 1;
+				// ciclo su bit di warning
+				switch(i)
 				{
-					StatoZona = (Rx[8] >> i) & 1;
-					// ciclo su bit di warning
-					switch(i)
-					{
-						case 0:
-							warn_mancanza_rete->publish_state(StatoZona == 1);
-							break;
+					case 0:
+						warn_mancanza_rete->publish_state(StatoZona == 1);
+						break;
 
-						case 1:
-							warn_scomparsa_bpi->publish_state(StatoZona == 1);
-							break;
+					case 1:
+						warn_scomparsa_bpi->publish_state(StatoZona == 1);
+						break;
 
-						case 2:
-							warn_fusibile->publish_state(StatoZona == 1);
-							break;
+					case 2:
+						warn_fusibile->publish_state(StatoZona == 1);
+						break;
 
-						case 3:
-							warn_batteria_bassa->publish_state(StatoZona == 1);
-							break;
+					case 3:
+						warn_batteria_bassa->publish_state(StatoZona == 1);
+						break;
 
-						case 5:
-							warn_guasto_linea_telefonica->publish_state(StatoZona == 1);
-							break;
+					case 5:
+						warn_guasto_linea_telefonica->publish_state(StatoZona == 1);
+						break;
 
-						case 6:
-							warn_codici_default->publish_state(StatoZona == 1);
-							break;
-					}
-				}
-				else
-				{
-					StatoZona = (Rx[14] >> i) & 1;
-
-					// ciclo su bit di warning
-					switch(i)
-					{
-						case 0:
-							warn_mancanza_rete->publish_state(StatoZona == 1);
-							break;
-
-						case 1:
-							warn_scomparsa_bpi->publish_state(StatoZona == 1);
-							break;
-
-						case 2:
-							warn_fusibile->publish_state(StatoZona == 1);
-							break;
-
-						case 3:
-							warn_batteria_bassa->publish_state(StatoZona == 1);
-							break;
-
-						case 4:
-							warn_guasto_linea_telefonica->publish_state(StatoZona == 1);
-							break;
-
-						case 5:
-							warn_codici_default->publish_state(StatoZona == 1);
-							break;
-
-						case 6:
-							warn_wireless->publish_state(StatoZona == 1);
-							break;
-					}
+					case 6:
+						warn_codici_default->publish_state(StatoZona == 1);
+						break;
 				}
 			}
 
 			// Ciclo SABOTAGGI
 			for (i = 0; i < 8; i++)
 			{
-				if (alarmModel == AlarmModel::KYO_8)
+				StatoZona = (Rx[10] >> i) & 1;
+				switch(i)
 				{
-					StatoZona = (Rx[10] >> i) & 1;
-					switch(i)
-					{
-						case 4:
-							sabotaggio_zona->publish_state(StatoZona == 1);
-							break;
+					case 4:
+						sabotaggio_zona->publish_state(StatoZona == 1);
+						break;
 
-						case 5:
-							sabotaggio_chiave_falsa->publish_state(StatoZona == 1);
-							break;
+					case 5:
+						sabotaggio_chiave_falsa->publish_state(StatoZona == 1);
+						break;
 
-						case 6:
-							sabotaggio_bpi->publish_state(StatoZona == 1);
-							break;
+					case 6:
+						sabotaggio_bpi->publish_state(StatoZona == 1);
+						break;
 
-						case 7:
-							sabotaggio_sistema->publish_state(StatoZona == 1);
-							break;
-					}
+					case 7:
+						sabotaggio_sistema->publish_state(StatoZona == 1);
+						break;
 				}
-				else
-				{
-					StatoZona = (Rx[16] >> i) & 1;
-					switch(i)
-					{
-						case 2:
-							sabotaggio_zona->publish_state(StatoZona == 1);
-							break;
-
-						case 3:
-							sabotaggio_chiave_falsa->publish_state(StatoZona == 1);
-							break;
-
-						case 4:
-							sabotaggio_bpi->publish_state(StatoZona == 1);
-							break;
-
-						case 5:
-							sabotaggio_sistema->publish_state(StatoZona == 1);
-							break;
-						
-						case 6:
-							sabotaggio_jam->publish_state(StatoZona == 1);
-							break;
-
-						case 7:
-							sabotaggio_wireless->publish_state(StatoZona == 1);
-							break;
-					}
-				}
+			
 			}
 
 			return true;
