@@ -25,7 +25,8 @@ If you like this project you can support me with :coffee: , with **GitHub Sponso
 - [x] Bentel Kyo 4 (*)
 - [ ] If you have another Bentel Kyo unit test and let me know :)
 
-**(*) for Kyo 8 (no W or WG) and Kyo 4 you have to use the bentel_kyo.h file!**
+**(*)**
+For **Kyo 8** (no W or WG) and **Kyo 4** you have to use the **bentel_kyo4.h** file and **espkyogate_configuration_kyo4.yaml** configuration!
 
 ## Contents
 - [Hardware Connections](#hardware-connections)
