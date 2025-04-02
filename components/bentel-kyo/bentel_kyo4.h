@@ -451,7 +451,7 @@ class Bentel_Kyo4 : public esphome::PollingComponent, public uart::UARTDevice, p
 			}
 			
 			// STATO SIRENA
-			StatoZona = ((Rx[10] >> 4) & 1);
+			StatoZona = ((Rx[10] >> 5) & 1);
 			if (this->logTrace && (StatoZona == 1) != stato_sirena->state)
 				ESP_LOGI("stato_sirena", "Stato Sirena #1 %i", StatoZona);
 
