@@ -36,11 +36,7 @@ For **Kyo 8** (no W or WG) and **Kyo 4** you have to use the **bentel_kyo4.h** f
 - [Troubleshooting - FAQ](#troubleshooting-faq)
 
 ## Hardware Connections
-I strongly recommend using an **WeMos D1 Mini** (https://it.aliexpress.com/item/32651747570.html) but any board based on ESP8266 should be fine. 
-
-<img src="images/wiring.png" alt="ESP-Wiring"/>
-
-If you encounter disconnections, you might want to try a more powerful one based on the **ESP32** instead, like this one https://it.aliexpress.com/item/4001340660273.html.
+I strongly recommend using an **ESP32** Based board (https://it.aliexpress.com/item/32651747570.html), like this one https://it.aliexpress.com/item/4001340660273.html.
 
 <img src="images/wiring_esp32.png" alt="ESP32-Wiring"/>
 
