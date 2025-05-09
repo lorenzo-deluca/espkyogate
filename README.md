@@ -38,7 +38,7 @@ For **Kyo 8** (no W or WG) and **Kyo 4** you have to use the **bentel_kyo4.h** f
 ## Hardware Connections
 I strongly recommend using an **ESP32** Based board (https://it.aliexpress.com/item/32651747570.html), like this one https://it.aliexpress.com/item/4001340660273.html.
 
-<img src="images/wiring_esp32.png" alt="ESP32-Wiring"/>
+<img src="images/wiring_esp32.png" alt="ESP32-Wiring" width="450px"/>
 
 In order to connect to the serial port of the KYO Unit I recommend a connector based on [**MAX3232**](https://it.aliexpress.com/item/696400942.html) module chip with DB9 connector.
 This connector should be connected to the classic **TX/RX of the ESP board** and to the power supply (GND, 5V) on WeMos.
