@@ -43,7 +43,7 @@ I strongly recommend using an **ESP32** Based board (https://it.aliexpress.com/i
 In order to connect to the serial port of the KYO Unit I recommend a connector based on [**MAX3232**](https://it.aliexpress.com/item/696400942.html) module chip with DB9 connector.
 This connector should be connected to the classic **TX/RX of the ESP board** and to the power supply (GND, 5V) on WeMos.
 
-<img src="images/BentelKyo32Unit.jpg" alt="Central-Connections"/>
+<img src="images/BentelKyo32Unit.jpg" alt="Central-Connections" width="350px"/>
 
 The WeMos can be powered with USB directly from the 12V output of the control unit (the +/- pins on the lower left, powering the sensors) by connecting any 12V->USB converter.
 Like this one: 
