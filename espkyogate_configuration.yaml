@@ -7,7 +7,7 @@ external_components:
 esp8266:
   board: d1_mini
 # ESP32 boards alternative directives
-# platform: ESP32
+#esp32:
 # board: esp32doit-devkit-v1
 
 esphome:
@@ -270,3 +270,26 @@ binary_sensor:
         name: "Stato Uscita 3"
       - id: exit_status_4
         name: "Stato Uscita 4"
+
+sensor:
+  - platform: uptime
+    name: "Uptime"
+
+  #Availabe on esp32 and not on 8266
+  #- platform: internal_temperature
+  #  name: "Internal Temperature"
+
+  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
+    name: "WiFi Signal dB"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+  - platform: copy # Reports the WiFi signal strength in %
+    source_id: wifi_signal_db
+    name: "WiFi Signal Percent"
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "Signal %"
+    entity_category: "diagnostic"
+    device_class: ""
