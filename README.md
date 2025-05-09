@@ -53,7 +53,7 @@ Which I recommend because in this way, even in case of power failure, the ESP is
 For connecting the power supply to the control unit I recommend taking the power supply from the terminal for auxiliary devices (+B/AUX).
 Negative/common can be taken from any negative.
 
-<img src="images/KyoManual_Connections.png" alt="KyoManual-Connections" height="400"/>
+<img src="images/KyoManual_Connections.png" alt="KyoManual-Connections" height="600"/>
 
 **ESP32 boards:** All the hardware setup instructions applies to ESP32 boards, as well.
 
