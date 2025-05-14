@@ -16,6 +16,8 @@ esphome:
   comment: Alarm System Serial to HA controller  
   includes:
     - components/bentel-kyo/bentel_kyo32.h
+  platformio_options:
+    board_build.f_cpu: 160000000L
 
 uart:
   id: uart_bus
