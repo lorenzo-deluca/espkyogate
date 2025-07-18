@@ -41,6 +41,7 @@ logger:
 
 # Enable Home Assistant API
 api:
+  custom_services: true
   encryption:
     key: !secret api_encryption_key
 
