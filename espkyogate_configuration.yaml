@@ -1,14 +1,23 @@
+# espkyogate - ESPHome custom component for Bentel KYO alarms (https://github.com/lorenzo-deluca/espkyogate)
+# 2025 Lorenzo De Luca (me@lorenzodeluca.dev)
+# Example YAML for Bentel Kyo32-32G-8W-8WG
+
 external_components:
   - source:
       type: git
       url: https://github.com/robertklep/esphome-custom-component
     components: [ custom, custom_component ]
 
-esp8266:
-  board: d1_mini
+# Depending of board type
+# (esp8266)
+#esp8266:
+#  board: d1_mini
+
 # ESP32 boards alternative directives
-#esp32:
-# board: esp32doit-devkit-v1
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
 
 esphome:
   name: espkyogate
@@ -33,6 +42,7 @@ uart:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+  power_save_mode: none
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
