@@ -1,14 +1,32 @@
+# espkyogate - ESPHome custom component for Bentel KYO alarms (https://github.com/lorenzo-deluca/espkyogate)
+# 2025 Lorenzo De Luca (me@lorenzodeluca.dev)
+# Example YAML for Bentel Kyo4-8
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/robertklep/esphome-custom-component
+    components: [ custom, custom_component ]
+
+# Depending of board type
+# (esp8266)
+#esp8266:
+#  board: d1_mini
+
+# ESP32 boards alternative directives
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    
 esphome:
   name: espkyogate
   friendly_name: Allarme
   comment: Alarm System Serial to HA controller
-  platform: ESP8266
-  board: d1_mini
-  # ESP32 boards alternative directives
-  # platform: ESP32
-  # board: esp32doit-devkit-v1
   includes:
     - components/bentel-kyo/bentel_kyo4.h
+  platformio_options:
+    board_build.f_cpu: 160000000L
 
 uart:
   id: uart_bus
