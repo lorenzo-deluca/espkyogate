@@ -12,6 +12,7 @@
 
 #include <sstream>
 #include "esphome.h"
+#define byte uint8_t
 
 #define KYO_MAX_ZONE 8
 #define KYO_MAX_AREE 8
