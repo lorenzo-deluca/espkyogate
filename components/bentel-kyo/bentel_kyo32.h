@@ -82,8 +82,12 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 
 		// ========================================= 
 		// START COMMANDS 
+		
+		void arm_area(float area, float arm_type, float specific_area){
+			return _int_arm_area((int)area, (int)arm_type, (int)specific_area);
+		}
 
-		void arm_area(int area, int arm_type, int specific_area)
+		void _int_arm_area(int area, int arm_type, int specific_area)
 		{
 			if (area > KYO_MAX_AREE)
 			{
@@ -119,8 +123,10 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			ESP_LOGD("arm_area", "arm_area kyo respond %i", Count);
 		}
 
-		void disarm_area(int area, int specific_area)
-		{
+		void disarm_area(float area, float specific_area){
+			return _int_disarm_area((int)area, (int)specific_area);
+		}	
+		void _int_disarm_area(int area, int specific_area){
 			if (area > KYO_MAX_AREE)
 			{
 				ESP_LOGE("disarm_area", "invalid area %i, MAX %i", area, KYO_MAX_AREE);
@@ -164,7 +170,11 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			ESP_LOGE("reset_alarms", "kyo respond %i", Count);
 		}
 
-		void debug_command(int serial_trace, int log_trace, int polling_kyo)
+		void debug_command(float serial_trace, float log_trace, float polling_kyo){
+			return _int_debug_command((int)serial_trace, (int)log_trace, (int)polling_kyo);
+		}
+			
+		void _int_debug_command(int serial_trace, int log_trace, int polling_kyo)
 		{
 			this->serialTrace = (serial_trace == 1);
 			this->logTrace = (log_trace == 1);
@@ -173,7 +183,11 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			ESP_LOGI("debug_command", "serial_trace %i log_trace %i polling_kyo %i ", this->serialTrace, this->logTrace, this->polling_kyo);
 		}
 
-		void activate_output(int output_number)
+		void activate_output(float output_number) {
+			return _int_activate_output((int)output_number);
+		}
+		
+		void _int_activate_output(int output_number)
 		{
 			if (output_number > KYO_MAX_USCITE)
 			{
@@ -193,7 +207,10 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			ESP_LOGD("activate_output", "kyo respond %i", Count);
 		}
 
-		void deactivate_output(int output_number)
+		void deactivate_output(float output_number) {
+			return _int_deactivate_output((int)output_number);
+		}
+		void _int_deactivate_output(int output_number)
 		{
 			if (output_number > KYO_MAX_USCITE)
 			{
@@ -213,8 +230,10 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			ESP_LOGD("deactivate_output", "kyo respond %i", Count);
 		}
 
-
-		void pulse_output(int output_number, int pulse_time)
+		void pulse_output(float output_number, float pulse_time){
+			return _int_pulse_output((int)output_number, (int)pulse_time);
+		}
+		void _int_pulse_output(int output_number, int pulse_time)
 		{
 			if (output_number > KYO_MAX_USCITE)
 			{
@@ -229,9 +248,11 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			
 			ESP_LOGD("pulse_output", "end");
 		}
-
-
-		void update_datetime(int day, int month, int year, int hours, int minutes, int seconds)
+		
+		void update_datetime(float day, float month, float year, float hours, float minutes, float seconds){
+			return _int_update_datetime((int)day, (int)month, (int)year, (int)hours, (int)minutes, (int)seconds);
+		}
+		void _int_update_datetime(int day, int month, int year, int hours, int minutes, int seconds)
 		{
 			if (day <= 0 || day > 31 || month <= 0 || month > 12 || year < 2000 || year > 2099 ||
 				minutes < 0 || minutes > 59 || seconds < 0 ||  seconds > 59)
@@ -257,7 +278,10 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			ESP_LOGD("update_datetime", "kyo respond %i", Count);
 		}
 
-		void include_zone(int zone_number)
+		void include_zone(float zone_number) {
+			return _int_include_zone((int)zone_number);
+		}
+		void _int_include_zone(int zone_number)
 		{
 			if (zone_number > KYO_MAX_ZONE)
 			{
@@ -292,7 +316,10 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			ESP_LOGD("include_zone", "kyo respond %i", Count);
 		}
 
-		void exclude_zone(int zone_number)
+		void exclude_zone(float zone_number) {
+			return _int_exclude_zone((int)zone_number);
+		}
+		void _int_exclude_zone(int zone_number)
 		{
 			if (zone_number > KYO_MAX_ZONE)
 			{
