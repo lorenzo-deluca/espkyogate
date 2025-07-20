@@ -125,7 +125,7 @@ class Bentel_Kyo4 : public esphome::PollingComponent, public uart::UARTDevice, p
 		void disarm_area(float area, float specific_area){
 			return _int_disarm_area((int)area, (int)specific_area);
 		}	
-		void _int_disarm_area(int area, int specific_area){
+		void _int_disarm_area(int area, int specific_area)
 		{
 			if (area > KYO_MAX_AREE)
 			{
