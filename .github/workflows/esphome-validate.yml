@@ -1,0 +1,67 @@
+name: ESPHome Config Validation
+
+on:
+  push:
+    branches:
+      - master
+  release:
+    types:
+      - published
+
+jobs:
+  validate-kyo32:
+    name: Validate KYO32 (Stable)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install ESPHome (stable)
+        run: pip install --upgrade esphome
+      - name: Compile espkyogate_configuration.yaml
+        run: esphome compile espkyogate_configuration.yaml
+
+  validate-kyo4:
+    name: Validate KYO4 (Stable)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install ESPHome (stable)
+        run: pip install --upgrade esphome
+      - name: Compile espkyogate_configuration_kyo4.yaml
+        run: esphome compile espkyogate_configuration_kyo4.yaml
+
+  validate-kyo32-beta:
+    name: Validate KYO32 (Beta)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install ESPHome (beta)
+        run: pip install --upgrade --pre esphome
+      - name: Compile espkyogate_configuration.yaml
+        run: esphome compile espkyogate_configuration.yaml
+
+  validate-kyo4-beta:
+    name: Validate KYO4 (Beta)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install ESPHome (beta)
+        run: pip install --upgrade --pre esphome
+      - name: Compile espkyogate_configuration_kyo4.yaml
+        run: esphome compile espkyogate_configuration_kyo4.yaml
+
