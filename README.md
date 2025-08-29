@@ -2,7 +2,7 @@
 [![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/lorenzo-deluca)
 [![buy me a coffee](https://img.shields.io/badge/support-buymeacoffee-222222.svg?style=flat-square)](https://www.buymeacoffee.com/lorenzodeluca)
 
-Serial Bridge for **Bentel Kyo32G Alarm Central**, based on **ESP8266** Board and **ESPHome** Open Source Firmware.
+Serial Bridge for **Bentel Kyo32G Alarm Central**, based on **ESP32** Board and **ESPHome** Open Source Firmware.
 Thanks to @dario81 for initial porting to ESPHome and to @lcavalli for code refactor inspiration ;)
 
 If you like this project you can support me with :coffee: , with **GitHub Sponsor** or simply put a :star: to this repository :blush:
@@ -36,16 +36,16 @@ For **Kyo 8** (no W or WG) and **Kyo 4** you have to use the **bentel_kyo4.h** f
 - [Troubleshooting - FAQ](#troubleshooting-faq)
 
 ## Hardware Connections
-I strongly recommend using an **ESP32** Based board (https://it.aliexpress.com/item/32651747570.html), like this one https://it.aliexpress.com/item/4001340660273.html.
+I strongly recommend using an **ESP32** Based board, like this one https://it.aliexpress.com/item/4001340660273.html.
 
 <img src="images/wiring_esp32.png" alt="ESP32-Wiring" width="450px"/>
 
 In order to connect to the serial port of the KYO Unit I recommend a connector based on [**MAX3232**](https://it.aliexpress.com/item/696400942.html) module chip with DB9 connector.
-This connector should be connected to the classic **TX/RX of the ESP board** and to the power supply (GND, 5V) on WeMos.
+This connector should be connected to the classic **TX/RX of the ESP board** and to the power supply (GND, 5V) of the ESP32 board.
 
 <img src="images/BentelKyo32Unit.jpg" alt="Central-Connections" width="650px"/>
 
-The WeMos can be powered with USB directly from the 12V output of the control unit (the +/- pins on the lower left, powering the sensors) by connecting any 12V->USB converter.
+The ESP32 board can be powered with USB directly from the 12V output of the control unit (the +/- pins on the lower left, powering the sensors) by connecting any 12V->USB converter.
 Like this one: 
 https://www.amazon.it/FTVOGUE-Regolatore-Trasformatore-Caricabatterie-smartphone/dp/B07NQKBRG1/
 
@@ -55,12 +55,10 @@ Negative/common can be taken from any negative.
 
 <img src="images/KyoManual_Connections.png" alt="KyoManual-Connections" height="600"/>
 
-**ESP32 boards:** All the hardware setup instructions applies to ESP32 boards, as well.
-
 ## ESPHome Preparation
 I suggest using the file `espkyogate_configuration.yaml` as a template and put your customizations there.
 
-* Set `esphome` and `uart` settings depending on the board you use; example file is for Wemos D1 mini with included, commented settings for ESP32 Devkit 1 board
+* Set `esphome` and `uart` settings depending on the board you use; example file is for ESP32 Devkit 1 board with included, commented settings for the older Wemos D1 mini
 * Set `name`, `friendly_name` (how it will be presented in HA).
 * Edit `binary_sensors` to configure how you want to present the sensors to Home Assistant.
   * All inputs have to be declared in both `lambda` and `binary_sensors`. Add only the ones you need to minimize overhead and complexity.
