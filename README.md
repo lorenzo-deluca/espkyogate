@@ -16,6 +16,21 @@ If you like this project you can support me with :coffee: , with **GitHub Sponso
 > :warning: This software was developed by analyzing serial messages from/to central, it was not sponsored or officially supported by **Bentel**
 > If someone from **Bentel** would like to contribute or collaborate please contact me at [me@lorenzodeluca.dev](mailto:me@lorenzodeluca.dev?subject=[GitHub]ESPKyoGate)
 
+
+---
+> <div align="center" style="background-color: #fffbe6; border: 2px solid #ffd166; border-radius: 10px; padding: 1.2em; margin-bottom: 2em;">
+> <h2>⚠️ IMPORTANT DISCLAIMER — ESPHome 2025.7.0 and Above ⚠️</h2>
+>
+> 🚨 **From ESPHome version 2025.7.0 onwards, you may encounter compilation errors if you do not strictly follow all instructions and workarounds provided in this README and in the example YAML configuration.**
+>
+> - 🛠️ **Be sure to adapt your configuration by following the provided YAML file instructions.**
+> - 📄 **Carefully read and implement every step for a successful compilation and operation.**
+> - ❗ Any issues resulting from not following these steps will not be handled as bugs by the project maintainer.
+>
+> If you have trouble, please refer to the **Troubleshooting** section before opening new issues.
+> </div>
+---
+
 ### Tested on Kyo Unit
 - [x] Bentel Kyo 32G
 - [x] Bentel Kyo 32
@@ -26,31 +41,36 @@ If you like this project you can support me with :coffee: , with **GitHub Sponso
 - [ ] If you have another Bentel Kyo unit test and let me know :)
 
 **(*)**
-For **Kyo 8** (no W or WG) and **Kyo 4** you have to use the **bentel_kyo4.h** file and **espkyogate_configuration_kyo4.yaml** configuration!
+For **Kyo 8** (no W or WG) and **Kyo 4** you have to use the **bentel_kyo4.h** file and **espkyogate_configuration_kyo4.yaml** for configuration reference!
 
 ## Contents
+- [Community Forum & Support](#community-forum--support)
 - [Hardware Connections](#hardware-connections)
 - [ESPHome Preparation](#esphome-preparation)
 - [Build and Upload Firmware](#build-and-upload-firmware)
 - [Home Assistant Integration](#home-assistant-integration)
 - [Troubleshooting - FAQ](#troubleshooting-faq)
 
+## Community Forum & Support
+For discussions, questions, and community support, you can join the conversation on the official Home Assistant Community forum.\
+➡️ [**Join the discussion here: Bentel KYO32 Alarm System Integration**](https://community.home-assistant.io/t/bentel-kyo32-alarm-system-integration)
+
 ## Hardware Connections
 I strongly recommend using an **ESP32** Based board, like this one https://it.aliexpress.com/item/4001340660273.html.
 
 <img src="images/wiring_esp32.png" alt="ESP32-Wiring" width="450px"/>
 
-In order to connect to the serial port of the KYO Unit I recommend a connector based on [**MAX3232**](https://it.aliexpress.com/item/696400942.html) module chip with DB9 connector.
+In order to connect to the serial port of the KYO Unit I recommend a connector based on [**MAX3232**](https://it.aliexpress.com/item/696400942.html) module chip with DB9 connector.\
 This connector should be connected to the classic **TX/RX of the ESP board** and to the power supply (GND, 5V) of the ESP32 board.
 
 <img src="images/BentelKyo32Unit.jpg" alt="Central-Connections" width="650px"/>
 
-The ESP32 board can be powered with USB directly from the 12V output of the control unit (the +/- pins on the lower left, powering the sensors) by connecting any 12V->USB converter.
+The ESP32 board can be powered with USB directly from the 12V output of the control unit (the +/- pins on the lower left, powering the sensors) by connecting any 12V->USB converter.\
 Like this one: 
 https://www.amazon.it/FTVOGUE-Regolatore-Trasformatore-Caricabatterie-smartphone/dp/B07NQKBRG1/
 
-Which I recommend because in this way, even in case of power failure, the ESP is powered by the control unit's battery.
-For connecting the power supply to the control unit I recommend taking the power supply from the terminal for auxiliary devices (+B/AUX).
+Which I recommend because in this way, even in case of power failure, the ESP is powered by the control unit's battery.\
+For connecting the power supply to the control unit I recommend taking the power supply from the terminal for auxiliary devices (+B/AUX).\
 Negative/common can be taken from any negative.
 
 <img src="images/KyoManual_Connections.png" alt="KyoManual-Connections" height="600"/>
@@ -58,7 +78,7 @@ Negative/common can be taken from any negative.
 ## ESPHome Preparation
 I suggest using the file `espkyogate_configuration.yaml` as a template and put your customizations there.
 
-* Set `esphome` and `uart` settings depending on the board you use; example file is for ESP32 Devkit 1 board with included, commented settings for the older Wemos D1 mini
+* Set `esphome` and `uart` settings depending on the board you use; example file is for ESP32 Devkit 1 board with included, commented settings for the older Wemos D1 mini.\
 * Set `name`, `friendly_name` (how it will be presented in HA).
 * Edit `binary_sensors` to configure how you want to present the sensors to Home Assistant.
   * All inputs have to be declared in both `lambda` and `binary_sensors`. Add only the ones you need to minimize overhead and complexity.
