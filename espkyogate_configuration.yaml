@@ -8,16 +8,26 @@ external_components:
       url: https://github.com/robertklep/esphome-custom-component
     components: [ custom, custom_component ]
 
+#
 # Depending of board type
-# (esp8266)
+#
+
+# (for esp8266)
 #esp8266:
 #  board: d1_mini
 
-# ESP32 boards alternative directives
+# (for ESP32)
 esp32:
   board: esp32dev
   framework:
     type: esp-idf
+    version: recommended
+  variant: esp32
+  flash_size: 4MB
+
+#
+# END Board type 
+#
 
 esphome:
   name: espkyogate
@@ -26,7 +36,11 @@ esphome:
   includes:
     - components/bentel-kyo/bentel_kyo32.h
   platformio_options:
-    board_build.f_cpu: 160000000L
+    # build_cache: true
+    board_build.f_cpu: 240000000L
+    build_flags:
+      - -O2
+      - -DCORE_DEBUG_LEVEL=0
 
 uart:
   id: uart_bus
@@ -61,6 +75,7 @@ logger:
 # Enable Home Assistant API
 api:
   custom_services: true
+  reboot_timeout: 15min
   encryption:
     key: !secret api_encryption_key
 
@@ -182,71 +197,71 @@ binary_sensor:
         name: "Sabotaggio Chiave Falsa"
 
       - id: zone_1
-        name: "Sensore DT Taverna"
+        name: "Sensore Zona 1"
         device_class: "motion"
       - id: zone_2
-        name: "Finestra Taverna"
+        name: "Sensore Zona 2"
         device_class: "window"
       - id: zone_3
-        name: "Sensore DT Garage"
+        name: "Sensore Zona 3"
         device_class: "motion"
       - id: zone_4
-        name: "Scuretto Finestra Lavanderia"
+        name: "Sensore Zona 4"
         device_class: "window"
 
       - id: zone_1_tampering
-        name: "Sabot. Sensore DT Taverna"
+        name: "Sabot. Zona 1"
       - id: zone_2_tampering
-        name: "Sabot. Finestra Taverna"
+        name: "Sabot. Zona 2"
       - id: zone_3_tampering
-        name: "Sabot. Sensore DT Garage"
+        name: "Sabot. Zona 3"
       - id: zone_4_tampering
-        name: "Sabot. Scuretto Finestra Lavanderia"
+        name: "Sabot. Zona 4"
 
       - id: excluded_zone_1
-        name: "Escl. Sensore DT Taverna"
+        name: "Escl. Zona 1"
       - id: excluded_zone_2
-        name: "Escl. Finestra Taverna"
+        name: "Escl. Zona 2"
       - id: excluded_zone_3
-        name: "Escl. Sensore DT Garage"
+        name: "Escl. Zona 3"
       - id: excluded_zone_4
-        name: "Escl. Scuretto Finestra Lavanderia"
+        name: "Escl. Zona 4"
 
       - id: alarm_memory_zone_1
-        name: "Mem. Allarme Sensore DT Taverna"
+        name: "Mem. Allarme Zona 1"
       - id: alarm_memory_zone_2
-        name: "Mem. Allarme Finestra Taverna"
+        name: "Mem. Allarme Zona 2"
       - id: alarm_memory_zone_3
-        name: "Mem. Allarme Sensore DT Garage"
+        name: "Mem. Allarme Zona 3"
       - id: alarm_memory_zone_4
-        name: "Mem. Allarme Scuretto Finestra Lavanderia"
+        name: "Mem. Allarme Zona 4"
 
       - id: sabotage_memory_zone_1
-        name: "Mem. Sabotaggio Sensore DT Taverna"
+        name: "Mem. Sabotaggio Zona 1"
       - id: sabotage_memory_zone_2
-        name: "Mem. Sabotaggio Finestra Taverna"
+        name: "Mem. Sabotaggio Zona 2"
       - id: sabotage_memory_zone_3
-        name: "Mem. Sabotaggio Sensore DT Garage"
+        name: "Mem. Sabotaggio Zona 3"
       - id: sabotage_memory_zone_4
-        name: "Mem. Sabotaggio Scuretto Finestra Lavanderia"
+        name: "Mem. Sabotaggio Zona 4"
 
       - id: alarm_area_1
-        name: "Allarme Finestre"
+        name: "Allarme Area 1"
       - id: alarm_area_2
         name: "Allarme Area 2"
       - id: alarm_area_3
         name: "Allarme Area 3"
       - id: alarm_area_4
-        name: "Allarme Area Sensori Interni"
+        name: "Allarme Area 4"
 
       - id: enabled_total_area_1
-        name: "Ins. Totale Finestre"
+        name: "Ins. Totale Area 1"
       - id: enabled_total_area_2
-        name: "Ins. Totale Porte"
+        name: "Ins. Totale Area 2"
       - id: enabled_total_area_3
-        name: "Ins. Totale Sensori Giardino"
+        name: "Ins. Totale Area 3"
       - id: enabled_total_area_4
-        name: "Ins. Totale Sensori Interni"
+        name: "Ins. Totale Area 4"
 
       - id: enabled_partial_area_1
         name: "Ins. Parziale Finestre"
@@ -258,22 +273,22 @@ binary_sensor:
         name: "Ins. Parziale Sensori Interni"        
 
       - id: enabled_partial_delay_0_area_1
-        name: "Ins. Parziale Ritardo 0 Finestre"
+        name: "Ins. Parziale Ritardo 0 Area 1"
       - id: enabled_partial_delay_0_area_2
-        name: "Ins. Parziale Ritardo 0 Porte"
+        name: "Ins. Parziale Ritardo 0 Area 2"
       - id: enabled_partial_delay_0_area_3
-        name: "Ins. Parziale Ritardo 0 Sensori Giardino"
+        name: "Ins. Parziale Ritardo 0 Area 3"
       - id: enabled_partial_delay_0_area_4
-        name: "Ins. Parziale Ritardo 0 Sensori Interni"
+        name: "Ins. Parziale Ritardo 0 Area 4"
 
       - id: disabled_area_1
-        name: "Disins. Finestre"
+        name: "Disins. Area 1"
       - id: disabled_area_2
-        name: "Disins. Porte"
+        name: "Disins. Area 2"
       - id: disabled_area_3
-        name: "Disins. Sensori Giardino"
+        name: "Disins. Area 3"
       - id: disabled_area_4
-        name: "Disins. Sensori Interni"
+        name: "Disins. Area 4"
 
       - id: exit_status_1
         name: "Stato Uscita 1"
@@ -291,18 +306,3 @@ sensor:
   #Availabe on esp32 and not on 8266
   #- platform: internal_temperature
   #  name: "Internal Temperature"
-
-  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
-    name: "WiFi Signal dB"
-    id: wifi_signal_db
-    update_interval: 60s
-    entity_category: "diagnostic"
-
-  - platform: copy # Reports the WiFi signal strength in %
-    source_id: wifi_signal_db
-    name: "WiFi Signal Percent"
-    filters:
-      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
-    unit_of_measurement: "Signal %"
-    entity_category: "diagnostic"
-    device_class: ""
