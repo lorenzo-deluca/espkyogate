@@ -1,0 +1,150 @@
+# ESPKyoGate Alarm Control Panel Package
+# https://github.com/lorenzo-deluca/espkyogate
+#
+# This package creates a Home Assistant alarm_control_panel entity
+# that integrates with your ESPKyoGate device.
+#
+# ============================================================================
+# CONFIGURATION INSTRUCTIONS
+# ============================================================================
+#
+# 1. Copy this file to your Home Assistant config/packages/ directory
+#    (create the packages folder if it doesn't exist)
+#
+# 2. Enable packages in your configuration.yaml by adding:
+#    homeassistant:
+#      packages: !include_dir_named packages
+#
+# 3. Customize the following variables below to match your setup:
+#    - ESPHOME_DEVICE_NAME: Your ESPHome device name (default: espkyogate)
+#    - AREA_1_TOTAL_SENSOR: Binary sensor for Area 1 total arm status
+#    - AREA_2_TOTAL_SENSOR: Binary sensor for Area 2 total arm status
+#    - ALARM_CODE: Your alarm code (store in secrets.yaml for security)
+#
+# 4. Restart Home Assistant
+#
+# ============================================================================
+# CUSTOMIZABLE VARIABLES - MODIFY THESE TO MATCH YOUR SETUP
+# ============================================================================
+
+# Define your ESPHome device name and sensors as anchors for easy customization
+# Change these values to match your ESPKyoGate configuration
+
+# Your ESPKyoGate device name as configured in ESPHome
+# Example: If your esphome name is "myalarm", services will be "esphome.myalarm_arm_area"
+
+# ============================================================================
+# ALARM CONTROL PANEL TEMPLATE
+# ============================================================================
+
+template:
+  - alarm_control_panel:
+      - name: "Allarme Casa"
+        unique_id: espkyogate_alarm_panel
+        
+        # State logic:
+        # - armed_night: Only perimeter armed (Area 1 ON, Area 2 OFF)
+        # - armed_away: Both areas armed (Area 1 ON, Area 2 ON)
+        # - disarmed: All areas disarmed
+        #
+        # CUSTOMIZE: Replace binary_sensor entity IDs with your actual sensors
+        # - Area 1 (Perimeter): binary_sensor.espkyogate_ins_totale_area_1
+        # - Area 2 (Internal):  binary_sensor.espkyogate_ins_totale_area_2
+        state: >-
+          {% set area_1_armed = is_state('binary_sensor.espkyogate_ins_totale_area_1', 'on') %}
+          {% set area_2_armed = is_state('binary_sensor.espkyogate_ins_totale_area_2', 'on') %}
+          {% if area_1_armed and not area_2_armed %}
+            armed_night
+          {% elif area_1_armed and area_2_armed %}
+            armed_away
+          {% else %}
+            disarmed
+          {% endif %}
+
+        # Code format: number = numeric keypad, text = alphanumeric
+        code_format: number
+        
+        # Require code to arm the alarm (set to false for no code on arm)
+        code_arm_required: true
+
+        # ARM NIGHT: Arms only Area 1 (perimeter)
+        # Typically used when staying home but want perimeter protection
+        #
+        # CUSTOMIZE: Update the alarm code check in secrets.yaml
+        # secrets.yaml should contain: alarmcode: "{{ value == 'YOUR_CODE' }}"
+        arm_night:
+          - condition: template
+            value_template: !secret alarmcode
+          - action: esphome.espkyogate_arm_area
+            data:
+              arm_type: 1        # 1 = Total arm, 2 = Partial arm
+              area: 1           # Area number to arm
+              specific_area: 0  # 0 = arm this area and disarm others, 1 = arm only this area
+
+        # ARM AWAY: Arms both Area 1 and Area 2 (full protection)
+        # Used when leaving the house
+        #
+        # CUSTOMIZE: Adjust area numbers and arm_type as needed
+        arm_away:
+          - condition: template
+            value_template: !secret alarmcode
+          - action: esphome.espkyogate_arm_area
+            data:
+              arm_type: 1       # 1 = Total arm, 2 = Partial arm
+              area: 1          # First area (perimeter)
+              specific_area: 0 # Arm this area and disarm others
+          - delay:
+              seconds: 2       # Wait for area 1 to be armed
+          - action: esphome.espkyogate_arm_area
+            data:
+              arm_type: 1       # 1 = Total arm, 2 = Partial arm
+              area: 2          # Second area (internal)
+              specific_area: 1 # Arm only this area without changing others
+
+        # DISARM: Disarms all areas
+        disarm:
+          - condition: template
+            value_template: !secret alarmcode
+          - action: esphome.espkyogate_disarm_area
+            data:
+              area: 0          # Area number (0 = all areas)
+              specific_area: 0 # 0 = disarm all areas, 1 = disarm only specified area
+
+# ============================================================================
+# OPTIONAL: ZONE EXCLUSION SWITCHES
+# ============================================================================
+# These template switches allow you to exclude/include specific zones
+# from your alarm system directly from Home Assistant.
+#
+# CUSTOMIZE: 
+# - Update zone_number for each switch (1-32 depending on your KYO model)
+# - Update the binary_sensor entity ID to match your zone exclusion sensor
+# - Update the name to identify your zone
+#
+# Uncomment and duplicate as needed for each zone you want to control
+
+# template:
+#   - switch:
+#       - name: "Esclusione Zona 1"
+#         unique_id: espkyogate_exclude_zone_1
+#         state: "{{ is_state('binary_sensor.espkyogate_escl_zona_1', 'on') }}"
+#         turn_on:
+#           - action: esphome.espkyogate_exclude_zone
+#             data:
+#               zone_number: 1
+#         turn_off:
+#           - action: esphome.espkyogate_include_zone
+#             data:
+#               zone_number: 1
+#
+#       - name: "Esclusione Zona 2"
+#         unique_id: espkyogate_exclude_zone_2
+#         state: "{{ is_state('binary_sensor.espkyogate_escl_zona_2', 'on') }}"
+#         turn_on:
+#           - action: esphome.espkyogate_exclude_zone
+#             data:
+#               zone_number: 2
+#         turn_off:
+#           - action: esphome.espkyogate_include_zone
+#             data:
+#               zone_number: 2
