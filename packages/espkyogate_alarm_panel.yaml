@@ -15,23 +15,42 @@
 #    homeassistant:
 #      packages: !include_dir_named packages
 #
-# 3. Customize the following variables below to match your setup:
-#    - ESPHOME_DEVICE_NAME: Your ESPHome device name (default: espkyogate)
-#    - AREA_1_TOTAL_SENSOR: Binary sensor for Area 1 total arm status
-#    - AREA_2_TOTAL_SENSOR: Binary sensor for Area 2 total arm status
-#    - ALARM_CODE: Your alarm code (store in secrets.yaml for security)
+# 3. Customize the VARIABLES section below to match your setup
 #
-# 4. Restart Home Assistant
+# 4. Add your alarm code to secrets.yaml:
+#    alarmcode: "{{ value == 'YOUR_CODE' }}"
+#
+# 5. Restart Home Assistant
 #
 # ============================================================================
-# CUSTOMIZABLE VARIABLES - MODIFY THESE TO MATCH YOUR SETUP
+# VARIABLES - MODIFY THESE TO MATCH YOUR SETUP
 # ============================================================================
+# Change these values to match your ESPKyoGate configuration.
+# All variables are defined here for easy customization.
 
-# Define your ESPHome device name and sensors as anchors for easy customization
-# Change these values to match your ESPKyoGate configuration
-
-# Your ESPKyoGate device name as configured in ESPHome
-# Example: If your esphome name is "myalarm", services will be "esphome.myalarm_arm_area"
+homeassistant:
+  customize:
+    # This section stores your configuration variables as entity attributes
+    # for reference. The actual values are used in the templates below.
+    package.espkyogate_alarm_panel:
+      # ---- AREA CONFIGURATION ----
+      # Area numbers for your alarm zones (1-8 depending on your KYO model)
+      area_1_number: &area_1 1              # Perimeter area number
+      area_2_number: &area_2 2              # Internal area number
+      
+      # Binary sensors for area arm status
+      # Change these to match your ESPKyoGate entity IDs
+      area_1_sensor: &area_1_sensor "binary_sensor.espkyogate_ins_totale_area_1"
+      area_2_sensor: &area_2_sensor "binary_sensor.espkyogate_ins_totale_area_2"
+      
+      # ---- ZONE EXCLUSION CONFIGURATION ----
+      # Zone numbers for exclusion switches (1-32 depending on your KYO model)
+      zone_1_number: &zone_1 1
+      zone_2_number: &zone_2 2
+      
+      # Binary sensors for zone exclusion status
+      zone_1_sensor: &zone_1_sensor "binary_sensor.espkyogate_escl_zona_1"
+      zone_2_sensor: &zone_2_sensor "binary_sensor.espkyogate_escl_zona_2"
 
 # ============================================================================
 # ALARM CONTROL PANEL TEMPLATE
@@ -47,9 +66,8 @@ template:
         # - armed_away: Both areas armed (Area 1 ON, Area 2 ON)
         # - disarmed: All areas disarmed
         #
-        # CUSTOMIZE: Replace binary_sensor entity IDs with your actual sensors
-        # - Area 1 (Perimeter): binary_sensor.espkyogate_ins_totale_area_1
-        # - Area 2 (Internal):  binary_sensor.espkyogate_ins_totale_area_2
+        # NOTE: Update the binary_sensor entity IDs below to match
+        # the area_1_sensor and area_2_sensor variables defined above
         state: >-
           {% set area_1_armed = is_state('binary_sensor.espkyogate_ins_totale_area_1', 'on') %}
           {% set area_2_armed = is_state('binary_sensor.espkyogate_ins_totale_area_2', 'on') %}
@@ -68,38 +86,31 @@ template:
         code_arm_required: true
 
         # ARM NIGHT: Arms only Area 1 (perimeter)
-        # Typically used when staying home but want perimeter protection
-        #
-        # CUSTOMIZE: Update the alarm code check in secrets.yaml
-        # secrets.yaml should contain: alarmcode: "{{ value == 'YOUR_CODE' }}"
         arm_night:
           - condition: template
             value_template: !secret alarmcode
           - action: esphome.espkyogate_arm_area
             data:
               arm_type: 1        # 1 = Total arm, 2 = Partial arm
-              area: 1           # Area number to arm
-              specific_area: 0  # 0 = arm this area and disarm others, 1 = arm only this area
+              area: *area_1      # Uses area_1_number variable
+              specific_area: 0   # 0 = arm this area and disarm others
 
         # ARM AWAY: Arms both Area 1 and Area 2 (full protection)
-        # Used when leaving the house
-        #
-        # CUSTOMIZE: Adjust area numbers and arm_type as needed
         arm_away:
           - condition: template
             value_template: !secret alarmcode
           - action: esphome.espkyogate_arm_area
             data:
-              arm_type: 1       # 1 = Total arm, 2 = Partial arm
-              area: 1          # First area (perimeter)
-              specific_area: 0 # Arm this area and disarm others
+              arm_type: 1        # 1 = Total arm, 2 = Partial arm
+              area: *area_1      # Uses area_1_number variable
+              specific_area: 0   # Arm this area and disarm others
           - delay:
-              seconds: 2       # Wait for area 1 to be armed
+              seconds: 2         # Wait for area 1 to be armed
           - action: esphome.espkyogate_arm_area
             data:
-              arm_type: 1       # 1 = Total arm, 2 = Partial arm
-              area: 2          # Second area (internal)
-              specific_area: 1 # Arm only this area without changing others
+              arm_type: 1        # 1 = Total arm, 2 = Partial arm
+              area: *area_2      # Uses area_2_number variable
+              specific_area: 1   # Arm only this area without changing others
 
         # DISARM: Disarms all areas
         disarm:
@@ -107,23 +118,18 @@ template:
             value_template: !secret alarmcode
           - action: esphome.espkyogate_disarm_area
             data:
-              area: 0          # Area number (0 = all areas)
-              specific_area: 0 # 0 = disarm all areas, 1 = disarm only specified area
+              area: 0            # 0 = all areas
+              specific_area: 0   # 0 = disarm all areas
 
 # ============================================================================
 # OPTIONAL: ZONE EXCLUSION SWITCHES
 # ============================================================================
-# These template switches allow you to exclude/include specific zones
-# from your alarm system directly from Home Assistant.
+# Uncomment the section below and duplicate switches as needed for each zone.
+# The zone numbers use the variables defined at the top of this file.
 #
-# CUSTOMIZE: 
-# - Update zone_number for each switch (1-32 depending on your KYO model)
-# - Update the binary_sensor entity ID to match your zone exclusion sensor
-# - Update the name to identify your zone
-#
-# Uncomment and duplicate as needed for each zone you want to control
+# NOTE: Update the binary_sensor entity IDs in the state templates to match
+# the zone_1_sensor and zone_2_sensor variables defined above
 
-# template:
 #   - switch:
 #       - name: "Esclusione Zona 1"
 #         unique_id: espkyogate_exclude_zone_1
@@ -131,11 +137,11 @@ template:
 #         turn_on:
 #           - action: esphome.espkyogate_exclude_zone
 #             data:
-#               zone_number: 1
+#               zone_number: *zone_1    # Uses zone_1_number variable
 #         turn_off:
 #           - action: esphome.espkyogate_include_zone
 #             data:
-#               zone_number: 1
+#               zone_number: *zone_1    # Uses zone_1_number variable
 #
 #       - name: "Esclusione Zona 2"
 #         unique_id: espkyogate_exclude_zone_2
@@ -143,8 +149,8 @@ template:
 #         turn_on:
 #           - action: esphome.espkyogate_exclude_zone
 #             data:
-#               zone_number: 2
+#               zone_number: *zone_2    # Uses zone_2_number variable
 #         turn_off:
 #           - action: esphome.espkyogate_include_zone
 #             data:
-#               zone_number: 2
+#               zone_number: *zone_2    # Uses zone_2_number variable
