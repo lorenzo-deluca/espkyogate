@@ -396,13 +396,11 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 	private:
 
 		byte cmdGetSensorStatus[6] = {0xf0, 0x04, 0xf0, 0x0a, 0x00, 0xee};	  // Read Realtime Status and Trouble Status
-		byte cmdGetPartitionStatus[6] = {0xf0, 0x02, 0x15, 0x12, 0x00, 0x19}; // Partitions Status (305) - Outputs Status - Tamper Memory - Bypassed Zones - Zone Alarm Memory - Zone Tamper Memory
-		byte cmdGetPartitionStatus_Kyo8[6] = {0xf0, 0x68, 0x0e, 0x09, 0x00, 0x6f}; // Partitions Status (305) - Outputs Status - Tamper Memory - Bypassed Zones - Zone Alarm Memory - Zone Tamper Memory
-		byte cmqGetSoftwareVersion[6] = {0xf0, 0x00, 0x00, 0x0b, 0x00, 0xfb}; // f0 00 00 0b 00 fb
+		byte cmdGetPartitionStatus_Kyo32G[6] = {0xf0, 0x02, 0x15, 0x12, 0x00, 0x19}; // Partitions Status - KYO32G address 0x0215
+		byte cmdGetPartitionStatus_Kyo32[6] = {0xf0, 0xec, 0x14, 0x12, 0x00, 0x02};  // Partitions Status - KYO32 (non-G) address 0xEC14
+		byte cmdGetPartitionStatus_Kyo8[6] = {0xf0, 0x68, 0x0e, 0x09, 0x00, 0x6f}; // Partitions Status - KYO8 address 0x680E
+		byte cmdGetSoftwareVersion[6] = {0xf0, 0x00, 0x00, 0x0b, 0x00, 0xfb};
 		byte cmdResetAllarms[9] = {0x0F, 0x05, 0xF0, 0x01, 0x00, 0x05, 0xff, 0x00, 0xff};
-
-		const std::vector<uint8_t> cmdGetAlarmInfo = {0xf0, 0x00, 0x00, 0x0b, 0x00};
-        const size_t RPL_GET_ALARM_INFO_SIZE = 13;
 
 		enum class AlarmModel {UNKNOWN, KYO_4, KYO_8, KYO_8G, KYO_32, KYO_32G, KYO_8W, KYO_8GW};
         AlarmModel alarmModel = AlarmModel::UNKNOWN;
@@ -421,16 +419,75 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 		bool polling_kyo = true;
 		int centralInvalidMessageCount = 0;
 		int MaxZone = KYO_MAX_ZONE;
+		bool modelDetected = false;
+		char firmwareVersion[14] = {0};
+
+		bool detect_alarm_model()
+		{
+			byte Rx[255];
+			int Count = sendMessageToKyo(cmdGetSoftwareVersion, sizeof(cmdGetSoftwareVersion), Rx, 200);
+
+			// Response: 6-byte echo + 12 data bytes + 1 checksum = 19 bytes
+			// Data contains ASCII model string like "KYO32   1.05"
+			if (Count < 19)
+			{
+				ESP_LOGW("detect_model", "software version query returned %i bytes, falling back to response-size detection", Count);
+				return false;
+			}
+
+			// Extract firmware string from Rx[6..17] (12 chars)
+			memset(firmwareVersion, 0, sizeof(firmwareVersion));
+			for (int i = 0; i < 12 && i + 6 < Count - 1; i++)
+				firmwareVersion[i] = (char)Rx[6 + i];
+
+			ESP_LOGI("detect_model", "firmware: '%s'", firmwareVersion);
+
+			// Match model from firmware string prefix
+			if (strncmp(firmwareVersion, "KYO32G", 6) == 0) {
+				alarmModel = AlarmModel::KYO_32G;
+				MaxZone = KYO_MAX_ZONE;
+				ESP_LOGI("detect_model", "detected KYO_32G");
+			} else if (strncmp(firmwareVersion, "KYO32", 5) == 0) {
+				alarmModel = AlarmModel::KYO_32;
+				MaxZone = KYO_MAX_ZONE;
+				ESP_LOGI("detect_model", "detected KYO_32");
+			} else if (strncmp(firmwareVersion, "KYO8G", 5) == 0) {
+				alarmModel = AlarmModel::KYO_8G;
+				MaxZone = KYO_MAX_ZONE_8;
+				ESP_LOGI("detect_model", "detected KYO_8G");
+			} else if (strncmp(firmwareVersion, "KYO8W", 5) == 0) {
+				alarmModel = AlarmModel::KYO_8W;
+				MaxZone = KYO_MAX_ZONE_8;
+				ESP_LOGI("detect_model", "detected KYO_8W");
+			} else if (strncmp(firmwareVersion, "KYO8", 4) == 0) {
+				alarmModel = AlarmModel::KYO_8;
+				MaxZone = KYO_MAX_ZONE_8;
+				ESP_LOGI("detect_model", "detected KYO_8");
+			} else if (strncmp(firmwareVersion, "KYO4", 4) == 0) {
+				alarmModel = AlarmModel::KYO_4;
+				MaxZone = KYO_MAX_ZONE_8;
+				ESP_LOGI("detect_model", "detected KYO_4");
+			} else {
+				ESP_LOGW("detect_model", "unknown model in firmware string '%s', falling back", firmwareVersion);
+				return false;
+			}
+
+			modelDetected = true;
+			return true;
+		}
 
 		bool update_kyo_partitions()
 		{
 			byte Rx[255];
 			int Count = 0;
 
-			if (alarmModel == AlarmModel::KYO_8)
+			if (alarmModel == AlarmModel::KYO_8 || alarmModel == AlarmModel::KYO_4 ||
+				alarmModel == AlarmModel::KYO_8G || alarmModel == AlarmModel::KYO_8W)
 				Count = sendMessageToKyo(cmdGetPartitionStatus_Kyo8, sizeof(cmdGetPartitionStatus_Kyo8), Rx, 100);
+			else if (alarmModel == AlarmModel::KYO_32)
+				Count = sendMessageToKyo(cmdGetPartitionStatus_Kyo32, sizeof(cmdGetPartitionStatus_Kyo32), Rx, 100);
 			else
-				Count = sendMessageToKyo(cmdGetPartitionStatus, sizeof(cmdGetPartitionStatus), Rx, 100);
+				Count = sendMessageToKyo(cmdGetPartitionStatus_Kyo32G, sizeof(cmdGetPartitionStatus_Kyo32G), Rx, 100);
 
 			if (Count != 26 && Count != 17)
 			{
@@ -492,7 +549,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			
 			if (alarmModel == AlarmModel::KYO_32G)
 			{
-				// CICLO STATO USCITE
+				// CICLO STATO USCITE (Rx[12] for KYO32G — 8 outputs)
 				for (i = 0; i < KYO_MAX_USCITE; i++)
 				{
 					StatoZona = (Rx[12] >> i) & 1;
@@ -502,6 +559,9 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 					stato_uscita[i].publish_state(StatoZona == 1);
 				}
 			}
+			// NOTE: KYO32 non-G has only 3 programmable outputs and Rx[12] reads
+			// as 0xFF (not valid output status). Output readback location for KYO32
+			// non-G is currently unknown — activate/deactivate commands still work.
 
 			// CICLO ZONE ESCLUSE
 			for (i = 0; i < MaxZone; i++)
@@ -584,25 +644,36 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 
 		bool update_kyo_status()
 		{
+			// Detect model on first successful communication
+			if (!modelDetected)
+				detect_alarm_model();
+
 			byte Rx[255];
 			int Count = 0;
 
 			Count = sendMessageToKyo(cmdGetSensorStatus, sizeof(cmdGetSensorStatus), Rx, 100);
 			switch(Count)
 			{
-				case 18: // Kyo 32G (default)
-					MaxZone = KYO_MAX_ZONE;
-					alarmModel = AlarmModel::KYO_32G;
+				case 18: // Kyo 32 / 32G
+					if (!modelDetected) {
+						// Fallback: both KYO32 and KYO32G return 18 bytes
+						// Default to KYO_32 (non-G) since it's the safer assumption
+						alarmModel = AlarmModel::KYO_32;
+						MaxZone = KYO_MAX_ZONE;
+						ESP_LOGW("update_kyo_status", "model not detected via firmware, defaulting to KYO_32 (18-byte response)");
+					}
 					break;
 				case 12: // Kyo 8 and Kyo 4
-					MaxZone = KYO_MAX_ZONE_8;
-					alarmModel = AlarmModel::KYO_8;
+					if (!modelDetected) {
+						alarmModel = AlarmModel::KYO_8;
+						MaxZone = KYO_MAX_ZONE_8;
+					}
 					break;
-					
+
 			default:
 				if (this->logTrace)
 					ESP_LOGE("update_kyo_status", "invalid message length %i", Count);
-				
+
 				return false;
 			}
 
@@ -813,7 +884,7 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 			write_array(cmd, lcmd);
 			delay(waitForAnswer);
 
-			// Read a single Byte
+			// Read response bytes
 			while (available() > 0)
 				RxBuff[index++] = read();
 
@@ -825,10 +896,24 @@ class Bentel_Kyo32 : public esphome::PollingComponent, public uart::UARTDevice, 
 				ESP_LOGE("sendMessageToKyo", "no answer from serial port");
 				return -1;
 			}
-				
+
 			if (this->serialTrace || waitForAnswer > 100)
 				ESP_LOGI("sendMessageToKyo", "RX '%s'", format_hex_pretty(RxBuff, index).c_str());
-			
+
+			// Validate response checksum: last byte = sum(data bytes after echo) & 0xFF
+			// Response format: [6-byte echo] [data...] [checksum]
+			if (index > lcmd + 1)
+			{
+				int dataStart = lcmd;  // data starts after echo
+				int dataEnd = index - 1;  // last byte is checksum
+				byte expectedChk = 0;
+				for (int i = dataStart; i < dataEnd; i++)
+					expectedChk += RxBuff[i];
+
+				if (expectedChk != RxBuff[dataEnd])
+					ESP_LOGW("sendMessageToKyo", "response checksum mismatch: expected 0x%02X, got 0x%02X", expectedChk, RxBuff[dataEnd]);
+			}
+
 			memcpy(ReadByes, RxBuff, index);
 			return index;
 		}
