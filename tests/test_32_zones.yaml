@@ -1,0 +1,149 @@
+# Test: 32-zone configuration for KYO32/KYO32G
+# Validates: all 32 zones compile correctly
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [bentel_kyo]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    version: recommended
+
+esphome:
+  name: test-32-zones
+  friendly_name: Test 32 Zones
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO5
+  rx_pin: GPIO4
+  baud_rate: 9600
+  data_bits: 8
+  parity: EVEN
+
+logger:
+  level: DEBUG
+  baud_rate: 0
+
+api:
+
+ota:
+  platform: esphome
+
+wifi:
+  ssid: "test_ssid"
+  password: "test_password"
+
+bentel_kyo:
+  id: kyo
+  uart_id: uart_bus
+
+alarm_control_panel:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 1"
+    partition: 1
+
+binary_sensor:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+
+    zones:
+      - zone: 1
+        name: "Zone 1"
+      - zone: 2
+        name: "Zone 2"
+      - zone: 3
+        name: "Zone 3"
+      - zone: 4
+        name: "Zone 4"
+      - zone: 5
+        name: "Zone 5"
+      - zone: 6
+        name: "Zone 6"
+      - zone: 7
+        name: "Zone 7"
+      - zone: 8
+        name: "Zone 8"
+      - zone: 9
+        name: "Zone 9"
+      - zone: 10
+        name: "Zone 10"
+      - zone: 11
+        name: "Zone 11"
+      - zone: 12
+        name: "Zone 12"
+      - zone: 13
+        name: "Zone 13"
+      - zone: 14
+        name: "Zone 14"
+      - zone: 15
+        name: "Zone 15"
+      - zone: 16
+        name: "Zone 16"
+      - zone: 17
+        name: "Zone 17"
+      - zone: 18
+        name: "Zone 18"
+      - zone: 19
+        name: "Zone 19"
+      - zone: 20
+        name: "Zone 20"
+      - zone: 21
+        name: "Zone 21"
+      - zone: 22
+        name: "Zone 22"
+      - zone: 23
+        name: "Zone 23"
+      - zone: 24
+        name: "Zone 24"
+      - zone: 25
+        name: "Zone 25"
+      - zone: 26
+        name: "Zone 26"
+      - zone: 27
+        name: "Zone 27"
+      - zone: 28
+        name: "Zone 28"
+      - zone: 29
+        name: "Zone 29"
+      - zone: 30
+        name: "Zone 30"
+      - zone: 31
+        name: "Zone 31"
+      - zone: 32
+        name: "Zone 32"
+
+    zone_tamper:
+      - zone: 1
+        name: "Zone 1 Tamper"
+      - zone: 32
+        name: "Zone 32 Tamper"
+
+    zone_bypass:
+      - zone: 1
+        name: "Zone 1 Bypass"
+      - zone: 32
+        name: "Zone 32 Bypass"
+
+    partition_alarm:
+      - partition: 1
+        name: "Partition 1 Alarm"
+      - partition: 8
+        name: "Partition 8 Alarm"
+
+    communication:
+      name: "Panel Communication"
+
+    siren:
+      name: "Siren"
+
+    output_state:
+      - output_number: 1
+        name: "Output 1"
+      - output_number: 8
+        name: "Output 8"

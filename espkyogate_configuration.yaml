@@ -1,12 +1,11 @@
-# espkyogate - ESPHome custom component for Bentel KYO alarms (https://github.com/lorenzo-deluca/espkyogate)
-# 2025 Lorenzo De Luca (me@lorenzodeluca.dev)
-# Example YAML for Bentel Kyo32-32G-8W-8WG
+# espkyogate - ESPHome component for Bentel KYO alarms (https://github.com/lorenzo-deluca/espkyogate)
+# Copyright (C) 2025 Lorenzo De Luca (me@lorenzodeluca.dev)
+# Copyright (C) 2026 Rui Marinho (ruipmarinho@gmail.com)
+# Example YAML for all Bentel KYO models (KYO4/8/8G/8W/32/32G)
 
 external_components:
-  - source:
-      type: git
-      url: https://github.com/robertklep/esphome-custom-component
-    components: [ custom, custom_component ]
+  - source: github://lorenzo-deluca/espkyogate
+    components: [bentel_kyo]
 
 #
 # Depending of board type
@@ -26,17 +25,14 @@ esp32:
   flash_size: 4MB
 
 #
-# END Board type 
+# END Board type
 #
 
 esphome:
   name: espkyogate
-  friendly_name: Allarme
-  comment: Alarm System Serial to HA controller  
-  includes:
-    - components/bentel-kyo/bentel_kyo32.h
+  friendly_name: Alarm
+  comment: Alarm System Serial to HA controller
   platformio_options:
-    # build_cache: true
     board_build.f_cpu: 240000000L
     build_flags:
       - -O2
@@ -51,7 +47,7 @@ uart:
   # rx_pin: GPIO16
   baud_rate: 9600
   data_bits: 8
-  parity: EVEN  
+  parity: EVEN
 
 wifi:
   ssid: !secret wifi_ssid
@@ -74,7 +70,6 @@ logger:
 
 # Enable Home Assistant API
 api:
-  custom_services: true
   reboot_timeout: 15min
   encryption:
     key: !secret api_encryption_key
@@ -82,227 +77,210 @@ api:
 ota:
   platform: esphome
   password: !secret ota_password
-  
+
 switch:
   - platform: safe_mode
     name: "ESPKyoGate (Safe Mode)"
 
+# ========================================
+# Bentel KYO Hub
+# ========================================
+
+bentel_kyo:
+  id: kyo
+  uart_id: uart_bus
+
+# ========================================
+# Alarm Control Panel (one per partition)
+# ========================================
+
+alarm_control_panel:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 1"
+    partition: 1
+    entry_delay:
+      name: "Partition 1 Entry Delay"
+    exit_delay:
+      name: "Partition 1 Exit Delay"
+    siren_timer:
+      name: "Partition 1 Siren Timer"
+
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 2"
+    partition: 2
+    entry_delay:
+      name: "Partition 2 Entry Delay"
+    exit_delay:
+      name: "Partition 2 Exit Delay"
+
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 3"
+    partition: 3
+
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 4"
+    partition: 4
+
+# ========================================
+# Binary Sensors
+# ========================================
+
 binary_sensor:
-  - platform: custom
-    lambda: |-
-      auto kyo32 = new Bentel_Kyo32(id(uart_bus));
-      App.register_component(kyo32);
-      return {
-        kyo32->kyo_comunication,
-        kyo32->stato_sirena,
-        kyo32->warn_mancanza_rete,
-        kyo32->sabotaggio_zona, 
-        kyo32->sabotaggio_sistema,
-        kyo32->warn_scomparsa_bpi,
-        kyo32->warn_fusibile,
-        kyo32->warn_batteria_bassa,
-        kyo32->warn_guasto_linea_telefonica,
-        kyo32->warn_codici_default,
-        kyo32->warn_wireless,
-        kyo32->sabotaggio_bpi,
-        kyo32->sabotaggio_jam,
-        kyo32->sabotaggio_wireless,
-        kyo32->sabotaggio_chiave_falsa,
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
 
-        &kyo32->zona[0],
-        &kyo32->zona[1],
-        &kyo32->zona[2],
-        &kyo32->zona[3],
-
-        &kyo32->zona_sabotaggio[0],
-        &kyo32->zona_sabotaggio[1],
-        &kyo32->zona_sabotaggio[2],
-        &kyo32->zona_sabotaggio[3],
-
-        &kyo32->zona_esclusa[0],
-        &kyo32->zona_esclusa[1],
-        &kyo32->zona_esclusa[2],
-        &kyo32->zona_esclusa[3],
-
-        &kyo32->memoria_allarme_zona[0],
-        &kyo32->memoria_allarme_zona[1],
-        &kyo32->memoria_allarme_zona[2],
-        &kyo32->memoria_allarme_zona[3],
-
-        &kyo32->memoria_sabotaggio_zona[0],
-        &kyo32->memoria_sabotaggio_zona[1],
-        &kyo32->memoria_sabotaggio_zona[2],
-        &kyo32->memoria_sabotaggio_zona[3],
-
-        &kyo32->allarme_area[0],
-        &kyo32->allarme_area[1],
-        &kyo32->allarme_area[2],
-        &kyo32->allarme_area[3],
-
-        &kyo32->inserimento_totale_area[0],
-        &kyo32->inserimento_totale_area[1],
-        &kyo32->inserimento_totale_area[2],
-        &kyo32->inserimento_totale_area[3],
-
-        &kyo32->inserimento_parziale_area[0],
-        &kyo32->inserimento_parziale_area[1],
-        &kyo32->inserimento_parziale_area[2],
-        &kyo32->inserimento_parziale_area[3],
-
-        &kyo32->inserimento_parziale_ritardo_0_area[0],
-        &kyo32->inserimento_parziale_ritardo_0_area[1],
-        &kyo32->inserimento_parziale_ritardo_0_area[2],
-        &kyo32->inserimento_parziale_ritardo_0_area[3],
-
-        &kyo32->disinserita_area[0],
-        &kyo32->disinserita_area[1],
-        &kyo32->disinserita_area[2],
-        &kyo32->disinserita_area[3],
-
-        &kyo32->stato_uscita[0],
-        &kyo32->stato_uscita[1],
-        &kyo32->stato_uscita[2],
-        &kyo32->stato_uscita[3]
-      };
-    binary_sensors:
-      - id: kyo_comunication
-        name: "Comunicazione Centrale"
-      - id: stato_sirena
-        name: "Stato Sirena"
-      - id: warn_mancanza_rete
-        name: "Mancanza Rete"
-      - id: sabotaggio_zona
-        name: "Sabotaggio Zona"
-      - id: sabotaggio_sistema
-        name: "Sabotaggio Sistema"
-      - id: warn_scomparsa_bpi
-        name: "Scomparsa BPI"
-      - id: warn_fusibile
-        name: "Fusibile"
-      - id: warn_batteria_bassa
-        name: "Batteria Bassa"
-      - id: warn_guasto_linea_telefonica
-        name: "Guasto Linea Telefonica"
-      - id: warn_codici_default
-        name: "Codici Default"
-      - id: warn_wireless
-        name: "Wireless"
-      - id: sabotaggio_bpi
-        name: "Sabotaggio BPI"
-      - id: sabotaggio_jam
-        name: "Sabotaggio Jam"
-      - id: sabotaggio_wireless
-        name: "Sabotaggio wireless"
-      - id: sabotaggio_chiave_falsa
-        name: "Sabotaggio Chiave Falsa"
-
-      - id: zone_1
-        name: "Sensore Zona 1"
+    # Zone status (expand up to 32 zones as needed)
+    # Each zone can optionally include diagnostic text sensors:
+    #   zone_type:   Sensor type read from panel (Instant/Delayed/Path)
+    #   panel_name:  Zone name as configured in the panel
+    #   zone_partition:   Area assignment read from panel
+    #   esn:         Enrolled sensor serial number (wireless sensors)
+    zones:
+      - zone: 1
+        name: "Zone 1 Sensor"
         device_class: "motion"
-      - id: zone_2
-        name: "Sensore Zona 2"
+        zone_type:
+          name: "Zone 1 Type"
+        panel_name:
+          name: "Zone 1 Panel Name"
+        zone_partition:
+          name: "Zone 1 Partition"
+        esn:
+          name: "Zone 1 ESN"
+      - zone: 2
+        name: "Zone 2 Sensor"
         device_class: "window"
-      - id: zone_3
-        name: "Sensore Zona 3"
+        zone_type:
+          name: "Zone 2 Type"
+        panel_name:
+          name: "Zone 2 Panel Name"
+        zone_partition:
+          name: "Zone 2 Partition"
+        esn:
+          name: "Zone 2 ESN"
+      - zone: 3
+        name: "Zone 3 Sensor"
         device_class: "motion"
-      - id: zone_4
-        name: "Sensore Zona 4"
+      - zone: 4
+        name: "Zone 4 Sensor"
         device_class: "window"
 
-      - id: zone_1_tampering
-        name: "Sabot. Zona 1"
-      - id: zone_2_tampering
-        name: "Sabot. Zona 2"
-      - id: zone_3_tampering
-        name: "Sabot. Zona 3"
-      - id: zone_4_tampering
-        name: "Sabot. Zona 4"
+    # Zone tamper
+    zone_tamper:
+      - zone: 1
+        name: "Zone 1 Tamper"
+      - zone: 2
+        name: "Zone 2 Tamper"
+      - zone: 3
+        name: "Zone 3 Tamper"
+      - zone: 4
+        name: "Zone 4 Tamper"
 
-      - id: excluded_zone_1
-        name: "Escl. Zona 1"
-      - id: excluded_zone_2
-        name: "Escl. Zona 2"
-      - id: excluded_zone_3
-        name: "Escl. Zona 3"
-      - id: excluded_zone_4
-        name: "Escl. Zona 4"
+    # Zone bypass (exclusion)
+    zone_bypass:
+      - zone: 1
+        name: "Zone 1 Bypass"
+      - zone: 2
+        name: "Zone 2 Bypass"
+      - zone: 3
+        name: "Zone 3 Bypass"
+      - zone: 4
+        name: "Zone 4 Bypass"
 
-      - id: alarm_memory_zone_1
-        name: "Mem. Allarme Zona 1"
-      - id: alarm_memory_zone_2
-        name: "Mem. Allarme Zona 2"
-      - id: alarm_memory_zone_3
-        name: "Mem. Allarme Zona 3"
-      - id: alarm_memory_zone_4
-        name: "Mem. Allarme Zona 4"
+    # Zone alarm memory
+    zone_alarm_memory:
+      - zone: 1
+        name: "Zone 1 Alarm Memory"
+      - zone: 2
+        name: "Zone 2 Alarm Memory"
+      - zone: 3
+        name: "Zone 3 Alarm Memory"
+      - zone: 4
+        name: "Zone 4 Alarm Memory"
 
-      - id: sabotage_memory_zone_1
-        name: "Mem. Sabotaggio Zona 1"
-      - id: sabotage_memory_zone_2
-        name: "Mem. Sabotaggio Zona 2"
-      - id: sabotage_memory_zone_3
-        name: "Mem. Sabotaggio Zona 3"
-      - id: sabotage_memory_zone_4
-        name: "Mem. Sabotaggio Zona 4"
+    # Zone tamper memory
+    zone_tamper_memory:
+      - zone: 1
+        name: "Zone 1 Tamper Memory"
+      - zone: 2
+        name: "Zone 2 Tamper Memory"
+      - zone: 3
+        name: "Zone 3 Tamper Memory"
+      - zone: 4
+        name: "Zone 4 Tamper Memory"
 
-      - id: alarm_area_1
-        name: "Allarme Area 1"
-      - id: alarm_area_2
-        name: "Allarme Area 2"
-      - id: alarm_area_3
-        name: "Allarme Area 3"
-      - id: alarm_area_4
-        name: "Allarme Area 4"
+    # Warning flags
+    warnings:
+      mains_failure:
+        name: "Mains Failure"
+      bpi_missing:
+        name: "BPI Missing"
+      fuse_fault:
+        name: "Fuse Fault"
+      low_battery:
+        name: "Low Battery"
+      phone_line_fault:
+        name: "Phone Line Fault"
+      default_codes:
+        name: "Default Codes"
+      wireless_fault:
+        name: "Wireless Fault"
 
-      - id: enabled_total_area_1
-        name: "Ins. Totale Area 1"
-      - id: enabled_total_area_2
-        name: "Ins. Totale Area 2"
-      - id: enabled_total_area_3
-        name: "Ins. Totale Area 3"
-      - id: enabled_total_area_4
-        name: "Ins. Totale Area 4"
+    # Tamper flags
+    tamper:
+      tamper_zone:
+        name: "Zone Tamper"
+      tamper_false_key:
+        name: "False Key Tamper"
+      tamper_bpi:
+        name: "BPI Tamper"
+      tamper_system:
+        name: "System Tamper"
+      tamper_rf_jam:
+        name: "RF Jam"
+      tamper_wireless:
+        name: "Wireless Tamper"
 
-      - id: enabled_partial_area_1
-        name: "Ins. Parziale Finestre"
-      - id: enabled_partial_area_2
-        name: "Ins. Parziale Porte"
-      - id: enabled_partial_area_3
-        name: "Ins. Parziale Sensori Giardino"
-      - id: enabled_partial_area_4
-        name: "Ins. Parziale Sensori Interni"        
+    # Communication status
+    communication:
+      name: "Panel Communication"
 
-      - id: enabled_partial_delay_0_area_1
-        name: "Ins. Parziale Ritardo 0 Area 1"
-      - id: enabled_partial_delay_0_area_2
-        name: "Ins. Parziale Ritardo 0 Area 2"
-      - id: enabled_partial_delay_0_area_3
-        name: "Ins. Parziale Ritardo 0 Area 3"
-      - id: enabled_partial_delay_0_area_4
-        name: "Ins. Parziale Ritardo 0 Area 4"
+    # Siren status
+    siren:
+      name: "Siren"
 
-      - id: disabled_area_1
-        name: "Disins. Area 1"
-      - id: disabled_area_2
-        name: "Disins. Area 2"
-      - id: disabled_area_3
-        name: "Disins. Area 3"
-      - id: disabled_area_4
-        name: "Disins. Area 4"
+    # Output states (KYO32G only — other models read 0xFF)
+    output_state:
+      - output_number: 1
+        name: "Output 1"
+        panel_name:
+          name: "Output 1 Panel Name"
+      - output_number: 2
+        name: "Output 2"
+        panel_name:
+          name: "Output 2 Panel Name"
+      - output_number: 3
+        name: "Output 3"
+      - output_number: 4
+        name: "Output 4"
 
-      - id: exit_status_1
-        name: "Stato Uscita 1"
-      - id: exit_status_2
-        name: "Stato Uscita 2"
-      - id: exit_status_3
-        name: "Stato Uscita 3"
-      - id: exit_status_4
-        name: "Stato Uscita 4"
+text_sensor:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    firmware_version:
+      name: "Firmware Version"
+    alarm_model:
+      name: "Alarm Model"
+    keyfobs:
+      - slot: 1
+        name: "Keyfob 1"
+      - slot: 2
+        name: "Keyfob 2"
 
 sensor:
   - platform: uptime
     name: "Uptime"
-
-  #Availabe on esp32 and not on 8266
-  #- platform: internal_temperature
-  #  name: "Internal Temperature"
