@@ -43,29 +43,35 @@ There are two message types:
 #### Read requests (6 bytes)
 
 ```
-[0xF0] [ADDR_HI] [ADDR_LO] [LEN] [0x00] [CHK]
+[0xF0] [ADDR_LO] [ADDR_HI] [LEN] [0x00] [CHK]
 ```
 
 | Byte | Name | Description |
 |------|------|-------------|
 | 0 | Command | `0xF0` = read request |
-| 1 | ADDR_HI | High byte of register address |
-| 2 | ADDR_LO | Low byte of register address |
+| 1 | ADDR_LO | Low byte of register address |
+| 2 | ADDR_HI | High byte of register address |
 | 3 | LEN | Number of data bytes to read |
 | 4 | Reserved | Always `0x00` |
 | 5 | CHK | Checksum (see section 3) |
 
+> **Address byte order**: The two address bytes are transmitted in
+> little-endian order (low byte first, high byte second). For example,
+> register address `0x009F` is sent as bytes `9F 00`. Throughout this
+> document, register "addresses" are the 16-bit value decoded from this
+> LE pair. Checksums use the raw byte sum regardless of interpretation.
+
 #### Write requests (variable length)
 
 ```
-[0x0F] [ADDR_HI] [ADDR_LO] [CMD_TYPE] [0x00] [PAYLOAD_LEN] [DATA...] [CHK] [TRAILER]
+[0x0F] [ADDR_LO] [ADDR_HI] [CMD_TYPE] [0x00] [PAYLOAD_LEN] [DATA...] [CHK] [TRAILER]
 ```
 
 | Byte | Name | Description |
 |------|------|-------------|
 | 0 | Command | `0x0F` = write request |
-| 1 | ADDR_HI | High byte of register/function address |
-| 2 | ADDR_LO | Low byte of register/function address |
+| 1 | ADDR_LO | Low byte of register/function address |
+| 2 | ADDR_HI | High byte of register/function address |
 | 3 | CMD_TYPE | Command sub-type (varies by command) |
 | 4 | Reserved | Always `0x00` |
 | 5 | PAYLOAD_LEN | Number of data bytes following |
@@ -112,7 +118,7 @@ Three different checksum methods are used depending on the command:
 
 ### 3.1 Read Request Checksum
 
-For 6-byte read requests (`F0 ADDR_HI ADDR_LO LEN 00 CHK`), the
+For 6-byte read requests (`F0 ADDR_LO ADDR_HI LEN 00 CHK`), the
 checksum is the low byte of the sum of bytes 0 through 4:
 
 ```
@@ -125,8 +131,8 @@ in USB captures.
 
 Example: reading zone config at address `0x009F`, length `0x3F`:
 ```
-F0 + 00 + 9F + 3F + 00 = 0x1CE → CHK = 0xCE
-Request: F0 00 9F 3F 00 CE
+F0 + 9F + 00 + 3F + 00 = 0x1CE → CHK = 0xCE
+Request: F0 9F 00 3F 00 CE
 ```
 
 This formula enables constructing read requests to any register address.
@@ -622,10 +628,14 @@ address `0xEC14` for partition status.
 
 The panel's entire configuration is stored in a 64K address space readable
 via the `0xF0` read command (section 2.1). The following register addresses
-were identified by analyzing USB captures of KyoUnit upload (read) sessions.
+were identified by analyzing USB captures of KyoUnit upload (read) and
+download (write) sessions.
 
 All addresses are for **KYO32/KYO32M** (non-G). KYO32G addresses may differ
 for some registers (notably partition status uses `0x0215` instead of `0xEC14`).
+
+Wire bytes shown below match actual USB captures. Addresses are 16-bit
+values decoded from the little-endian byte pair in bytes 1-2 of the command.
 
 ### 10.1 Zone Configuration (0x009F-0x011E)
 
@@ -633,8 +643,8 @@ for some registers (notably partition status uses `0x0215` instead of `0xEC14`).
 
 ```
 Address range: 0x009F - 0x011E
-Read as:       F0 00 9F 3F 00 CE (zones 1-16, 64 bytes)
-               F0 00 DF 3F 00 0E (zones 17-32, 64 bytes)
+Read as:       F0 9F 00 3F 00 CE (zones 1-16, 64 bytes)
+               F0 DF 00 3F 00 0E (zones 17-32, 64 bytes)
 ```
 
 Each 4-byte zone record:
@@ -648,19 +658,26 @@ Each 4-byte zone record:
 
 **Zone type** (byte 0 lower bits):
 
-| Value | Type |
-|-------|------|
-| `0x00` | Instant |
-| `0x01` | Entry/Exit path |
-| `0x02` | Delayed follower |
-| `0x18` | Unconfigured (factory default) |
+| Value | KyoUnit name | Description |
+|-------|--------------|-------------|
+| `0x00` | Instant | Triggers alarm immediately |
+| `0x01` | Delayed | Follows entry delay if Path zone triggered first |
+| `0x02` | Path | Entry/exit path zone with configurable delay |
+| `0x18` | *(unconfigured)* | Factory default for unused zone slots |
 
-Example from a KYO32M:
+> **Verification**: Zone type values were confirmed by comparing register
+> data before and after known KyoUnit changes: Zone 3 changed from Delayed
+> (0x01) to Path (0x02), zones 5-6 changed from Instant (0x00) to Delayed
+> (0x01). The before/after register dumps match the expected values exactly.
+
+Example from a KYO32M (after configuration):
 ```
 Zone  1 (configured):      00 01 01 0F → Instant, enrolled, area 1
-Zone  2 (configured):      02 01 01 0F → Delayed follower, enrolled, area 1
-Zone  3 (configured):      01 01 02 0F → Entry/Exit, enrolled, area 2
+Zone  2 (configured):      02 01 01 0F → Path, enrolled, area 1
+Zone  3 (configured):      02 01 02 0F → Path, enrolled, area 2
 Zone  4 (configured):      00 01 02 0F → Instant, enrolled, area 2
+Zone  5 (configured):      01 01 02 0F → Delayed, enrolled, area 2
+Zone  6 (configured):      01 01 02 0F → Delayed, enrolled, area 2
 Zone  7 (configured):      00 01 04 0F → Instant, enrolled, area 3
 Zone 12 (unconfigured):    00 00 01 0F → Instant, not enrolled, area 1
 Zone 17 (unconfigured):    18 00 01 0F → Factory default
@@ -672,14 +689,14 @@ Zone 17 (unconfigured):    18 00 01 0F → Factory default
 
 ```
 Address range: 0x2E00 - 0x2FFF
-Read as:       F0 2E 00 3F 00 5D (zones 1-4)
-               F0 2E 40 3F 00 9D (zones 5-8)
-               F0 2E 80 3F 00 DD (zones 9-12)
-               F0 2E C0 3F 00 1D (zones 13-16)
-               F0 2F 00 3F 00 5E (zones 17-20)
-               F0 2F 40 3F 00 9E (zones 21-24)
-               F0 2F 80 3F 00 DE (zones 25-28)
-               F0 2F C0 3F 00 1E (zones 29-32)
+Read as:       F0 00 2E 3F 00 5D (zones 1-4)
+               F0 40 2E 3F 00 9D (zones 5-8)
+               F0 80 2E 3F 00 DD (zones 9-12)
+               F0 C0 2E 3F 00 1D (zones 13-16)
+               F0 00 2F 3F 00 5E (zones 17-20)
+               F0 40 2F 3F 00 9E (zones 21-24)
+               F0 80 2F 3F 00 DE (zones 25-28)
+               F0 C0 2F 3F 00 1E (zones 29-32)
 ```
 
 Each read returns 64 data bytes (4 zone names × 16 bytes). Default names
@@ -691,8 +708,8 @@ follow the pattern `Zone NN` (e.g., `Zone 12          `).
 
 ```
 Address range: 0x019E - 0x01F7
-Read as:       F0 01 9E 3F 00 CE (zones 1-21, 64 bytes)
-               F0 01 DE 07 00 D6 (zones 22-24, partial)
+Read as:       F0 9E 01 3F 00 CE (zones 1-21, 64 bytes)
+               F0 DE 01 07 00 D6 (zones 22-24, partial)
 ```
 
 Each 3-byte record contains 2 bytes of ESN/serial fragment followed by
@@ -705,7 +722,7 @@ for zone 3).
 64 bytes total: 10 bytes per partition, up to 8 partitions.
 
 ```
-Read as: F0 01 E9 3F 00 19 (64 bytes)
+Read as: F0 E9 01 3F 00 19 (64 bytes)
 ```
 
 Each 10-byte partition record:
@@ -713,113 +730,326 @@ Each 10-byte partition record:
 | Offset | Name | Description |
 |--------|------|-------------|
 | +0 | Area | Area bitmask for this partition |
-| +1 | Entry Timer | Entry delay (seconds) |
-| +2 | Exit Timer | Exit delay (seconds) |
+| +1 | Unknown | Observed as `0x07` on configured partitions |
+| +2 | Unknown | Observed as `0x07` on configured partitions |
 | +3..+5 | Unknown | Observed as `0x00` |
-| +6 | Siren Timer | Siren duration value (encoding TBD) |
+| +6 | Unknown | Observed as `0x06` on configured partitions |
 | +7..+9 | Unknown | Observed as `0x00` |
 
 Example:
 ```
-Partition 1: 01 07 07 00 00 00 06 00 00 00 → Area 1, 7s entry, 7s exit
-Partition 2: 02 07 07 00 00 00 06 00 00 00 → Area 2, 7s entry, 7s exit
-Partition 3: (all zeros = unconfigured or default)
+Partition 1: 01 07 07 00 00 00 06 00 00 00 → Area 1
+Partition 2: 02 07 07 00 00 00 06 00 00 00 → Area 2
+Partition 3: 04 00 00 00 00 00 00 00 00 00 → Area 3 (minimal config)
+Partition 4: (all zeros = unconfigured)
 ```
 
-### 10.5 Code Names (0x3000-0x317F)
+> **Note**: Bytes 1-2 were previously assumed to be entry/exit timers
+> but a separate timer register (section 10.5) stores the actual timer
+> values. The purpose of bytes 1-2 and 6 in this register is unknown.
 
-384 bytes total: 16 ASCII bytes per code name, 24 codes, space-padded.
+### 10.5 Timers (0x016F-0x0188)
+
+26 bytes of system timers for all 8 partitions.
+
+```
+Read as: F0 6F 01 1A 00 7A (26 bytes)
+```
+
+| Offset | Size | Description |
+|--------|------|-------------|
+| +0..+15 | 16B | Entry/exit timers: 2 bytes per partition (entry, exit), 8 partitions |
+| +16..+23 | 8B | Siren duration: 1 byte per partition |
+| +24..+25 | 3B | Unknown (observed: `0x05 0x03 0x03`) |
+
+Timer values are direct byte values in seconds.
+
+Example from a KYO32M:
+```
+Data: 1E 1E 1E 1E 1E 1E 1E 1E 1E 1E 1E 1E 1E 1E 1E 1E 02 02 02 02 02 02 02 02 05 03 03
+
+P1: entry=30s, exit=30s, siren=2
+P2: entry=30s, exit=30s, siren=2
+P3: entry=30s, exit=30s, siren=2
+P4-P8: entry=30s, exit=30s, siren=2 (defaults)
+Trailing bytes: 05 03 03 (unknown)
+```
+
+### 10.6 Code Names (0x3000-0x317F)
+
+384 bytes total: 16 ASCII bytes per code name, 24 codes (1-24), space-padded.
 
 ```
 Address range: 0x3000 - 0x317F
-Read as:       F0 30 00 3F 00 5F (codes 1-4)
-               F0 30 40 3F 00 9F (codes 5-8)
-               F0 30 80 3F 00 DF (codes 9-12)
-               F0 30 C0 3F 00 1F (codes 13-16)
-               F0 31 00 3F 00 60 (codes 17-20)
-               F0 31 40 3F 00 A0 (codes 21-24)
+Read as:       F0 00 30 3F 00 5F (codes 1-4)
+               F0 40 30 3F 00 9F (codes 5-8)
+               F0 80 30 3F 00 DF (codes 9-12)
+               F0 C0 30 3F 00 1F (codes 13-16)
+               F0 00 31 3F 00 60 (codes 17-20)
+               F0 40 31 3F 00 A0 (codes 21-24)
 ```
 
 Default names: `Code 1          `, `Code 2          `, `Code 3          `, etc.
 The first two codes may have custom default names depending on panel firmware.
 
-### 10.6 Output Names (0x3280-0x337F)
+### 10.7 Digital Key Names (0x3180-0x327F)
+
+256 bytes total: 16 ASCII bytes per key name, 16 keys, space-padded.
+
+```
+Address range: 0x3180 - 0x327F
+Read as:       F0 80 31 3F 00 E0 (keys 1-4)
+               F0 C0 31 3F 00 20 (keys 5-8)
+               F0 00 32 3F 00 61 (keys 9-12)
+               F0 40 32 3F 00 A1 (keys 13-16)
+```
+
+Default names: `Digital Key 1   `, `Digital Key 2   `, etc.
+
+### 10.8 Output Names (0x3280-0x337F)
 
 256 bytes total: 16 ASCII bytes per output name, 16 outputs, space-padded.
 
 ```
 Address range: 0x3280 - 0x337F
-Read as:       F0 32 80 3F 00 E1 (outputs 1-4)
-               F0 32 C0 3F 00 21 (outputs 5-8)
-               F0 33 00 3F 00 62 (outputs 9-12)
-               F0 33 40 3F 00 A2 (outputs 13-16)
+Read as:       F0 80 32 3F 00 E1 (outputs 1-4)
+               F0 C0 32 3F 00 21 (outputs 5-8)
+               F0 00 33 3F 00 62 (outputs 9-12)
+               F0 40 33 3F 00 A2 (outputs 13-16)
 ```
 
 Default names: `Output 1        `, `Output 2        `, etc.
 
-### 10.7 Keyfob ESN Storage (0xC0B1-0xC0DE)
+### 10.9 Phone Number Names (0x3380-0x347F)
+
+128 bytes total: 16 ASCII bytes per number name, 8 ARC phone numbers,
+space-padded.
+
+```
+Address range: 0x3380 - 0x347F
+Read as:       F0 80 33 3F 00 E2 (numbers 1-4)
+               F0 C0 33 3F 00 22 (numbers 5-8)
+```
+
+Default names: `Number 1        `, `Number 2        `, etc.
+
+### 10.10 Partition Names (0x2BA0-0x2C1F)
+
+128 bytes total: 16 ASCII bytes per partition name, 8 partitions,
+space-padded.
+
+```
+Address range: 0x2BA0 - 0x2C1F
+Read as:       F0 A0 2B 3F 00 FA (partitions 1-4)
+               F0 E0 2B 3F 00 3A (partitions 5-8)
+```
+
+Default names: `Partition 01    `, `Partition 02    `, etc.
+
+### 10.11 Keypad Names (0x2C20-0x2C9F)
+
+128 bytes total: 16 ASCII bytes per keypad name, 8 keypads, space-padded.
+
+```
+Address range: 0x2C20 - 0x2C9F
+Read as:       F0 20 2C 3F 00 7B (keypads 1-4)
+               F0 60 2C 3F 00 BB (keypads 5-8)
+```
+
+Default names: `Keypad 01       `, `Keypad 02       `, etc.
+
+### 10.12 Reader Names (0x2CA0-0x2D9F)
+
+256 bytes total: 16 ASCII bytes per reader name, 16 readers, space-padded.
+
+```
+Address range: 0x2CA0 - 0x2D9F
+Read as:       F0 A0 2C 3F 00 FB (readers 1-4)
+               F0 E0 2C 3F 00 3B (readers 5-8)
+               F0 20 2D 3F 00 7C (readers 9-12)
+               F0 60 2D 3F 00 BC (readers 13-16)
+```
+
+Default names: `Reader 01       `, `Reader 02       `, etc.
+
+### 10.13 Expander Names (0x2DA0-0x2DFF)
+
+96 bytes total: 16 ASCII bytes per name, 4 input expanders + 2 output
+expanders.
+
+```
+Address range: 0x2DA0 - 0x2DFF
+Read as:       F0 A0 2D 3F 00 FC (input expanders 1-4, 64 bytes)
+               F0 E0 2D 1F 00 1C (output expanders 1-2, 32 bytes)
+```
+
+Default names: `Expander In 01  `, `Expander Out 01 `, etc.
+
+### 10.14 Keyfob ESN Storage (0xC0B1-0xC0DE)
 
 48 bytes total: 3 bytes per keyfob, 16 keyfob slots.
 
 ```
 Address range: 0xC0B1 - 0xC0DE (3-byte stride)
-Read as:       F0 C0 B1 02 00 63 (keyfob 1)
-               F0 C0 B4 02 00 66 (keyfob 2)
+Read as:       F0 B1 C0 02 00 63 (keyfob 1)
+               F0 B4 C0 02 00 66 (keyfob 2)
                ... (address increments by 3 for each keyfob)
-               F0 C0 DE 02 00 90 (keyfob 16)
+               F0 DE C0 02 00 90 (keyfob 16)
 ```
 
 Each read returns 3 data bytes: the keyfob's ESN. Unenrolled slots
 return `00 00 00`.
 
-### 10.8 Panel Mode (0x01E6-0x01E8)
+### 10.15 Zone ESN Storage (0xC045-0xC0A4)
+
+96 bytes total: 3 bytes per zone, 32 zone slots.
+
+```
+Address range: 0xC045 - 0xC0A4 (3-byte stride)
+Read as:       F0 45 C0 02 00 F7 (zone 1)
+               F0 48 C0 02 00 FA (zone 2)
+               ... (address increments by 3 for each zone)
+               F0 A2 C0 02 00 54 (zone 32)
+```
+
+Each read returns 3 data bytes: the wireless zone sensor's ESN.
+Unenrolled or wired zones return `00 00 00`.
+
+> **Note**: This register stores the raw ESN for each zone independently
+> of the zone enrollment register (section 10.3). The enrollment register
+> at `0x019E` uses a different format (2 ESN bytes + `0xFF` marker).
+
+### 10.16 Panel Options (0x02DB)
+
+5 bytes of panel configuration options.
+
+```
+Read as: F0 DB 02 04 00 D1 (4 bytes requested, 5 data bytes returned)
+```
+
+Observed response: `60 81 00 1E 00`.
+
+Exact bit mapping is not fully decoded. This register likely contains
+the panel option flags including option 29 (disallow tone check).
+
+### 10.17 Event Routing (0x03D0-0x0921)
+
+Approximately 1362 bytes of Contact ID event routing configuration.
+Each event is encoded as 3 bytes.
+
+```
+Address range: 0x03D0 - 0x0921
+Read as:       F0 D0 03 3F 00 02 (first 64 bytes)
+               F0 10 04 3F 00 43 (next 64 bytes)
+               F0 50 04 3F 00 83
+               F0 90 04 3F 00 C3
+               F0 D0 04 3F 00 03
+               F0 10 05 3F 00 44
+               F0 50 05 3F 00 84
+               F0 90 05 3F 00 C4
+               F0 D0 05 3F 00 04
+               F0 10 06 3F 00 45
+               F0 50 06 3F 00 85
+               F0 90 06 3F 00 C5
+               F0 D0 06 3F 00 05
+               F0 10 07 3F 00 46
+               F0 50 07 3F 00 86
+               F0 90 07 3F 00 C6
+               F0 D0 07 3F 00 06
+               F0 10 08 3F 00 47
+               F0 50 08 3F 00 87
+               F0 90 08 3F 00 C7
+               F0 D0 08 3F 00 07
+               F0 10 09 11 00 1A (final 17 bytes)
+```
+
+Each 3-byte event record:
+
+| Offset | Name | Description |
+|--------|------|-------------|
+| +0 | Event code | Contact ID event code (`0x00`=partition alarm, `0x3A`=zone burglar, etc.) |
+| +1 | Phone mask | Bitmask of ARC phone numbers to notify (bit 0=number 1, etc.) |
+| +2 | Unknown | Always `0x00` in observed data |
+
+Events are organized in groups:
+- **Partition events** (8 per event type): one record per partition.
+  Example: partition alarm for P1-P3 enabled = `00 01 00` × 3, then
+  `00 00 00` × 5 for P4-P8.
+- **Zone events** (32 per event type): one record per zone. Example:
+  zone burglar for zones 1-11 enabled = `3A 01 00` × 11, then
+  `3A 00 00` × 21 for zones 12-32.
+
+When no events are configured (factory default), the entire region
+reads as all zeros.
+
+### 10.18 ARC Subscriber Code (0x1509)
+
+4-byte ASCII subscriber code for ARC (Alarm Receiving Centre) reporting.
+
+```
+Read as: F0 09 15 04 00 12 (4 bytes)
+```
+
+Example response: `30 30 30 30` = ASCII "0000" (default subscriber code).
+
+### 10.19 Panel Mode (0x01E6-0x01E8)
 
 3 bytes of panel status/mode information.
 
 ```
-Read as: F0 01 E6 02 00 D9
+Read as: F0 E6 01 02 00 D9
 ```
 
 Observed response: `11 10 FF`. Exact bit mapping TBD.
 
-### 10.9 Keyfob Button Config (0x011F-0x016E)
+### 10.20 Keyfob Button Config (0x011F-0x016E)
 
 80 bytes total: 5 bytes per keyfob slot, 16 slots.
 
 ```
-Read as:       F0 01 1F 3F 00 4F (keyfobs 1-13, 64 bytes)
-               F0 01 5F 0F 00 5F (keyfobs 14-16, 16 bytes)
+Read as:       F0 1F 01 3F 00 4F (keyfobs 1-13, 64 bytes)
+               F0 5F 01 0F 00 5F (keyfobs 14-16, 16 bytes)
 ```
 
 Each 5-byte record contains keyfob button assignment data. Unenrolled
 slots contain `00 00 00 00 FF`.
 
-### 10.10 Status Flags (0x1503-0x1508)
+### 10.21 Status Flags (0x1503-0x1508)
 
 6 bytes of system status flags.
 
 ```
-Read as: F0 15 03 05 00 0D
+Read as: F0 03 15 05 00 0D
 ```
 
 Observed response: `FF FF FF FF FF FF`. Exact bit mapping TBD.
 
-### 10.11 Register Address Summary
+### 10.22 Register Address Summary
 
 | Address | Size | Content |
 |---------|------|---------|
 | `0x0000` | 12B | Firmware version string (ASCII) |
 | `0x009F` | 128B | Zone configuration (32 × 4 bytes) |
 | `0x011F` | 80B | Keyfob button config (16 × 5 bytes) |
+| `0x016F` | 26B | Timers (entry/exit/siren, 8 partitions) |
 | `0x019E` | 96B | Zone enrollment/ESN (32 × 3 bytes) |
 | `0x01E6` | 3B | Panel mode/status |
 | `0x01E9` | 64B | Partition configuration (8 × 10 bytes) |
-| `0x03D0` | ~1362B | Event log area (all zeros observed) |
+| `0x02DB` | 5B | Panel options |
+| `0x03D0` | ~1362B | Event routing (Contact ID) |
 | `0x04F0` | 11B | Sensor status (realtime) |
 | `0x1503` | 6B | System status flags |
+| `0x1509` | 4B | ARC subscriber code (ASCII) |
+| `0x2BA0` | 128B | Partition names (8 × 16 bytes ASCII) |
+| `0x2C20` | 128B | Keypad names (8 × 16 bytes ASCII) |
+| `0x2CA0` | 256B | Reader names (16 × 16 bytes ASCII) |
+| `0x2DA0` | 96B | Expander names (6 × 16 bytes ASCII) |
 | `0x2E00` | 512B | Zone names (32 × 16 bytes ASCII) |
 | `0x3000` | 384B | Code names (24 × 16 bytes ASCII) |
+| `0x3180` | 256B | Digital key names (16 × 16 bytes ASCII) |
 | `0x3280` | 256B | Output names (16 × 16 bytes ASCII) |
+| `0x3380` | 128B | Phone number names (8 × 16 bytes ASCII) |
+| `0xC045` | 96B | Zone ESN storage (32 × 3 bytes) |
 | `0xC0B1` | 48B | Keyfob ESN storage (16 × 3 bytes) |
 | `0xEC14` | 19B | Partition status (KYO32 non-G) |
 
@@ -850,15 +1080,18 @@ The keypad displays a "T" symbol during arm/disarm operations despite no
 zone triggers. This is likely an ARC (Alarm Receiving Centre) communications
 failure indicator — possibly triggered by a failed phone line tone check
 (panel option "29 - Disallow tone check" may need to be enabled on
-VoIP/fiber landlines with non-standard dial tones). The register that
-drives this display is not yet identified. A USB capture while "T" is
-actively displayed would be needed to locate the source register.
+VoIP/fiber landlines with non-standard dial tones). The panel options
+register at `0x02DB` (section 10.16) likely contains this setting but
+exact bit mapping is not yet decoded.
 
-### 11.4 Event Log
+### 11.4 Event Routing Format
 
-The panel stores an event log. The register range `0x03D0`-`0x0921` was
-read during a KyoUnit upload session but returned all zeros (panel had no
-stored events at the time). The event log entry format remains undecoded.
+The event routing register at `0x03D0` (section 10.17) has been partially
+decoded: 3 bytes per event with event code, phone mask, and an unknown
+byte. The full list of Contact ID event codes and the complete event
+ordering within the register are not yet documented. A comprehensive
+mapping would require configuring individual events in KyoUnit and
+observing the register changes.
 
 ### 11.5 Rx[11] in Partition Status
 
