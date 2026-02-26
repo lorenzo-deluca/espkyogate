@@ -73,8 +73,8 @@ binary_sensor:
           name: "Zone 1 Panel Name"
         zone_partition:
           name: "Zone 1 Partition"
-        esn:
-          name: "Zone 1 ESN"
+        serial_number:
+          name: "Zone 1 Serial Number"
       - zone: 2
         name: "Zone 2"
         device_class: door

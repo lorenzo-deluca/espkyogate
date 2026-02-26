@@ -84,6 +84,7 @@ enum TextSensorType : uint8_t {
   TEXT_ZONE_ESN,
   TEXT_OUTPUT_NAME,
   TEXT_KEYFOB_ESN,
+  TEXT_KEYFOB_NAME,
   TEXT_PARTITION_ENTRY_DELAY,
   TEXT_PARTITION_EXIT_DELAY,
   TEXT_PARTITION_SIREN_TIMER,
@@ -136,6 +137,13 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   void update_datetime(uint8_t day, uint8_t month, uint16_t year,
                        uint8_t hours, uint8_t minutes, uint8_t seconds);
 
+  // Polling control
+  void set_polling_enabled(bool enabled);
+  bool is_polling_enabled() const { return this->polling_enabled_; }
+
+  // Re-read panel configuration registers
+  void reread_config();
+
   friend class BentelKyoAlarmPanel;
 
  protected:
@@ -157,10 +165,11 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   int read_register_(uint16_t address, uint8_t length, uint8_t *response, uint32_t timeout_ms = SERIAL_TIMEOUT_MS);
   void read_zone_config_();
   void read_zone_names_();
-  void read_zone_esn_();
+  bool read_zone_esn_next_();    // reads one zone ESN per call, returns true when done
   void read_output_names_();
   void read_partition_config_();
-  void read_keyfob_esn_();
+  bool read_keyfob_esn_next_();  // reads one keyfob ESN per call, returns true when done
+  void read_keyfob_names_();
   void publish_text_sensors_();
 
   // Checksum helpers
@@ -198,6 +207,9 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   uint32_t serial_timeout_ms_{80};
   // Callback: 0=detect, 1=sensor, 2=partition
   uint8_t serial_pending_op_{0};
+
+  // Polling control
+  bool polling_enabled_{true};
 
   // Communication health and backoff
   bool communication_ok_{false};
@@ -242,7 +254,9 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   bool zone_tamper_memory_[KYO_MAX_ZONES]{};
 
   // Zone configuration (read once from panel config registers, one step per update cycle)
-  uint8_t config_read_step_{0};  // 0=not started, 1-6=reading, 7=publish, 8=done
+  uint8_t config_read_step_{0};    // 0=not started, 1-8=reading, 9=done
+  int esn_read_index_{0};          // current zone index for per-zone ESN reads
+  int keyfob_read_index_{0};       // current keyfob index for per-slot ESN reads
   uint8_t zone_type_raw_[KYO_MAX_ZONES]{};   // raw type byte
   uint8_t zone_area_mask_[KYO_MAX_ZONES]{};   // area bitmask
   bool zone_enrolled_[KYO_MAX_ZONES]{};
@@ -257,8 +271,9 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   uint8_t partition_exit_delay_[KYO_MAX_PARTITIONS]{};
   uint8_t partition_siren_timer_[KYO_MAX_PARTITIONS]{};
 
-  // Keyfob ESN (read once from 0xC0B1)
+  // Keyfob ESN (read once from 0xC0B1) and names (read once from 0x3180)
   std::string keyfob_esn_[KYO_MAX_KEYFOBS];
+  std::string keyfob_name_[KYO_MAX_KEYFOBS];
 };
 
 }  // namespace bentel_kyo

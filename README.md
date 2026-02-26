@@ -23,12 +23,12 @@ Model detection is automatic via firmware version query on first connection.
 
 - **Alarm Control Panel** entities per partition (arm away, arm home, arm night, disarm) with full Home Assistant integration
 - **Binary sensors** for zones, zone tamper, zone bypass, alarm memory, tamper memory, warnings, tamper flags, siren, communication status, and output states
-- **Text sensors** for firmware version, alarm model, zone diagnostics (type, panel name, partition, ESN), output names, partition timers, and keyfob ESNs
+- **Text sensors** for firmware version, alarm model, zone diagnostics (type, panel name, partition, serial number), output names, partition timers, and keyfob serial numbers
 - **Non-blocking serial I/O** with async state machine (no blocking delays)
 - **Response caching** with change detection (only publishes when state changes)
 - **Exponential backoff** on communication failures (2s to 32s)
 - **Dual-query polling** (sensor + partition status every 500ms cycle)
-- **One-time config reads** for zone configuration, names, ESNs, output names, partition timers, and keyfob ESNs
+- **One-time config reads** for zone configuration, names, serial numbers, output names, partition timers, and keyfob serial numbers
 
 ## Hardware
 
@@ -169,8 +169,8 @@ binary_sensor:
           name: "Front Door Panel Name"
         zone_partition:
           name: "Front Door Partition"
-        esn:
-          name: "Front Door ESN"
+        serial_number:
+          name: "Front Door Serial Number"
       - zone: 2
         name: "Living Room PIR"
         device_class: motion
@@ -303,7 +303,7 @@ Optional diagnostic text sensors for each partition:
 | `zone_type` | No | Text sensor: zone type (Instant, Delayed, Path) |
 | `panel_name` | No | Text sensor: zone name configured on the panel |
 | `zone_partition` | No | Text sensor: which partition(s) the zone belongs to |
-| `esn` | No | Text sensor: wireless sensor ESN |
+| `serial_number` | No | Text sensor: wireless sensor serial number |
 
 ### Zone Tamper (`zone_tamper`)
 
@@ -358,7 +358,7 @@ Per-zone tamper memory.
 |-----|-------------|
 | `firmware_version` | Panel firmware version string |
 | `alarm_model` | Detected alarm model (KYO4, KYO8, KYO32, etc.) |
-| `keyfobs` | Keyfob ESN values (slot 1-16) |
+| `keyfobs` | Keyfob serial numbers (slot 1-16) |
 
 ## KYO32 vs KYO32G
 

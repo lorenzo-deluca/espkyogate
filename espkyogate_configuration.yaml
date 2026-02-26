@@ -138,7 +138,7 @@ binary_sensor:
     #   zone_type:   Sensor type read from panel (Instant/Delayed/Path)
     #   panel_name:  Zone name as configured in the panel
     #   zone_partition:   Area assignment read from panel
-    #   esn:         Enrolled sensor serial number (wireless sensors)
+    #   serial_number:  Enrolled sensor serial number (wireless sensors)
     zones:
       - zone: 1
         name: "Zone 1 Sensor"
@@ -149,8 +149,8 @@ binary_sensor:
           name: "Zone 1 Panel Name"
         zone_partition:
           name: "Zone 1 Partition"
-        esn:
-          name: "Zone 1 ESN"
+        serial_number:
+          name: "Zone 1 Serial Number"
       - zone: 2
         name: "Zone 2 Sensor"
         device_class: "window"
@@ -160,8 +160,8 @@ binary_sensor:
           name: "Zone 2 Panel Name"
         zone_partition:
           name: "Zone 2 Partition"
-        esn:
-          name: "Zone 2 ESN"
+        serial_number:
+          name: "Zone 2 Serial Number"
       - zone: 3
         name: "Zone 3 Sensor"
         device_class: "motion"

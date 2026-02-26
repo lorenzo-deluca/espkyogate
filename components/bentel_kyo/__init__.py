@@ -7,7 +7,7 @@ from esphome.const import CONF_ID
 
 CODEOWNERS = ["@espkyogate"]
 DEPENDENCIES = ["uart"]
-AUTO_LOAD = ["alarm_control_panel", "binary_sensor", "text_sensor"]
+AUTO_LOAD = ["alarm_control_panel", "binary_sensor", "button", "switch", "text_sensor"]
 MULTI_CONF = False
 
 CONF_BENTEL_KYO_ID = "bentel_kyo_id"

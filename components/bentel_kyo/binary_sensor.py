@@ -14,6 +14,7 @@ from esphome.const import (
     DEVICE_CLASS_TAMPER,
     DEVICE_CLASS_BATTERY,
     DEVICE_CLASS_POWER,
+    ENTITY_CATEGORY_CONFIG,
     ENTITY_CATEGORY_DIAGNOSTIC,
 )
 
@@ -41,7 +42,7 @@ CONF_OUTPUT_NUMBER = "output_number"
 CONF_ZONE_TYPE = "zone_type"
 CONF_PANEL_NAME = "panel_name"
 CONF_ZONE_PARTITION = "zone_partition"
-CONF_ZONE_ESN = "esn"
+CONF_ZONE_SERIAL_NUMBER = "serial_number"
 
 # Output diagnostic text sensor key (nested inside output_state entries)
 CONF_OUTPUT_PANEL_NAME = "panel_name"
@@ -97,6 +98,7 @@ TEXT_SENSOR_TYPES = {
     "TEXT_ZONE_AREA": TextSensorType.TEXT_ZONE_AREA,
     "TEXT_ZONE_ESN": TextSensorType.TEXT_ZONE_ESN,
     "TEXT_OUTPUT_NAME": TextSensorType.TEXT_OUTPUT_NAME,
+    "TEXT_KEYFOB_NAME": TextSensorType.TEXT_KEYFOB_NAME,
 }
 
 # ========================================
@@ -112,19 +114,19 @@ ZONE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(
         cv.Required(CONF_ZONE): cv.int_range(min=1, max=32),
         cv.Optional(CONF_ZONE_TYPE): text_sensor.text_sensor_schema(
             icon="mdi:shield-alert-outline",
-            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+            entity_category=ENTITY_CATEGORY_CONFIG,
         ),
         cv.Optional(CONF_PANEL_NAME): text_sensor.text_sensor_schema(
             icon="mdi:form-textbox",
-            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+            entity_category=ENTITY_CATEGORY_CONFIG,
         ),
         cv.Optional(CONF_ZONE_PARTITION): text_sensor.text_sensor_schema(
             icon="mdi:shield-home-outline",
-            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+            entity_category=ENTITY_CATEGORY_CONFIG,
         ),
-        cv.Optional(CONF_ZONE_ESN): text_sensor.text_sensor_schema(
+        cv.Optional(CONF_ZONE_SERIAL_NUMBER): text_sensor.text_sensor_schema(
             icon="mdi:identifier",
-            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+            entity_category=ENTITY_CATEGORY_CONFIG,
         ),
     }
 )
@@ -185,79 +187,94 @@ OUTPUT_STATE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(
         cv.Required(CONF_OUTPUT_NUMBER): cv.int_range(min=1, max=8),
         cv.Optional(CONF_OUTPUT_PANEL_NAME): text_sensor.text_sensor_schema(
             icon="mdi:form-textbox",
-            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+            entity_category=ENTITY_CATEGORY_CONFIG,
         ),
     }
 )
 
 # Warning sub-schema (each warning with appropriate device_class & icon)
+# All warnings are diagnostic entities — system-level indicators, not primary sensors
 WARNING_SCHEMA = cv.Schema(
     {
         cv.Optional(CONF_MAINS_FAILURE): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_POWER,
             icon="mdi:power-plug-off",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_BPI_MISSING): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_PROBLEM,
             icon="mdi:chip",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_FUSE_FAULT): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_PROBLEM,
             icon="mdi:fuse-alert",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_LOW_BATTERY): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_BATTERY,
             icon="mdi:battery-alert",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_PHONE_LINE_FAULT): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_PROBLEM,
             icon="mdi:phone-off",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_DEFAULT_CODES): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_PROBLEM,
             icon="mdi:key-alert",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_WIRELESS_FAULT): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_PROBLEM,
             icon="mdi:wifi-alert",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
     }
 )
 
-# Tamper sub-schema (all tamper-class)
+# Tamper sub-schema (all tamper-class, diagnostic entities)
 TAMPER_SCHEMA = cv.Schema(
     {
         cv.Optional(CONF_TAMPER_ZONE): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_TAMPER,
             icon="mdi:shield-alert",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_TAMPER_FALSE_KEY): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_TAMPER,
             icon="mdi:key-remove",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_TAMPER_BPI): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_TAMPER,
             icon="mdi:chip",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_TAMPER_SYSTEM): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_TAMPER,
             icon="mdi:alert-octagon",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_TAMPER_RF_JAM): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_TAMPER,
             icon="mdi:signal-off",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_TAMPER_WIRELESS): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_TAMPER,
             icon="mdi:wifi-alert",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
     }
 )
 
-# Communication: connectivity class
+# Communication: connectivity class, diagnostic
 COMMUNICATION_SCHEMA = binary_sensor.binary_sensor_schema(
     device_class=DEVICE_CLASS_CONNECTIVITY,
     icon="mdi:lan-connect",
+    entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
 )
 
 # Siren: sound class
@@ -312,8 +329,8 @@ async def to_code(config):
                 await _register_text_sensor(hub, zone_conf[CONF_PANEL_NAME], "TEXT_ZONE_NAME", zone_index)
             if CONF_ZONE_PARTITION in zone_conf:
                 await _register_text_sensor(hub, zone_conf[CONF_ZONE_PARTITION], "TEXT_ZONE_AREA", zone_index)
-            if CONF_ZONE_ESN in zone_conf:
-                await _register_text_sensor(hub, zone_conf[CONF_ZONE_ESN], "TEXT_ZONE_ESN", zone_index)
+            if CONF_ZONE_SERIAL_NUMBER in zone_conf:
+                await _register_text_sensor(hub, zone_conf[CONF_ZONE_SERIAL_NUMBER], "TEXT_ZONE_ESN", zone_index)
 
     # Zone tamper, bypass, alarm memory, tamper memory
     zone_type_map = {

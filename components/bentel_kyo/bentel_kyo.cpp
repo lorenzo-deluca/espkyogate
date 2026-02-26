@@ -76,7 +76,7 @@ void BentelKyo::send_command_async_(const uint8_t *cmd, int cmd_len, uint8_t pen
 // ========================================
 
 void BentelKyo::loop() {
-  if (this->serial_state_ != SerialState::WAITING_RESPONSE)
+  if (!this->polling_enabled_ || this->serial_state_ != SerialState::WAITING_RESPONSE)
     return;
 
   // Read any available bytes
@@ -172,7 +172,32 @@ void BentelKyo::handle_serial_failure_() {
 // update() — non-blocking: just sends commands, loop() handles responses
 // ========================================
 
+void BentelKyo::reread_config() {
+  ESP_LOGI(TAG, "Re-reading panel configuration registers...");
+  this->config_read_step_ = 0;
+  this->esn_read_index_ = 0;
+  this->keyfob_read_index_ = 0;
+}
+
+void BentelKyo::set_polling_enabled(bool enabled) {
+  if (this->polling_enabled_ == enabled)
+    return;
+  this->polling_enabled_ = enabled;
+  if (enabled) {
+    ESP_LOGI(TAG, "Polling enabled — resuming panel communication");
+    this->force_publish_ = true;
+  } else {
+    ESP_LOGW(TAG, "Polling disabled — serial communication stopped");
+    // Abort any in-progress serial transaction
+    this->serial_state_ = SerialState::IDLE;
+  }
+}
+
 void BentelKyo::update() {
+  // Skip if polling is disabled
+  if (!this->polling_enabled_)
+    return;
+
   // Skip if still waiting for a response or in backoff
   if (this->serial_state_ != SerialState::IDLE)
     return;
@@ -185,22 +210,37 @@ void BentelKyo::update() {
     return;
   }
 
-  // Normal polling: send sensor status query (partition query chains from loop())
-  this->send_command_async_(CMD_GET_SENSOR_STATUS, sizeof(CMD_GET_SENSOR_STATUS), 1, 80);
-
   // Read panel configuration once after model detection — one step per update cycle
-  if (this->config_read_step_ < 8 && this->communication_ok_) {
+  // Config reads use blocking send_message_(), so they must NOT run in the same
+  // cycle as async sensor/partition polling (otherwise both commands collide on the bus)
+  //
+  // Steps 3 and 6 (zone ESN and keyfob ESN) read one slot per cycle to avoid
+  // blocking the main loop for 90+ seconds (0xC0xx reads take ~1.5s each).
+  if (this->config_read_step_ < 9 && this->communication_ok_) {
     switch (this->config_read_step_) {
       case 0: this->config_read_step_ = 1; break;  // skip one cycle after detection
       case 1: this->read_zone_config_(); this->config_read_step_ = 2; break;
       case 2: this->read_zone_names_(); this->config_read_step_ = 3; break;
-      case 3: this->read_zone_esn_(); this->config_read_step_ = 4; break;
+      case 3:
+        // Read one zone ESN per cycle; advance to step 4 when done
+        if (this->read_zone_esn_next_())
+          this->config_read_step_ = 4;
+        break;
       case 4: this->read_output_names_(); this->config_read_step_ = 5; break;
       case 5: this->read_partition_config_(); this->config_read_step_ = 6; break;
-      case 6: this->read_keyfob_esn_(); this->config_read_step_ = 7; break;
-      case 7: this->publish_text_sensors_(); this->config_read_step_ = 8; break;
+      case 6:
+        // Read one keyfob ESN per cycle; advance to step 7 when done
+        if (this->read_keyfob_esn_next_())
+          this->config_read_step_ = 7;
+        break;
+      case 7: this->read_keyfob_names_(); this->config_read_step_ = 8; break;
+      case 8: this->publish_text_sensors_(); this->config_read_step_ = 9; break;
     }
+    return;  // Skip normal polling this cycle — avoid bus collision
   }
+
+  // Normal polling: send sensor status query (partition query chains from loop())
+  this->send_command_async_(CMD_GET_SENSOR_STATUS, sizeof(CMD_GET_SENSOR_STATUS), 1, 80);
 
   // Publish communication status
   for (auto &entry : this->binary_sensors_) {
@@ -801,12 +841,6 @@ void BentelKyo::read_zone_config_() {
     return;
   }
 
-  // Hex dump first 20 data bytes for debugging
-  ESP_LOGI(TAG, "Zone config 1-16 raw (%d bytes): %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-           count, rx[6], rx[7], rx[8], rx[9], rx[10], rx[11], rx[12], rx[13],
-           rx[14], rx[15], rx[16], rx[17], rx[18], rx[19], rx[20], rx[21],
-           rx[22], rx[23], rx[24], rx[25]);
-
   for (int i = 0; i < 16 && i < this->max_zones_; i++) {
     int offset = 6 + (i * 4);
     this->zone_type_raw_[i] = rx[offset];
@@ -834,7 +868,7 @@ void BentelKyo::read_zone_config_() {
   }
 
   for (int i = 0; i < this->max_zones_; i++) {
-    ESP_LOGI(TAG, "Zone %d: type=0x%02X, area=0x%02X, enrolled=%d", i + 1,
+    ESP_LOGD(TAG, "Zone %d: type=0x%02X, area=0x%02X, enrolled=%d", i + 1,
              this->zone_type_raw_[i], this->zone_area_mask_[i], this->zone_enrolled_[i]);
   }
 }
@@ -871,64 +905,53 @@ void BentelKyo::read_zone_names_() {
       }
 
       this->zone_name_[zone_idx] = name_buf;
-      // Log raw hex + ascii for every zone to help debug offset issues
-      ESP_LOGI(TAG, "Zone %d name raw: [%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X] = '%s'",
-               zone_idx + 1,
-               rx[offset], rx[offset+1], rx[offset+2], rx[offset+3],
-               rx[offset+4], rx[offset+5], rx[offset+6], rx[offset+7],
-               rx[offset+8], rx[offset+9], rx[offset+10], rx[offset+11],
-               rx[offset+12], rx[offset+13], rx[offset+14], rx[offset+15],
-               name_buf);
+      ESP_LOGD(TAG, "Zone %d name: '%s'", zone_idx + 1, name_buf);
     }
   }
 }
 
-void BentelKyo::read_zone_esn_() {
-  // Zone ESN storage at 0xC045: 3 bytes per zone, 32 zones (96 bytes total)
-  // Section 10.15: raw ESN for each wireless zone sensor
+bool BentelKyo::read_zone_esn_next_() {
+  // Zone ESN at 0xC045: 3 bytes per zone, per-zone reads with stride 3
+  // Reads ONE zone per call (one per update cycle) to avoid blocking the main loop.
+  // USB capture shows panel takes ~1s to respond to 0xC0xx reads (EEPROM access).
+  // Returns true when all zones have been read.
+  int i = this->esn_read_index_;
+
+  if (i >= this->max_zones_) {
+    for (int z = 0; z < this->max_zones_; z++) {
+      if (this->zone_enrolled_[z])
+        ESP_LOGD(TAG, "Zone %d serial: %s", z + 1, this->zone_esn_[z].c_str());
+    }
+    this->esn_read_index_ = 0;
+    return true;
+  }
+
   uint8_t rx[255];
-
-  // First read: zones 1-21 (63 bytes)
-  int count = this->read_register_(0xC045, 0x3F, rx, 300);
-  if (count < 6 + 63) {
-    ESP_LOGW(TAG, "Zone ESN read 1-21 failed: got %d bytes", count);
-    return;
-  }
-
-  // Hex dump first 12 data bytes for debugging
-  ESP_LOGI(TAG, "Zone ESN 1-21 raw (%d bytes): %02X %02X %02X | %02X %02X %02X | %02X %02X %02X | %02X %02X %02X",
-           count, rx[6], rx[7], rx[8], rx[9], rx[10], rx[11], rx[12], rx[13], rx[14], rx[15], rx[16], rx[17]);
-
-  int max_first = (this->max_zones_ <= 8) ? this->max_zones_ : 21;
-  for (int i = 0; i < max_first; i++) {
-    int offset = 6 + (i * 3);
-    char esn_buf[12];
-    snprintf(esn_buf, sizeof(esn_buf), "%02X:%02X:%02X", rx[offset], rx[offset + 1], rx[offset + 2]);
-    bool is_empty = (rx[offset] == 0x00 && rx[offset + 1] == 0x00 && rx[offset + 2] == 0x00);
-    this->zone_esn_[i] = is_empty ? "Not enrolled" : esn_buf;
-  }
-
-  // Second read: zones 22-32 (33 bytes) — only for KYO32
-  if (this->max_zones_ > 21) {
-    count = this->read_register_(0xC084, 0x21, rx, 300);
-    if (count < 6 + 33) {
-      ESP_LOGW(TAG, "Zone ESN read 22-32 failed: got %d bytes", count);
-      return;
+  uint16_t addr = 0xC045 + (i * 3);
+  int count = this->read_register_(addr, 0x02, rx, 1500);
+  if (count < 6 + 3) {
+    ESP_LOGW(TAG, "Zone %d ESN read failed at 0x%04X (%d bytes)", i + 1, addr, count);
+    if (i == 0) {
+      ESP_LOGW(TAG, "Zone ESN register 0xC045 not available on this panel");
+      // Skip all zone ESN reads
+      this->esn_read_index_ = 0;
+      return true;
     }
-
-    for (int i = 0; i < 11 && (21 + i) < this->max_zones_; i++) {
-      int offset = 6 + (i * 3);
-      char esn_buf[12];
-      snprintf(esn_buf, sizeof(esn_buf), "%02X:%02X:%02X", rx[offset], rx[offset + 1], rx[offset + 2]);
-      bool is_empty = (rx[offset] == 0x00 && rx[offset + 1] == 0x00 && rx[offset + 2] == 0x00);
-      this->zone_esn_[21 + i] = is_empty ? "Not enrolled" : esn_buf;
-    }
+    this->esn_read_index_++;
+    return false;
   }
 
-  for (int i = 0; i < this->max_zones_; i++) {
-    if (this->zone_enrolled_[i])
-      ESP_LOGI(TAG, "Zone %d ESN: %s", i + 1, this->zone_esn_[i].c_str());
+  bool is_empty = (rx[6] == 0x00 && rx[7] == 0x00 && rx[8] == 0x00);
+  if (is_empty) {
+    this->zone_esn_[i] = "Not enrolled";
+  } else {
+    char sn_buf[12];
+    snprintf(sn_buf, sizeof(sn_buf), "%02X%02X%02X", rx[6], rx[7], rx[8]);
+    this->zone_esn_[i] = sn_buf;
   }
+
+  this->esn_read_index_++;
+  return false;
 }
 
 void BentelKyo::read_output_names_() {
@@ -985,31 +1008,83 @@ void BentelKyo::read_partition_config_() {
     this->partition_siren_timer_[i] = rx[6 + 16 + i];        // siren duration
 
     if (this->partition_entry_delay_[i] != 0 || this->partition_exit_delay_[i] != 0)
-      ESP_LOGI(TAG, "Partition %d: entry=%ds, exit=%ds, siren=%d", i + 1,
+      ESP_LOGD(TAG, "Partition %d: entry=%ds, exit=%ds, siren=%d", i + 1,
                this->partition_entry_delay_[i], this->partition_exit_delay_[i],
                this->partition_siren_timer_[i]);
   }
 }
 
-void BentelKyo::read_keyfob_esn_() {
-  // Keyfob ESN at 0xC0B1: 3 bytes per keyfob, 16 slots (48 bytes)
-  uint8_t rx[255];
-  int count = this->read_register_(0xC0B1, 0x30, rx, 300);
-  if (count < 6 + 48) {
-    ESP_LOGW(TAG, "Keyfob ESN read failed: got %d bytes", count);
-    return;
+bool BentelKyo::read_keyfob_esn_next_() {
+  // Keyfob ESN at 0xC0B1: 3 bytes per keyfob, 16 slots
+  // Reads ONE keyfob per call (one per update cycle) to avoid blocking the main loop.
+  // Returns true when all keyfobs have been read.
+  int i = this->keyfob_read_index_;
+
+  if (i >= KYO_MAX_KEYFOBS) {
+    this->keyfob_read_index_ = 0;
+    return true;
   }
 
-  for (int i = 0; i < KYO_MAX_KEYFOBS; i++) {
-    int offset = 6 + (i * 3);
-    bool is_empty = (rx[offset] == 0x00 && rx[offset + 1] == 0x00 && rx[offset + 2] == 0x00);
-    if (is_empty) {
-      this->keyfob_esn_[i] = "Not enrolled";
-    } else {
-      char esn_buf[12];
-      snprintf(esn_buf, sizeof(esn_buf), "%02X:%02X:%02X", rx[offset], rx[offset + 1], rx[offset + 2]);
-      this->keyfob_esn_[i] = esn_buf;
-      ESP_LOGI(TAG, "Keyfob %d ESN: %s", i + 1, esn_buf);
+  uint8_t rx[255];
+  uint16_t addr = 0xC0B1 + (i * 3);
+  int count = this->read_register_(addr, 0x02, rx, 1500);
+  if (count < 6 + 3) {
+    if (i == 0) {
+      ESP_LOGW(TAG, "Keyfob ESN register 0xC0B1 not available on this panel");
+      this->keyfob_read_index_ = 0;
+      return true;
+    }
+    this->keyfob_read_index_++;
+    return false;
+  }
+
+  bool is_empty = (rx[6] == 0x00 && rx[7] == 0x00 && rx[8] == 0x00);
+  if (is_empty) {
+    this->keyfob_esn_[i] = "Not enrolled";
+  } else {
+    char sn_buf[12];
+    snprintf(sn_buf, sizeof(sn_buf), "%02X%02X%02X", rx[6], rx[7], rx[8]);
+    this->keyfob_esn_[i] = sn_buf;
+    ESP_LOGD(TAG, "Keyfob %d serial: %s", i + 1, sn_buf);
+  }
+
+  this->keyfob_read_index_++;
+  return false;
+}
+
+void BentelKyo::read_keyfob_names_() {
+  // Keyfob names at 0x3180-0x31FF: 16 ASCII bytes per keyfob, 4 per 64-byte read, 16 keyfobs total
+  static const uint16_t BASE_ADDRS[] = {0x3180, 0x31C0, 0x3200, 0x3240};
+  int num_reads = 4;  // 16 keyfobs = 4 reads of 4
+
+  for (int r = 0; r < num_reads; r++) {
+    uint8_t rx[255];
+    int count = this->read_register_(BASE_ADDRS[r], 0x3F, rx, 300);
+    if (count < 6 + 64) {
+      ESP_LOGW(TAG, "Keyfob names read at 0x%04X failed: got %d bytes", BASE_ADDRS[r], count);
+      break;
+    }
+
+    for (int n = 0; n < 4; n++) {
+      int kf_idx = r * 4 + n;
+      if (kf_idx >= KYO_MAX_KEYFOBS)
+        break;
+
+      int offset = 6 + (n * 16);
+      char name_buf[17];
+      memcpy(name_buf, &rx[offset], 16);
+      name_buf[16] = '\0';
+
+      // Trim trailing spaces
+      for (int j = 15; j >= 0; j--) {
+        if (name_buf[j] == ' ' || name_buf[j] == '\0')
+          name_buf[j] = '\0';
+        else
+          break;
+      }
+
+      this->keyfob_name_[kf_idx] = name_buf;
+      ESP_LOGD(TAG, "Keyfob %d name: '%s'", kf_idx + 1, name_buf);
     }
   }
 }
@@ -1043,7 +1118,7 @@ void BentelKyo::publish_text_sensors_() {
           if (this->zone_area_mask_[idx] & (1 << bit)) {
             if (!partitions.empty())
               partitions += ", ";
-            partitions += "Partition " + to_string(bit + 1);
+            partitions += to_string(bit + 1);
           }
         }
         if (partitions.empty())
@@ -1053,7 +1128,7 @@ void BentelKyo::publish_text_sensors_() {
       }
       case TEXT_ZONE_ESN:
         if (idx >= (uint8_t) this->max_zones_) continue;
-        entry.sensor->publish_state(this->zone_esn_[idx]);
+        entry.sensor->publish_state(this->zone_esn_[idx].empty() ? "N/A" : this->zone_esn_[idx]);
         break;
       case TEXT_OUTPUT_NAME:
         if (idx >= KYO_MAX_OUTPUTS) continue;
@@ -1061,7 +1136,11 @@ void BentelKyo::publish_text_sensors_() {
         break;
       case TEXT_KEYFOB_ESN:
         if (idx >= KYO_MAX_KEYFOBS) continue;
-        entry.sensor->publish_state(this->keyfob_esn_[idx]);
+        entry.sensor->publish_state(this->keyfob_esn_[idx].empty() ? "N/A" : this->keyfob_esn_[idx]);
+        break;
+      case TEXT_KEYFOB_NAME:
+        if (idx >= KYO_MAX_KEYFOBS) continue;
+        entry.sensor->publish_state(this->keyfob_name_[idx].empty() ? "N/A" : this->keyfob_name_[idx]);
         break;
       case TEXT_PARTITION_ENTRY_DELAY:
         if (idx >= KYO_MAX_PARTITIONS) continue;

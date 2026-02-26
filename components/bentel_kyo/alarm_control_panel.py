@@ -3,7 +3,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import alarm_control_panel, text_sensor
-from esphome.const import CONF_ID, ENTITY_CATEGORY_DIAGNOSTIC
+from esphome.const import CONF_ID, ENTITY_CATEGORY_CONFIG
 
 from . import bentel_kyo_ns, BentelKyo, CONF_BENTEL_KYO_ID
 
@@ -30,15 +30,15 @@ CONFIG_SCHEMA = (
             cv.Required(CONF_PARTITION): cv.int_range(min=1, max=8),
             cv.Optional(CONF_ENTRY_DELAY): text_sensor.text_sensor_schema(
                 icon="mdi:timer-sand",
-                entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+                entity_category=ENTITY_CATEGORY_CONFIG,
             ),
             cv.Optional(CONF_EXIT_DELAY): text_sensor.text_sensor_schema(
                 icon="mdi:timer-sand",
-                entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+                entity_category=ENTITY_CATEGORY_CONFIG,
             ),
             cv.Optional(CONF_SIREN_TIMER): text_sensor.text_sensor_schema(
                 icon="mdi:timer-alert",
-                entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+                entity_category=ENTITY_CATEGORY_CONFIG,
             ),
         }
     )
