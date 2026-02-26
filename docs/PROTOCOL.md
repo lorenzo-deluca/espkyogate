@@ -613,19 +613,52 @@ fields).
 
 ## 8. Polling Architecture
 
-The component alternates between two polling states every 500ms:
+### 8.1 Non-Blocking Serial I/O
 
-1. **Init state**: Calls `update_kyo_status()` (sensor status query).
-   On first run, also calls `detect_alarm_model()`.
-2. **Status state**: Calls `update_kyo_partitions()` (partition status
-   query).
+The component uses a non-blocking async state machine for serial
+communication. `update()` (called every 500ms) sends a command, and
+`loop()` collects response bytes incrementally without blocking. Response
+completion is detected by inter-byte silence (10ms with no new bytes
+after receiving data beyond the echo).
 
-This results in a full status refresh every 1 second (two 500ms cycles).
+### 8.2 Normal Polling Cycle
 
-Communication health is tracked via `centralInvalidMessageCount`:
-- Resets to 0 on each successful response.
+Each `update()` cycle sends the sensor status query. When the sensor
+response is received in `loop()`, the partition status query is chained
+immediately. This means both queries complete within a single 500ms
+cycle, giving a full status refresh every 500ms.
+
+Response caching (`memcmp` against previous response bytes) skips
+parsing and publishing when the panel state has not changed.
+
+### 8.3 Configuration Read Phase
+
+After model detection, the component reads panel configuration
+registers once (one step per `update()` cycle to avoid blocking):
+
+| Step | Register | Content | Timing |
+|------|----------|---------|--------|
+| 1 | 0x009F, 0x00DF | Zone configuration (type, enrollment, area) | ~300ms |
+| 2 | 0x2E00-0x2FC0 | Zone names (16 ASCII bytes each) | ~300ms |
+| 3 | 0xC045-0xC0A4 | Zone ESN (one zone per cycle) | ~1.5s × 32 |
+| 4 | 0x3280-0x3340 | Output names | ~300ms |
+| 5 | 0x016F | Partition timers (entry/exit/siren) | ~300ms |
+| 6 | 0xC0B1-0xC0DE | Keyfob ESN (one keyfob per cycle) | ~1.5s × 16 |
+| 7 | 0x3180-0x3240 | Keyfob names | ~300ms |
+| 8 | — | Publish all text sensors | instant |
+
+Steps 3 and 6 read one EEPROM slot per cycle (see section 10.16) to
+avoid blocking the main loop for 48+ seconds. Normal sensor/partition
+polling is suspended during the config read phase.
+
+### 8.4 Communication Health
+
+Communication health is tracked with exponential backoff:
+- Resets to 0 consecutive failures on each successful response.
 - Increments on each failed response.
-- After 3 consecutive failures, `kyo_comunication` sensor publishes `false`.
+- After 3 consecutive failures, the communication sensor publishes
+  `false` and polling backs off exponentially (2s, 4s, 8s, 16s, 32s).
+- On recovery, a forced full publish ensures all sensors are updated.
 
 ---
 
@@ -924,6 +957,8 @@ Read as:       F0 B1 C0 02 00 63 (keyfob 1)
 Each read returns 3 data bytes: the keyfob's ESN. Unenrolled slots
 return `00 00 00`.
 
+> **EEPROM timing**: See section 10.16 for critical timing requirements.
+
 ### 10.15 Zone ESN Storage (0xC045-0xC0A4)
 
 96 bytes total: 3 bytes per zone, 32 zone slots.
@@ -943,7 +978,37 @@ Unenrolled or wired zones return `00 00 00`.
 > of the zone enrollment register (section 10.3). The enrollment register
 > at `0x019E` uses a different format (2 ESN bytes + `0xFF` marker).
 
-### 10.16 Panel Options (0x02DB)
+> **EEPROM timing**: See section 10.16 for critical timing requirements.
+
+### 10.16 EEPROM Register Timing (0xC0xx range)
+
+Registers in the `0xC0xx` address range (zone ESN at `0xC045` and keyfob
+ESN at `0xC0B1`) access the panel's EEPROM/flash storage. Unlike RAM
+registers which respond in ~100ms, EEPROM reads take **~1 second** per
+request.
+
+**Key implementation requirements**:
+
+- **Timeout**: Use at least 1500ms timeout for 0xC0xx reads. The standard
+  250-300ms timeout used for RAM registers will fail silently (no response
+  bytes received).
+- **Per-slot reads**: Each ESN must be read individually (3 bytes per read,
+  `LEN=0x02`). Bulk reads across multiple ESN slots are not supported.
+- **Non-blocking**: Reading all 32 zones + 16 keyfobs takes ~48 seconds
+  (48 reads × ~1s each). This **must** be spread across multiple polling
+  cycles (one read per cycle) to avoid blocking the main loop. Blocking
+  for 48+ seconds will cause WiFi/API disconnections and ESPHome safe_mode
+  rollback on OTA-flashed devices.
+- **Inter-command spacing**: USB captures of KyoUnit show ~1 second between
+  consecutive 0xC0xx reads, suggesting the panel needs recovery time between
+  EEPROM accesses.
+
+This timing behavior was discovered by comparing USB captures of KyoUnit
+(which successfully reads these registers) against ESP32 attempts that
+failed with the standard 300ms timeout. The captures show KyoUnit receiving
+responses after ~0.5-1 second per EEPROM read.
+
+### 10.17 Panel Options (0x02DB)
 
 5 bytes of panel configuration options.
 
@@ -956,7 +1021,7 @@ Observed response: `60 81 00 1E 00`.
 Exact bit mapping is not fully decoded. This register likely contains
 the panel option flags including option 29 (disallow tone check).
 
-### 10.17 Event Routing (0x03D0-0x0921)
+### 10.18 Event Routing (0x03D0-0x0921)
 
 Approximately 1362 bytes of Contact ID event routing configuration.
 Each event is encoded as 3 bytes.
@@ -1006,7 +1071,7 @@ Events are organized in groups:
 When no events are configured (factory default), the entire region
 reads as all zeros.
 
-### 10.18 ARC Subscriber Code (0x1509)
+### 10.19 ARC Subscriber Code (0x1509)
 
 4-byte ASCII subscriber code for ARC (Alarm Receiving Centre) reporting.
 
@@ -1016,7 +1081,7 @@ Read as: F0 09 15 04 00 12 (4 bytes)
 
 Example response: `30 30 30 30` = ASCII "0000" (default subscriber code).
 
-### 10.19 Panel Mode (0x01E6-0x01E8)
+### 10.20 Panel Mode (0x01E6-0x01E8)
 
 3 bytes of panel status/mode information.
 
@@ -1026,7 +1091,7 @@ Read as: F0 E6 01 02 00 D9
 
 Observed response: `11 10 FF`. Exact bit mapping TBD.
 
-### 10.20 Keyfob Button Config (0x011F-0x016E)
+### 10.21 Keyfob Button Config (0x011F-0x016E)
 
 80 bytes total: 5 bytes per keyfob slot, 16 slots.
 
@@ -1038,7 +1103,7 @@ Read as:       F0 1F 01 3F 00 4F (keyfobs 1-13, 64 bytes)
 Each 5-byte record contains keyfob button assignment data. Unenrolled
 slots contain `00 00 00 00 FF`.
 
-### 10.21 Status Flags (0x1503-0x1508)
+### 10.22 Status Flags (0x1503-0x1508)
 
 6 bytes of system status flags.
 
@@ -1048,7 +1113,7 @@ Read as: F0 03 15 05 00 0D
 
 Observed response: `FF FF FF FF FF FF`. Exact bit mapping TBD.
 
-### 10.22 Register Address Summary
+### 10.23 Register Address Summary
 
 | Address | Size | Content |
 |---------|------|---------|
