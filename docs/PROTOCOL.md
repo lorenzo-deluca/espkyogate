@@ -38,7 +38,7 @@ port does not respond to external queries.
 All requests begin with a **command byte** (`0xF0` for reads, `0x0F` for
 writes) followed by parameters and a checksum/trailer byte.
 
-There are two message types:
+There are three message types:
 
 #### Read requests (6 bytes)
 
@@ -51,7 +51,7 @@ There are two message types:
 | 0 | Command | `0xF0` = read request |
 | 1 | ADDR_LO | Low byte of register address |
 | 2 | ADDR_HI | High byte of register address |
-| 3 | LEN | Number of data bytes to read |
+| 3 | LEN | Length-1 (number of data bytes minus 1). Data bytes returned = `LEN + 1` |
 | 4 | Reserved | Always `0x00` |
 | 5 | CHK | Checksum (see section 3) |
 
@@ -61,7 +61,7 @@ There are two message types:
 > document, register "addresses" are the 16-bit value decoded from this
 > LE pair. Checksums use the raw byte sum regardless of interpretation.
 
-#### Write requests (variable length)
+#### Write requests (command / control writes)
 
 ```
 [0x0F] [ADDR_LO] [ADDR_HI] [CMD_TYPE] [0x00] [PAYLOAD_LEN] [DATA...] [CHK] [TRAILER]
@@ -79,6 +79,26 @@ There are two message types:
 | N-1 | CHK | Checksum (see section 3) |
 | N | TRAILER | Usually `0xFF` |
 
+#### Write requests (raw configuration download)
+
+Used by KyoUnit during configuration download. This format uses the same
+6-byte header as read requests, followed by raw data and a data checksum.
+
+```
+[0x0F] [ADDR_LO] [ADDR_HI] [LEN] [0x00] [CHK] [DATA...] [DATA_CHK]
+```
+
+| Byte | Name | Description |
+|------|------|-------------|
+| 0 | Command | `0x0F` = raw data write |
+| 1 | ADDR_LO | Low byte of register address |
+| 2 | ADDR_HI | High byte of register address |
+| 3 | LEN | Length-1 (number of data bytes minus 1) |
+| 4 | Reserved | Always `0x00` |
+| 5 | CHK | Header checksum (same as read requests) |
+| 6.. | DATA | `LEN + 1` data bytes |
+| N | DATA_CHK | Checksum of DATA bytes (sum & 0xFF) |
+
 ### 2.2 Response (Panel -> ESP32)
 
 The panel echoes the original request bytes followed by response data
@@ -89,6 +109,7 @@ and a checksum:
 ```
 
 - For read requests, the echo is always the 6-byte request.
+- For read requests, the response data length is `LEN + 1`.
 - The response data length varies by command.
 - The final byte is a checksum over the data bytes (after the echo).
 
@@ -129,7 +150,8 @@ This applies to all read requests, including custom configuration reads.
 Verified against all known commands and all config register reads observed
 in USB captures.
 
-Example: reading zone config at address `0x009F`, length `0x3F`:
+Example: reading zone config at address `0x009F`, length byte `0x3F`
+(64 data bytes):
 ```
 F0 + 9F + 00 + 3F + 00 = 0x1CE → CHK = 0xCE
 Request: F0 9F 00 3F 00 CE
@@ -189,7 +211,7 @@ actual   = Rx[totalLen-1]
 TX: F0 00 00 0B 00 FB
 ```
 
-Read address `0x0000`, length `0x0B` (11 bytes).
+Read address `0x0000`, length `0x0B` (12 data bytes).
 
 **Response** (19 bytes total): 6-byte echo + 12 ASCII chars + 1 checksum.
 
@@ -227,7 +249,8 @@ size to the sensor status query:
 TX: F0 04 F0 0A 00 EE
 ```
 
-Read address `0x04F0`, length `0x0A` (10 bytes).
+Read address `0xF004` (on-wire bytes `04 F0`), length `0x0A`
+(11 data bytes).
 
 #### KYO32/32G Response (18 bytes total)
 
@@ -328,11 +351,12 @@ bypassed zones, alarm memory, and tamper memory.
 
 | Model | Address | Command bytes |
 |-------|---------|---------------|
-| KYO32G | `0x0215` | `F0 02 15 12 00 19` |
-| KYO32 (non-G) | `0xEC14` | `F0 EC 14 12 00 02` |
-| KYO8/4/8G/8W | `0x680E` | `F0 68 0E 09 00 6F` |
+| KYO32G | `0x1502` | `F0 02 15 12 00 19` |
+| KYO32 (non-G) | `0x14EC` | `F0 EC 14 12 00 02` |
+| KYO8/4/8G/8W | `0x0E68` | `F0 68 0E 09 00 6F` |
 
-Read length: `0x12` (18) for KYO32-series, `0x09` (9) for KYO8-series.
+Read length byte: `0x12` (19 data bytes) for KYO32-series,
+`0x09` (10 data bytes) for KYO8-series.
 
 #### KYO32/32G Response (26 bytes total)
 
@@ -570,10 +594,10 @@ fields).
 | Address | Length | Command Name | Models |
 |---------|--------|--------------|--------|
 | `0x0000` | `0x0B` | Software Version | All |
-| `0x04F0` | `0x0A` | Sensor Status (zones + warnings + tampers) | All |
-| `0x0215` | `0x12` | Partition Status | KYO32G |
-| `0xEC14` | `0x12` | Partition Status | KYO32 (non-G) |
-| `0x680E` | `0x09` | Partition Status | KYO8/4/8G/8W |
+| `0xF004` | `0x0A` | Sensor Status (zones + warnings + tampers) | All |
+| `0x1502` | `0x12` | Partition Status | KYO32G |
+| `0x14EC` | `0x12` | Partition Status | KYO32 (non-G) |
+| `0x0E68` | `0x09` | Partition Status | KYO8/4/8G/8W |
 
 ### Write function addresses:
 
@@ -610,7 +634,7 @@ Communication health is tracked via `centralInvalidMessageCount`:
 | Feature | KYO32G | KYO32 (non-G) |
 |---------|--------|----------------|
 | Firmware prefix | `KYO32G` | `KYO32` |
-| Partition status address | `0x0215` | `0xEC14` |
+| Partition status address | `0x1502` | `0x14EC` |
 | Max programmable outputs | 8 | 3 |
 | Output readback (Rx[12]) | Valid bitmask | Always `0xFF` |
 | Sensor status response | 18 bytes | 18 bytes |
@@ -620,7 +644,7 @@ Communication health is tracked via `centralInvalidMessageCount`:
 The non-G model is the older generation. The KYO 32M (marketing name)
 is a non-G KYO32 that supports wireless zones. Its firmware string is
 `KYO32   x.xx` (same as non-G), and it uses the KYO32 (non-G) register
-address `0xEC14` for partition status.
+address `0x14EC` for partition status.
 
 ---
 
@@ -632,7 +656,7 @@ were identified by analyzing USB captures of KyoUnit upload (read) and
 download (write) sessions.
 
 All addresses are for **KYO32/KYO32M** (non-G). KYO32G addresses may differ
-for some registers (notably partition status uses `0x0215` instead of `0xEC14`).
+for some registers (notably partition status uses `0x1502` instead of `0x14EC`).
 
 Wire bytes shown below match actual USB captures. Addresses are 16-bit
 values decoded from the little-endian byte pair in bytes 1-2 of the command.
@@ -1037,7 +1061,7 @@ Observed response: `FF FF FF FF FF FF`. Exact bit mapping TBD.
 | `0x01E9` | 64B | Partition configuration (8 × 10 bytes) |
 | `0x02DB` | 5B | Panel options |
 | `0x03D0` | ~1362B | Event routing (Contact ID) |
-| `0x04F0` | 11B | Sensor status (realtime) |
+| `0xF004` | 11B | Sensor status (realtime) |
 | `0x1503` | 6B | System status flags |
 | `0x1509` | 4B | ARC subscriber code (ASCII) |
 | `0x2BA0` | 128B | Partition names (8 × 16 bytes ASCII) |
@@ -1051,7 +1075,7 @@ Observed response: `FF FF FF FF FF FF`. Exact bit mapping TBD.
 | `0x3380` | 128B | Phone number names (8 × 16 bytes ASCII) |
 | `0xC045` | 96B | Zone ESN storage (32 × 3 bytes) |
 | `0xC0B1` | 48B | Keyfob ESN storage (16 × 3 bytes) |
-| `0xEC14` | 19B | Partition status (KYO32 non-G) |
+| `0x14EC` | 19B | Partition status (KYO32 non-G) |
 
 ---
 
