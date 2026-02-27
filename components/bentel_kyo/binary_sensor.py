@@ -114,19 +114,19 @@ ZONE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(
         cv.Required(CONF_ZONE): cv.int_range(min=1, max=32),
         cv.Optional(CONF_ZONE_TYPE): text_sensor.text_sensor_schema(
             icon="mdi:shield-alert-outline",
-            entity_category=ENTITY_CATEGORY_CONFIG,
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_PANEL_NAME): text_sensor.text_sensor_schema(
             icon="mdi:form-textbox",
-            entity_category=ENTITY_CATEGORY_CONFIG,
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_ZONE_PARTITION): text_sensor.text_sensor_schema(
             icon="mdi:shield-home-outline",
-            entity_category=ENTITY_CATEGORY_CONFIG,
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_ZONE_SERIAL_NUMBER): text_sensor.text_sensor_schema(
             icon="mdi:identifier",
-            entity_category=ENTITY_CATEGORY_CONFIG,
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
     }
 )
@@ -187,7 +187,7 @@ OUTPUT_STATE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(
         cv.Required(CONF_OUTPUT_NUMBER): cv.int_range(min=1, max=8),
         cv.Optional(CONF_OUTPUT_PANEL_NAME): text_sensor.text_sensor_schema(
             icon="mdi:form-textbox",
-            entity_category=ENTITY_CATEGORY_CONFIG,
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
     }
 )

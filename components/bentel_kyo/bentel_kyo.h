@@ -255,6 +255,7 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
 
   // Zone configuration (read once from panel config registers, one step per update cycle)
   uint8_t config_read_step_{0};    // 0=not started, 1-8=reading, 9=done
+  uint16_t text_sensor_republish_counter_{0};  // re-publish text sensors every 120 cycles (~60s)
   int esn_read_index_{0};          // current zone index for per-zone ESN reads
   int keyfob_read_index_{0};       // current keyfob index for per-slot ESN reads
   uint8_t zone_type_raw_[KYO_MAX_ZONES]{};   // raw type byte

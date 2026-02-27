@@ -111,6 +111,12 @@ void BentelKyo::loop() {
   switch (this->serial_pending_op_) {
     case 0:  // detect model
       ok = this->detect_alarm_model_(this->serial_rx_buf_, count);
+      if (ok) {
+        // Immediately poll sensor+partition status so alarm panels get real state
+        // before config reads start (otherwise panels default to DISARMED for ~75s)
+        this->send_command_async_(CMD_GET_SENSOR_STATUS, sizeof(CMD_GET_SENSOR_STATUS), 1, 80);
+        return;  // Don't update health yet — wait for sensor+partition response
+      }
       break;
     case 1:  // sensor status
       ok = this->parse_sensor_status_(this->serial_rx_buf_, count);
@@ -237,6 +243,17 @@ void BentelKyo::update() {
       case 8: this->publish_text_sensors_(); this->config_read_step_ = 9; break;
     }
     return;  // Skip normal polling this cycle — avoid bus collision
+  }
+
+  // Re-publish text sensors periodically (every 120 polling cycles = ~60s at 500ms)
+  // Text sensors are static config data but must be re-published so API clients
+  // that connect after initial publish (e.g. Home Assistant reconnects) get the state.
+  if (this->config_read_step_ >= 9) {
+    this->text_sensor_republish_counter_++;
+    if (this->force_publish_ || this->text_sensor_republish_counter_ >= 120) {
+      this->publish_text_sensors_();
+      this->text_sensor_republish_counter_ = 0;
+    }
   }
 
   // Normal polling: send sensor status query (partition query chains from loop())

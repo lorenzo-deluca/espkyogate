@@ -5,7 +5,7 @@ import esphome.config_validation as cv
 from esphome.components import text_sensor
 from esphome.const import (
     CONF_ID,
-    ENTITY_CATEGORY_CONFIG,
+    ENTITY_CATEGORY_DIAGNOSTIC,
 )
 
 from . import bentel_kyo_ns, BentelKyo, CONF_BENTEL_KYO_ID
@@ -22,13 +22,13 @@ TextSensorType = bentel_kyo_ns.enum("TextSensorType")
 
 KEYFOB_SCHEMA = text_sensor.text_sensor_schema(
     icon="mdi:key-wireless",
-    entity_category=ENTITY_CATEGORY_CONFIG,
+    entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
 ).extend(
     {
         cv.Required(CONF_SLOT): cv.int_range(min=1, max=16),
         cv.Optional(CONF_PANEL_NAME): text_sensor.text_sensor_schema(
             icon="mdi:form-textbox",
-            entity_category=ENTITY_CATEGORY_CONFIG,
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
     }
 )
@@ -38,11 +38,11 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(CONF_BENTEL_KYO_ID): cv.use_id(BentelKyo),
         cv.Optional(CONF_FIRMWARE_VERSION): text_sensor.text_sensor_schema(
             icon="mdi:tag",
-            entity_category=ENTITY_CATEGORY_CONFIG,
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_ALARM_MODEL): text_sensor.text_sensor_schema(
             icon="mdi:shield-check",
-            entity_category=ENTITY_CATEGORY_CONFIG,
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional(CONF_KEYFOBS): cv.ensure_list(KEYFOB_SCHEMA),
     }
