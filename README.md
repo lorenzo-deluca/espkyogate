@@ -263,6 +263,37 @@ text_sensor:
         name: "Keyfob 1"
       - slot: 2
         name: "Keyfob 2"
+
+# Switch — polling control
+
+switch:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Panel Polling"
+
+# Buttons — reread config + arm presets
+
+button:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: reread_config
+    name: "Reread Panel Config"
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: arm_preset
+    name: "Arm All Away"
+    partitions:
+      1: away
+      2: away
+      3: away
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: arm_preset
+    name: "Disarm All"
+    partitions:
+      1: disarm
+      2: disarm
+      3: disarm
 ```
 
 ## Alarm Control Panel
@@ -272,8 +303,8 @@ Each `alarm_control_panel` entry creates a proper Home Assistant alarm panel ent
 | HA Action | KYO Command | Description |
 |-----------|-------------|-------------|
 | Arm Away | Total arm | Full perimeter + interior protection |
-| Arm Home | Partial arm | Perimeter only (interior zones excluded) |
-| Arm Night | Partial arm delay 0 | Perimeter with no entry delay |
+| Arm Home | Partial arm | Bypasses zones with the "Internal" attribute |
+| Arm Night | Partial arm delay 0 | Bypasses "Internal" zones AND removes entry delay |
 | Disarm | Disarm | Disarm the partition |
 
 The partition state is read from the panel every 500ms and mapped to:
@@ -290,6 +321,177 @@ Optional diagnostic text sensors for each partition:
 - `entry_delay` — entry delay timer (seconds)
 - `exit_delay` — exit delay timer (seconds)
 - `siren_timer` — siren duration timer
+
+### Code Protection
+
+You can require a PIN code to arm or disarm from Home Assistant. This uses ESPHome's built-in alarm control panel code validation — the code is checked by the ESP32 before the command is sent to the panel. It does not need to match the panel's own code.
+
+```yaml
+alarm_control_panel:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "House"
+    partition: 1
+    codes:
+      - !secret alarm_code
+    requires_code_to_arm: false
+    requires_code_to_disarm: true
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `codes` | (none) | List of valid PIN codes (strings). Use `!secret` to avoid plaintext in YAML |
+| `requires_code_to_arm` | `false` | Require code entry to arm the partition from HA |
+| `requires_code_to_disarm` | `false` | Require code entry to disarm the partition from HA |
+
+When `requires_code_to_disarm` is enabled, the HA alarm panel card shows a numeric keypad. The user must enter a valid code before the disarm command is sent to the panel.
+
+> **Note**: Code protection only applies to the `alarm_control_panel` entities in HA. Arm preset buttons currently bypass code validation — they call the hub directly. Code-protected presets are not yet supported.
+
+### Arming Modes and the "Internal" Zone Attribute
+
+The KYO panel supports three arming modes per partition (from the Bentel user manual, Table 6):
+
+| Mode | Panel Letter | Behavior |
+|------|:-----------:|----------|
+| **Away** | A | Monitors **all zones** in the partition |
+| **Stay** (Home) | S | Bypasses zones with the **Internal** attribute (called "Interna" in KyoUnit Italian, "Stay" in the English user manual) |
+| **Stay-0-Delay** (Night) | I | Same as Stay, but also **removes the entry delay** — all zones fire instantly |
+
+The **Internal** attribute is configured per-zone in KyoUnit (or via keypad parameter 164-192). Only zones with this attribute checked are bypassed during Stay/Night modes. Away mode always monitors all zones regardless of the attribute.
+
+If **no zones** have the Internal attribute set, then Stay and Night modes behave identically to Away — the only difference being that Night removes the entry delay. This is useful when you want full protection with instant response (e.g., arming at night and using a keyfob to disarm before moving).
+
+### Zone Types
+
+| Type | KyoUnit (Italian) | Behavior |
+|------|-------------------|----------|
+| **Instant** | Immediata | Triggers alarm immediately |
+| **Path** | Percorso | Starts the partition's entry delay timer |
+| **Delayed** | Ritardata | Follows an active entry delay (if a Path zone triggered first); otherwise instant |
+| **24h** | 24h | Always active, even when disarmed |
+
+Path zones are typically used on entry/exit routes (e.g., the hallway from the main door to the keypad). In Night mode, the entry delay is removed, so Path zones fire instantly like all other zones.
+
+## Buttons
+
+```yaml
+button:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: reread_config
+    name: "Reread Panel Config"
+```
+
+### Button Types
+
+| Type | Description |
+|------|-------------|
+| `reread_config` | Re-read zone configuration, names, serial numbers from panel |
+| `arm_all_away` | Arm all registered partitions in Away mode |
+| `arm_all_home` | Arm all registered partitions in Home/Stay mode |
+| `arm_all_night` | Arm all registered partitions in Night mode |
+| `disarm_all` | Disarm all registered partitions |
+| `arm_preset` | Arm/disarm specific partitions with per-partition mode selection |
+
+### Arm Preset Buttons
+
+The `arm_preset` button type lets you define a per-partition arming configuration that executes as a single command. This is the recommended way to implement arming scenes — one button press, one command, no race conditions.
+
+```yaml
+button:
+  # Everyone leaves the house — arm everything
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: arm_preset
+    name: "Everyone Out"
+    icon: "mdi:shield-lock"
+    partitions:
+      1: away
+      2: away
+      3: away
+
+  # Going to sleep — disarm upstairs, arm ground floor + basement
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: arm_preset
+    name: "Sleeping Rooms Free"
+    icon: "mdi:shield-home"
+    partitions:
+      1: disarm
+      2: away
+      3: away
+
+  # Going to sleep — everything instant, disarm via keyfob before leaving room
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: arm_preset
+    name: "Sleeping Instant"
+    icon: "mdi:shield-moon"
+    partitions:
+      1: night
+      2: night
+      3: night
+
+  # Disarm everything
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: arm_preset
+    name: "Disarm All"
+    icon: "mdi:shield-off"
+    partitions:
+      1: disarm
+      2: disarm
+      3: disarm
+```
+
+Available modes per partition:
+
+| Mode | Description |
+|------|-------------|
+| `away` | Full arm — monitors all zones |
+| `home` / `stay` | Partial arm — bypasses Internal zones |
+| `night` | Partial arm with no entry delay — bypasses Internal zones, all zones instant |
+| `disarm` | Disarm the partition |
+
+Partitions **not listed** in the config preserve their current state. This lets you create buttons that only affect specific partitions without touching others.
+
+### Using Preset Buttons in Home Assistant Automations
+
+Preset buttons are the recommended way to create arming automations — they send a single command with all partition modes set simultaneously:
+
+```yaml
+# Home Assistant automation example
+automation:
+  - alias: "Arm when everyone leaves"
+    trigger:
+      - platform: state
+        entity_id: group.family
+        to: "not_home"
+    action:
+      - service: button.press
+        target:
+          entity_id: button.everyone_out
+```
+
+### Why Presets Instead of Alarm Control Panel Calls?
+
+The `alarm_control_panel` entities control **one partition at a time**. To arm 3 partitions, you'd need 3 separate service calls, each sending a command to the panel. This creates race conditions — the second command may overwrite the first before the panel processes it.
+
+Preset buttons send **one command** with all partition modes simultaneously. Use the alarm control panel entities for viewing partition state on dashboards and for occasional per-partition ad-hoc control.
+
+## Switch
+
+The polling switch enables or disables the component's serial polling loop:
+
+```yaml
+switch:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Panel Polling"
+```
+
+When disabled, the component stops querying the panel. Useful for temporarily freeing the serial port (e.g., when connecting KyoUnit for programming).
 
 ## Binary Sensor Reference
 
