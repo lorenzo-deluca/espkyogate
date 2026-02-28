@@ -878,9 +878,22 @@ void BentelKyo::update_datetime(uint8_t day, uint8_t month, uint16_t year,
 // ========================================
 
 int BentelKyo::send_message_(const uint8_t *cmd, int cmd_len, uint8_t *response, uint32_t timeout_ms) {
-  // Flush RX buffer
-  while (this->available() > 0)
-    this->read();
+  // Cancel any in-flight async transaction so loop() won't steal our bytes
+  if (this->serial_state_ == SerialState::WAITING_RESPONSE) {
+    ESP_LOGD(TAG, "Aborting in-flight async poll for blocking command");
+    this->serial_state_ = SerialState::IDLE;
+  }
+
+  // Wait for bus silence — drain any remaining panel response bytes
+  uint32_t quiet_start = millis();
+  while ((millis() - quiet_start) < 20) {
+    if (this->available() > 0) {
+      while (this->available() > 0)
+        this->read();
+      quiet_start = millis();  // Reset silence timer
+    }
+    yield();
+  }
 
   // Send command
   this->write_array(cmd, cmd_len);
