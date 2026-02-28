@@ -358,29 +358,36 @@ bool BentelKyo::detect_alarm_model_(const uint8_t *rx, int count) {
 // ========================================
 
 bool BentelKyo::parse_sensor_status_(const uint8_t *rx, int count) {
-  bool is_kyo8 = false;
-  switch (count) {
-    case RESP_SENSOR_KYO32:
-      if (!this->model_detected_) {
+  bool is_kyo8 = (this->alarm_model_ == AlarmModel::KYO_8 || this->alarm_model_ == AlarmModel::KYO_4 ||
+                  this->alarm_model_ == AlarmModel::KYO_8G || this->alarm_model_ == AlarmModel::KYO_8W);
+
+  // Validate response length matches detected model (or infer model if not yet detected)
+  int expected_len = is_kyo8 ? RESP_SENSOR_KYO8 : RESP_SENSOR_KYO32;
+  if (this->model_detected_) {
+    if (count != expected_len) {
+      ESP_LOGE(TAG, "Sensor status: expected %d bytes for %s model, got %d",
+               expected_len, is_kyo8 ? "KYO8" : "KYO32", count);
+      return false;
+    }
+  } else {
+    // Model not yet detected — infer from response length
+    switch (count) {
+      case RESP_SENSOR_KYO32:
         this->alarm_model_ = AlarmModel::KYO_32;
         this->max_zones_ = KYO_MAX_ZONES;
+        is_kyo8 = false;
         ESP_LOGW(TAG, "Model not detected via firmware, defaulting to KYO32 (18-byte response)");
-      }
-      break;
-    case RESP_SENSOR_KYO8:
-      is_kyo8 = true;
-      if (!this->model_detected_) {
+        break;
+      case RESP_SENSOR_KYO8:
         this->alarm_model_ = AlarmModel::KYO_8;
         this->max_zones_ = KYO_MAX_ZONES_8;
-      }
-      break;
-    default:
-      ESP_LOGE(TAG, "Sensor status: invalid response length %d", count);
-      return false;
+        is_kyo8 = true;
+        break;
+      default:
+        ESP_LOGE(TAG, "Sensor status: invalid response length %d", count);
+        return false;
+    }
   }
-
-  is_kyo8 = (this->alarm_model_ == AlarmModel::KYO_8 || this->alarm_model_ == AlarmModel::KYO_4 ||
-             this->alarm_model_ == AlarmModel::KYO_8G || this->alarm_model_ == AlarmModel::KYO_8W);
 
   // Check cache - skip parsing if unchanged
   bool changed = this->force_publish_ || (count != this->sensor_cache_len_) ||
@@ -459,8 +466,10 @@ bool BentelKyo::parse_partition_status_(const uint8_t *rx, int count) {
   bool is_kyo8 = (this->alarm_model_ == AlarmModel::KYO_8 || this->alarm_model_ == AlarmModel::KYO_4 ||
                   this->alarm_model_ == AlarmModel::KYO_8G || this->alarm_model_ == AlarmModel::KYO_8W);
 
-  if (count != RESP_PARTITION_KYO32 && count != RESP_PARTITION_KYO8) {
-    ESP_LOGE(TAG, "Partition status: invalid response length %d", count);
+  int expected_len = is_kyo8 ? RESP_PARTITION_KYO8 : RESP_PARTITION_KYO32;
+  if (count != expected_len) {
+    ESP_LOGE(TAG, "Partition status: expected %d bytes for %s model, got %d",
+             expected_len, is_kyo8 ? "KYO8" : "KYO32", count);
     return false;
   }
 
