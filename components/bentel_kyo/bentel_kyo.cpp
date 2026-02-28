@@ -157,11 +157,11 @@ void BentelKyo::loop() {
 }
 
 void BentelKyo::handle_serial_failure_() {
-  if (this->consecutive_failures_ < 5)
+  if (this->consecutive_failures_ < 7)
     this->consecutive_failures_++;
   if (this->consecutive_failures_ >= MAX_INVALID_COUNT) {
     this->communication_ok_ = false;
-    uint32_t backoff_ms = (1 << this->consecutive_failures_) * 1000UL;
+    uint32_t backoff_ms = (1UL << (this->consecutive_failures_ - (MAX_INVALID_COUNT - 1))) * 1000UL;
     this->backoff_until_ms_ = millis() + backoff_ms;
     ESP_LOGW(TAG, "Panel not responding, retrying in %lus", backoff_ms / 1000UL);
   }

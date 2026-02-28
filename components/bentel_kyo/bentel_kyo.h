@@ -217,7 +217,7 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   // Communication health and backoff
   bool communication_ok_{false};
   uint32_t backoff_until_ms_{0};  // skip polling until this millis() value
-  uint8_t consecutive_failures_{0};  // for exponential backoff (caps at 5 = 32s)
+  uint8_t consecutive_failures_{0};  // for exponential backoff (caps at 7 = 32s)
 
   // Response caches for change detection
   uint8_t sensor_cache_[32]{};
