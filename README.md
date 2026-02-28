@@ -49,6 +49,7 @@ For **Kyo 8** (no W or WG) and **Kyo 4** you have to use the **bentel_kyo4.h** f
 - [ESPHome Preparation](#esphome-preparation)
 - [Build and Upload Firmware](#build-and-upload-firmware)
 - [Home Assistant Integration](#home-assistant-integration)
+- [Alarm Control Panel Package](#alarm-control-panel-package)
 - [Troubleshooting - FAQ](#troubleshooting-faq)
 
 ## Community Forum & Support
@@ -315,6 +316,49 @@ cards:
     state_color: true
     show_header_toggle: false
 ```
+
+## Alarm Control Panel Package
+
+A ready-to-use Home Assistant package is available that creates an `alarm_control_panel` entity for your ESPKyoGate device. This allows you to use the standard Home Assistant alarm card with arm/disarm functionality.
+
+### Features
+- **arm_night**: Arms only the perimeter area (Area 1)
+- **arm_away**: Arms both perimeter and internal areas (Area 1 and Area 2)
+- **disarm**: Disarms all areas
+- Code-protected arming/disarming
+- Optional zone exclusion switches
+
+### Installation
+
+1. Copy the `packages/espkyogate_alarm_panel.yaml` file to your Home Assistant `config/packages/` directory (create the folder if it doesn't exist)
+
+2. Enable packages in your `configuration.yaml`:
+``` yaml
+homeassistant:
+  packages: !include_dir_named packages
+```
+
+3. Add your alarm code to `secrets.yaml`:
+``` yaml
+# Replace YOUR_CODE with your actual alarm code
+alarmcode: "{{ value == 'YOUR_CODE' }}"
+```
+
+4. Customize the package file to match your setup:
+   - Update binary sensor entity IDs to match your ESPKyoGate sensors
+   - Adjust area numbers if needed
+   - Uncomment and configure zone exclusion switches if desired
+
+5. Restart Home Assistant
+
+### Example Configuration
+
+The package uses your ESPKyoGate binary sensors to determine the alarm state. You need to customize the sensor entity IDs to match your configuration:
+
+| Configuration | Default Entity ID | Description |
+| ------------- | ----------------- | ----------- |
+| Area 1 (Perimeter) | `binary_sensor.espkyogate_ins_totale_area_1` | Total arm status for perimeter |
+| Area 2 (Internal) | `binary_sensor.espkyogate_ins_totale_area_2` | Total arm status for internal sensors |
 
 ## Troubleshooting-FAQ
 If you have any problems, make the following checks:
