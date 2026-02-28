@@ -22,6 +22,7 @@ class BentelKyoAlarmPanel : public alarm_control_panel::AlarmControlPanel, publi
 
   void set_parent(BentelKyo *parent) { this->parent_ = parent; }
   void set_partition(uint8_t partition) { this->partition_ = partition; }
+  uint8_t get_partition() const { return this->partition_; }
 
   // Called by the hub after polling
   void update_state_from_hub();
