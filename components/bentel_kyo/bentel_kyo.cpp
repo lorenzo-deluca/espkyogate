@@ -704,51 +704,26 @@ void BentelKyo::arm_all_partitions(uint8_t arm_type) {
 
 void BentelKyo::disarm_all_partitions() {
   ESP_LOGI(TAG, "Disarm all partitions");
+  // Send all-zero masks unconditionally — same as upstream specific_area=0
   uint8_t cmd[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0xFF, 0xFF};
-
-  // Build masks from current state
-  uint8_t total_mask = 0x00, partial_mask = 0x00, partial_d0_mask = 0x00;
-  for (int i = 0; i < KYO_MAX_PARTITIONS; i++) {
-    if (this->partition_armed_total_[i]) total_mask |= (1 << i);
-    if (this->partition_armed_partial_[i]) partial_mask |= (1 << i);
-    if (this->partition_armed_partial_delay0_[i]) partial_d0_mask |= (1 << i);
-  }
-
-  // Clear all registered partition bits
-  for (auto *panel : this->alarm_panels_) {
-    uint8_t clear = ~(1 << (panel->get_partition() - 1));
-    total_mask &= clear;
-    partial_mask &= clear;
-    partial_d0_mask &= clear;
-  }
-
-  cmd[6] = total_mask;
-  cmd[7] = partial_mask;
-  cmd[8] = partial_d0_mask;
   cmd[9] = calculate_crc_(cmd, 9);
 
   uint8_t rx[255];
-  this->send_message_(cmd, sizeof(cmd), rx, 100);
+  this->send_message_(cmd, sizeof(cmd), rx, 250);
 }
 
 void BentelKyo::arm_preset(uint8_t total_mask, uint8_t partial_mask,
-                           uint8_t partial_d0_mask, uint8_t configured_mask) {
-  ESP_LOGI(TAG, "Arm preset: total=0x%02X partial=0x%02X partial_d0=0x%02X configured=0x%02X",
-           total_mask, partial_mask, partial_d0_mask, configured_mask);
+                           uint8_t partial_d0_mask) {
+  ESP_LOGI(TAG, "Arm preset: total=0x%02X partial=0x%02X partial_d0=0x%02X",
+           total_mask, partial_mask, partial_d0_mask);
   uint8_t cmd[11] = {0x0F, 0x00, 0xF0, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0xCC, 0xFF};
 
-  // Build current state for unconfigured partitions
-  uint8_t cur_total = 0, cur_partial = 0, cur_d0 = 0;
-  for (int i = 0; i < KYO_MAX_PARTITIONS; i++) {
-    if (this->partition_armed_total_[i]) cur_total |= (1 << i);
-    if (this->partition_armed_partial_[i]) cur_partial |= (1 << i);
-    if (this->partition_armed_partial_delay0_[i]) cur_d0 |= (1 << i);
-  }
-
-  // For configured partitions, use preset values; for others, preserve current state
-  cmd[6] = (total_mask & configured_mask) | (cur_total & ~configured_mask);
-  cmd[7] = (partial_mask & configured_mask) | (cur_partial & ~configured_mask);
-  cmd[8] = (partial_d0_mask & configured_mask) | (cur_d0 & ~configured_mask);
+  // Send preset masks directly — unconfigured partitions get 0 (disarmed)
+  // This matches upstream specific_area=0 behavior: only the specified
+  // partition bits are set, everything else goes to zero.
+  cmd[6] = total_mask;
+  cmd[7] = partial_mask;
+  cmd[8] = partial_d0_mask;
   cmd[9] = calculate_crc_(cmd, 9);
 
   uint8_t rx[255];

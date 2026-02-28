@@ -131,7 +131,7 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   void disarm_partition(uint8_t partition);
   void arm_all_partitions(uint8_t arm_type);
   void disarm_all_partitions();
-  void arm_preset(uint8_t total_mask, uint8_t partial_mask, uint8_t partial_d0_mask, uint8_t configured_mask);
+  void arm_preset(uint8_t total_mask, uint8_t partial_mask, uint8_t partial_d0_mask);
   void reset_alarms();
   void activate_output(uint8_t output_number);
   void deactivate_output(uint8_t output_number);

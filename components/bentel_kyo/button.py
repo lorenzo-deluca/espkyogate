@@ -111,10 +111,8 @@ async def to_code(config):
         total = 0
         partial = 0
         partial_d0 = 0
-        configured = 0
         for partition, mode in partitions.items():
             bit = 1 << (partition - 1)
-            configured |= bit
             if mode == "away":
                 total |= bit
             elif mode in ("home", "stay"):
@@ -122,4 +120,4 @@ async def to_code(config):
             elif mode == "night":
                 partial_d0 |= bit
             # "disarm" — bit stays 0 in all masks
-        cg.add(var.set_masks(total, partial, partial_d0, configured))
+        cg.add(var.set_masks(total, partial, partial_d0))

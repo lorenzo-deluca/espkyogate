@@ -55,16 +55,15 @@ class BentelKyoDisarmAllButton : public button::Button, public Component {
 class BentelKyoArmPresetButton : public button::Button, public Component {
  public:
   void set_parent(BentelKyo *parent) { this->parent_ = parent; }
-  void set_masks(uint8_t total, uint8_t partial, uint8_t partial_d0, uint8_t configured) {
+  void set_masks(uint8_t total, uint8_t partial, uint8_t partial_d0) {
     this->total_mask_ = total;
     this->partial_mask_ = partial;
     this->partial_d0_mask_ = partial_d0;
-    this->configured_mask_ = configured;
   }
 
   void press_action() override {
     this->parent_->arm_preset(this->total_mask_, this->partial_mask_,
-                              this->partial_d0_mask_, this->configured_mask_);
+                              this->partial_d0_mask_);
   }
 
  protected:
@@ -72,7 +71,6 @@ class BentelKyoArmPresetButton : public button::Button, public Component {
   uint8_t total_mask_{0};
   uint8_t partial_mask_{0};
   uint8_t partial_d0_mask_{0};
-  uint8_t configured_mask_{0};
 };
 
 }  // namespace bentel_kyo
