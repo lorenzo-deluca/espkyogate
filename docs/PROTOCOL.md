@@ -416,10 +416,10 @@ are little-endian within each byte (bit 0 = lowest zone in group).
 
 ## 6. Write Commands
 
-### 6.1 Arm Partition
+### 6.1 Arm/Disarm Partition
 
 ```
-TX: 0F 00 F0 03 00 02 [TOTAL] [PARTIAL] 00 [CRC] FF
+TX: 0F 00 F0 03 00 02 [TOTAL] [PARTIAL] [PARTIAL_D0] [CRC] FF
 ```
 
 Total length: 11 bytes.
@@ -433,25 +433,24 @@ Total length: 11 bytes.
 | 5 | `0x02` | Payload length |
 | 6 | TOTAL | Bitmask of partitions to arm totally (bit 0 = P1, bit 7 = P8) |
 | 7 | PARTIAL | Bitmask of partitions to arm partially |
-| 8 | `0x00` | Padding |
-| 9 | CRC | `calculateCRC(cmd, 8)` = `0x203 - sum(cmd[0..8])` |
+| 8 | PARTIAL_D0 | Bitmask of partitions to arm partially with delay 0 (night mode) |
+| 9 | CRC | `0x203 - sum(cmd[0..8])`, truncated to uint8_t |
 | 10 | `0xFF` | Trailer |
 
-**specific_area mode**: When `specific_area=1`, the current arming state
-of all partitions is read from the sensor cache and the target partition
-bit is OR'd in, preserving other partitions' state. When `specific_area=0`,
-only the target partition is set.
+The command sets all partitions simultaneously. Each partition's state is
+determined by which bitmask it appears in:
+- Bit set in TOTAL (byte 6) -> armed away
+- Bit set in PARTIAL (byte 7) -> armed home (bypasses Internal zones)
+- Bit set in PARTIAL_D0 (byte 8) -> armed night (bypasses Internal zones, no entry delay)
+- Bit not set in any mask -> disarmed
 
-### 6.2 Disarm Partition
+To disarm all partitions, send all three masks as `0x00`.
 
-```
-TX: 0F 00 F0 03 00 02 [TOTAL] [PARTIAL] 00 [CRC] FF
-```
-
-Identical structure to Arm. The difference is in the bitmask values:
-- `specific_area=0`: Both TOTAL and PARTIAL are `0x00` (disarm all).
-- `specific_area=1`: Current state is read, and the target partition's
-  bit is cleared (either from total or partial, depending on which was set).
+> **Note**: Upstream espkyogate (lorenzo-deluca) always sends byte 8 as `0x00`
+> and documents it as "Padding". Our implementation uses byte 8 for partial
+> delay 0 arming. This has been verified working on KYO 32M but needs USB
+> capture confirmation to definitively prove the panel respects byte 8
+> independently (see test checklist item 2.1).
 
 ### 6.3 Reset Alarms
 

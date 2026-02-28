@@ -324,7 +324,7 @@ Optional diagnostic text sensors for each partition:
 
 ### Code Protection
 
-You can require a PIN code to arm or disarm from Home Assistant. This uses ESPHome's built-in alarm control panel code validation — the code is checked by the ESP32 before the command is sent to the panel. It does not need to match the panel's own code.
+You can require a PIN code to arm or disarm from Home Assistant. The code is validated by the ESP32 before the command is sent to the panel — it does not need to match the panel's own installer/user code.
 
 ```yaml
 alarm_control_panel:
@@ -335,18 +335,16 @@ alarm_control_panel:
     codes:
       - !secret alarm_code
     requires_code_to_arm: false
-    requires_code_to_disarm: true
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `codes` | (none) | List of valid PIN codes (strings). Use `!secret` to avoid plaintext in YAML |
-| `requires_code_to_arm` | `false` | Require code entry to arm the partition from HA |
-| `requires_code_to_disarm` | `false` | Require code entry to disarm the partition from HA |
+| `requires_code_to_arm` | `false` | Require code entry to arm the partition |
 
-When `requires_code_to_disarm` is enabled, the HA alarm panel card shows a numeric keypad. The user must enter a valid code before the disarm command is sent to the panel.
+When codes are configured, **disarm always requires a valid code**. HA automatically shows a numeric keypad on the alarm panel card. Arming does not require a code by default — set `requires_code_to_arm: true` to also require it for arm actions.
 
-> **Note**: Code protection only applies to the `alarm_control_panel` entities in HA. Arm preset buttons currently bypass code validation — they call the hub directly. Code-protected presets are not yet supported.
+> **Note**: Code protection only applies to the `alarm_control_panel` entities in HA. Arm preset buttons bypass code validation — they call the hub directly.
 
 ### Arming Modes and the "Internal" Zone Attribute
 
@@ -454,7 +452,7 @@ Available modes per partition:
 | `night` | Partial arm with no entry delay — bypasses Internal zones, all zones instant |
 | `disarm` | Disarm the partition |
 
-Partitions **not listed** in the config preserve their current state. This lets you create buttons that only affect specific partitions without touching others.
+Partitions **not listed** in the config are sent as `disarm` (all mask bits not explicitly set remain `0`). Use this when you want a full deterministic preset that sets all partitions in one command.
 
 ### Using Preset Buttons in Home Assistant Automations
 
