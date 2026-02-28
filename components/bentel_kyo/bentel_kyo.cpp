@@ -746,8 +746,9 @@ void BentelKyo::reset_alarms() {
 }
 
 void BentelKyo::activate_output(uint8_t output_number) {
-  if (output_number < 1 || output_number > KYO_MAX_OUTPUTS) {
-    ESP_LOGE(TAG, "Invalid output %d (1-%d)", output_number, KYO_MAX_OUTPUTS);
+  // Command uses single-byte bitmask — only outputs 1-8 fit
+  if (output_number < 1 || output_number > 8) {
+    ESP_LOGE(TAG, "Invalid output %d (1-8)", output_number);
     return;
   }
 
@@ -761,8 +762,9 @@ void BentelKyo::activate_output(uint8_t output_number) {
 }
 
 void BentelKyo::deactivate_output(uint8_t output_number) {
-  if (output_number < 1 || output_number > KYO_MAX_OUTPUTS) {
-    ESP_LOGE(TAG, "Invalid output %d (1-%d)", output_number, KYO_MAX_OUTPUTS);
+  // Command uses single-byte bitmask — only outputs 1-8 fit
+  if (output_number < 1 || output_number > 8) {
+    ESP_LOGE(TAG, "Invalid output %d (1-8)", output_number);
     return;
   }
 
