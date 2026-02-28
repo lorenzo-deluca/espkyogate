@@ -29,11 +29,39 @@ uint32_t BentelKyoAlarmPanel::get_supported_features() const {
          alarm_control_panel::ACP_FEAT_TRIGGER;
 }
 
+bool BentelKyoAlarmPanel::is_code_valid_(optional<std::string> code) const {
+  if (this->codes_.empty())
+    return true;
+  if (!code.has_value() || code.value().empty())
+    return false;
+  for (const auto &c : this->codes_) {
+    if (c == code.value())
+      return true;
+  }
+  return false;
+}
+
 void BentelKyoAlarmPanel::control(const alarm_control_panel::AlarmControlPanelCall &call) {
   if (!call.get_state().has_value())
     return;
 
   auto state = *call.get_state();
+  auto code = call.get_code();
+
+  // Validate code for disarm (always required if codes are configured)
+  if (state == alarm_control_panel::ACP_STATE_DISARMED && !this->is_code_valid_(code)) {
+    ESP_LOGW(TAG_ACP, "Invalid code for disarm on partition %d", this->partition_);
+    return;
+  }
+
+  // Validate code for arm (only if requires_code_to_arm is set)
+  if (state != alarm_control_panel::ACP_STATE_DISARMED &&
+      state != alarm_control_panel::ACP_STATE_TRIGGERED &&
+      this->requires_code_to_arm_ && !this->is_code_valid_(code)) {
+    ESP_LOGW(TAG_ACP, "Invalid code for arm on partition %d", this->partition_);
+    return;
+  }
+
   switch (state) {
     case alarm_control_panel::ACP_STATE_ARMED_AWAY:
       // Total arm

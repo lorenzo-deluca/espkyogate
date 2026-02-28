@@ -13,6 +13,9 @@ CONF_PARTITION = "partition"
 CONF_ENTRY_DELAY = "entry_delay"
 CONF_EXIT_DELAY = "exit_delay"
 CONF_SIREN_TIMER = "siren_timer"
+CONF_CODES = "codes"
+CONF_REQUIRES_CODE_TO_ARM = "requires_code_to_arm"
+CONF_REQUIRES_CODE_TO_DISARM = "requires_code_to_disarm"
 
 BentelKyoAlarmPanel = bentel_kyo_ns.class_(
     "BentelKyoAlarmPanel",
@@ -22,12 +25,24 @@ BentelKyoAlarmPanel = bentel_kyo_ns.class_(
 
 TextSensorType = bentel_kyo_ns.enum("TextSensorType")
 
-CONFIG_SCHEMA = (
+
+def _validate_code_config(config):
+    if config.get(CONF_REQUIRES_CODE_TO_ARM, False) and not config.get(CONF_CODES, []):
+        raise cv.Invalid(
+            f"{CONF_REQUIRES_CODE_TO_ARM} cannot be set without codes."
+        )
+    return config
+
+
+CONFIG_SCHEMA = cv.All(
     alarm_control_panel.alarm_control_panel_schema(BentelKyoAlarmPanel)
     .extend(
         {
             cv.GenerateID(CONF_BENTEL_KYO_ID): cv.use_id(BentelKyo),
             cv.Required(CONF_PARTITION): cv.int_range(min=1, max=8),
+            cv.Optional(CONF_CODES): cv.ensure_list(cv.string_strict),
+            cv.Optional(CONF_REQUIRES_CODE_TO_ARM): cv.boolean,
+            cv.Optional(CONF_REQUIRES_CODE_TO_DISARM): cv.boolean,
             cv.Optional(CONF_ENTRY_DELAY): text_sensor.text_sensor_schema(
                 icon="mdi:timer-sand",
                 entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
@@ -42,7 +57,8 @@ CONFIG_SCHEMA = (
             ),
         }
     )
-    .extend(cv.COMPONENT_SCHEMA)
+    .extend(cv.COMPONENT_SCHEMA),
+    _validate_code_config,
 )
 
 
@@ -54,6 +70,12 @@ async def to_code(config):
     cg.add(var.set_parent(hub))
     cg.add(var.set_partition(config[CONF_PARTITION]))
     cg.add(hub.register_alarm_panel(var))
+
+    if CONF_CODES in config:
+        for code in config[CONF_CODES]:
+            cg.add(var.add_code(code))
+        if CONF_REQUIRES_CODE_TO_ARM in config:
+            cg.add(var.set_requires_code_to_arm(config[CONF_REQUIRES_CODE_TO_ARM]))
 
     partition_index = config[CONF_PARTITION] - 1  # 0-based
 
