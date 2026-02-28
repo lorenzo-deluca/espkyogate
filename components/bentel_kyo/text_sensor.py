@@ -54,17 +54,21 @@ async def to_code(config):
 
     if CONF_FIRMWARE_VERSION in config:
         var = await text_sensor.new_text_sensor(config[CONF_FIRMWARE_VERSION])
+        cg.add(var.set_disabled_by_default(True))
         cg.add(hub.set_firmware_version_text_sensor(var))
 
     if CONF_ALARM_MODEL in config:
         var = await text_sensor.new_text_sensor(config[CONF_ALARM_MODEL])
+        cg.add(var.set_disabled_by_default(True))
         cg.add(hub.set_alarm_model_text_sensor(var))
 
     if CONF_KEYFOBS in config:
         for keyfob_conf in config[CONF_KEYFOBS]:
             slot_index = keyfob_conf[CONF_SLOT] - 1  # 0-based
             var = await text_sensor.new_text_sensor(keyfob_conf)
+            cg.add(var.set_disabled_by_default(True))
             cg.add(hub.register_text_sensor(var, TextSensorType.TEXT_KEYFOB_ESN, slot_index))
             if CONF_PANEL_NAME in keyfob_conf:
                 name_var = await text_sensor.new_text_sensor(keyfob_conf[CONF_PANEL_NAME])
+                cg.add(name_var.set_disabled_by_default(True))
                 cg.add(hub.register_text_sensor(name_var, TextSensorType.TEXT_KEYFOB_NAME, slot_index))

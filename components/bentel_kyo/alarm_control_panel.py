@@ -59,12 +59,15 @@ async def to_code(config):
 
     if CONF_ENTRY_DELAY in config:
         ts = await text_sensor.new_text_sensor(config[CONF_ENTRY_DELAY])
+        cg.add(ts.set_disabled_by_default(True))
         cg.add(hub.register_text_sensor(ts, TextSensorType.TEXT_PARTITION_ENTRY_DELAY, partition_index))
 
     if CONF_EXIT_DELAY in config:
         ts = await text_sensor.new_text_sensor(config[CONF_EXIT_DELAY])
+        cg.add(ts.set_disabled_by_default(True))
         cg.add(hub.register_text_sensor(ts, TextSensorType.TEXT_PARTITION_EXIT_DELAY, partition_index))
 
     if CONF_SIREN_TIMER in config:
         ts = await text_sensor.new_text_sensor(config[CONF_SIREN_TIMER])
+        cg.add(ts.set_disabled_by_default(True))
         cg.add(hub.register_text_sensor(ts, TextSensorType.TEXT_PARTITION_SIREN_TIMER, partition_index))

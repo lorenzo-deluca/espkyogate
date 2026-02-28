@@ -141,7 +141,7 @@ ZONE_TAMPER_SCHEMA = binary_sensor.binary_sensor_schema(
     }
 )
 
-# Zone bypass: problem (bypassed = problem state)
+# Zone bypass: operational (bypassed zone = security gap)
 ZONE_BYPASS_SCHEMA = binary_sensor.binary_sensor_schema(
     icon="mdi:shield-off",
 ).extend(
@@ -301,15 +301,18 @@ CONFIG_SCHEMA = cv.Schema(
 )
 
 
-async def _register_sensor(hub, config, sensor_type_str, index=0):
+async def _register_sensor(hub, config, sensor_type_str, index=0, disabled_by_default=False):
     """Register a binary sensor with the hub."""
     var = await binary_sensor.new_binary_sensor(config)
+    if disabled_by_default:
+        cg.add(var.set_disabled_by_default(True))
     cg.add(hub.register_binary_sensor(var, SENSOR_TYPES[sensor_type_str], index))
 
 
 async def _register_text_sensor(hub, config, type_str, index):
     """Register a zone diagnostic text sensor with the hub."""
     var = await text_sensor.new_text_sensor(config)
+    cg.add(var.set_disabled_by_default(True))
     cg.add(hub.register_text_sensor(var, TEXT_SENSOR_TYPES[type_str], index))
 
 
