@@ -22,7 +22,9 @@ jobs:
           - tests/test_full.yaml
           - tests/test_minimal.yaml
           - tests/test_alarm_only.yaml
+          - tests/test_alarm_code_protection.yaml
           - tests/test_sensors_only.yaml
+          - tests/test_controls.yaml
           - tests/test_32_zones.yaml
     steps:
       - uses: actions/checkout@v4
@@ -39,3 +41,30 @@ jobs:
           fi
       - name: Compile ${{ matrix.config }}
         run: esphome compile ${{ matrix.config }}
+
+  validate-negative:
+    name: Validate Invalid Config (${{ matrix.channel }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [stable, beta]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install ESPHome (${{ matrix.channel }})
+        run: |
+          if [ "${{ matrix.channel }}" = "beta" ]; then
+            pip install --upgrade --pre esphome
+          else
+            pip install --upgrade esphome
+          fi
+      - name: Validate invalid output_number test
+        run: |
+          if esphome config tests/test_invalid_output_number.yaml; then
+            echo "Expected config validation to fail for output_number > 8"
+            exit 1
+          fi

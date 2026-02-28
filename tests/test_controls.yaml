@@ -1,0 +1,92 @@
+# Test: Button and switch control platforms
+# Validates: switch platform and all button types compile
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [bentel_kyo]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    version: recommended
+
+esphome:
+  name: test-controls
+  friendly_name: Test Controls
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO5
+  rx_pin: GPIO4
+  baud_rate: 9600
+  data_bits: 8
+  parity: EVEN
+
+logger:
+  level: DEBUG
+  baud_rate: 0
+
+api:
+
+ota:
+  platform: esphome
+
+wifi:
+  ssid: "test_ssid"
+  password: "test_password"
+
+bentel_kyo:
+  id: kyo
+  uart_id: uart_bus
+
+alarm_control_panel:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 1"
+    partition: 1
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 2"
+    partition: 2
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 3"
+    partition: 3
+
+switch:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Panel Polling"
+
+button:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: reread_config
+    name: "Reread Config"
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: arm_all_away
+    name: "Arm All Away"
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: arm_all_home
+    name: "Arm All Home"
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: arm_all_night
+    name: "Arm All Night"
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: disarm_all
+    name: "Disarm All"
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: arm_preset
+    name: "Preset Mixed"
+    partitions:
+      1: away
+      2: night
+      3: disarm
