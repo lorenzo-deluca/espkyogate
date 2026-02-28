@@ -15,7 +15,7 @@ This guide explains how to record USB sessions between KyoUnit and the alarm pan
 - **Null modem adapter** — for crossing TX/RX between the cable and the panel's serial port
 - **Bentel KyoUnit software** — for communicating with the panel
 
-> **Tested on:** Apple Silicon M4 Pro with UTM running Windows 11 Home 25H2 (Arm64).
+> **Tested on:** Apple Silicon Mac with UTM running Windows 11 (Arm64).
 
 ### Setup
 
