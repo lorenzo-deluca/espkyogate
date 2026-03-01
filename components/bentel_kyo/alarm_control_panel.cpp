@@ -25,8 +25,7 @@ void BentelKyoAlarmPanel::dump_config() {
 uint32_t BentelKyoAlarmPanel::get_supported_features() const {
   return alarm_control_panel::ACP_FEAT_ARM_HOME |
          alarm_control_panel::ACP_FEAT_ARM_AWAY |
-         alarm_control_panel::ACP_FEAT_ARM_NIGHT |
-         alarm_control_panel::ACP_FEAT_TRIGGER;
+         alarm_control_panel::ACP_FEAT_ARM_NIGHT;
 }
 
 bool BentelKyoAlarmPanel::is_code_valid_(optional<std::string> code) const {
