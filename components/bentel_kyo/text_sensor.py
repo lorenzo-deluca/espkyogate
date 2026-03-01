@@ -21,6 +21,8 @@ CONF_PARTITIONS = "partitions"
 CONF_PARTITION = "partition"
 CONF_CODES = "codes"
 CONF_CODE = "code"
+CONF_PANEL_MODE_RAW = "panel_mode_raw"
+CONF_STATUS_FLAGS_RAW = "status_flags_raw"
 
 TextSensorType = bentel_kyo_ns.enum("TextSensorType")
 
@@ -69,6 +71,14 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_KEYFOBS): cv.ensure_list(KEYFOB_SCHEMA),
         cv.Optional(CONF_PARTITIONS): cv.ensure_list(PARTITION_NAME_SCHEMA),
         cv.Optional(CONF_CODES): cv.ensure_list(CODE_NAME_SCHEMA),
+        cv.Optional(CONF_PANEL_MODE_RAW): text_sensor.text_sensor_schema(
+            icon="mdi:cog-transfer",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+        ),
+        cv.Optional(CONF_STATUS_FLAGS_RAW): text_sensor.text_sensor_schema(
+            icon="mdi:alert-circle-outline",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+        ),
     }
 )
 
@@ -110,3 +120,13 @@ async def to_code(config):
             var = await text_sensor.new_text_sensor(code_conf)
             cg.add(var.set_disabled_by_default(True))
             cg.add(hub.register_text_sensor(var, TextSensorType.TEXT_CODE_NAME, code_index))
+
+    if CONF_PANEL_MODE_RAW in config:
+        var = await text_sensor.new_text_sensor(config[CONF_PANEL_MODE_RAW])
+        cg.add(var.set_disabled_by_default(True))
+        cg.add(hub.register_text_sensor(var, TextSensorType.TEXT_PANEL_MODE_RAW, 0))
+
+    if CONF_STATUS_FLAGS_RAW in config:
+        var = await text_sensor.new_text_sensor(config[CONF_STATUS_FLAGS_RAW])
+        cg.add(var.set_disabled_by_default(True))
+        cg.add(hub.register_text_sensor(var, TextSensorType.TEXT_STATUS_FLAGS_RAW, 0))
