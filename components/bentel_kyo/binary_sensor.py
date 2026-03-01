@@ -184,7 +184,7 @@ OUTPUT_STATE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(
     icon="mdi:electric-switch",
 ).extend(
     {
-        cv.Required(CONF_OUTPUT_NUMBER): cv.int_range(min=1, max=8),
+        cv.Required(CONF_OUTPUT_NUMBER): cv.int_range(min=1, max=16),
         cv.Optional(CONF_OUTPUT_PANEL_NAME): text_sensor.text_sensor_schema(
             icon="mdi:form-textbox",
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,

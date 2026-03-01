@@ -498,8 +498,8 @@ bool BentelKyo::parse_partition_status_(const uint8_t *rx, int count) {
   if (!changed)
     return true;
 
-  ESP_LOGD(TAG, "Partition status: total=0x%02X partial=0x%02X partial_d0=0x%02X disarmed=0x%02X siren=%d output=0x%02X",
-           rx[6], rx[7], rx[8], rx[9], (rx[10] >> 5) & 1, rx[12]);
+  ESP_LOGD(TAG, "Partition status: total=0x%02X partial=0x%02X partial_d0=0x%02X disarmed=0x%02X rx10=0x%02X rx11=0x%02X rx12=0x%02X",
+           rx[6], rx[7], rx[8], rx[9], rx[10], rx[11], rx[12]);
 
   // Parse partition arming states (same byte layout for both models)
   for (int i = 0; i < KYO_MAX_PARTITIONS; i++) {
@@ -509,13 +509,26 @@ bool BentelKyo::parse_partition_status_(const uint8_t *rx, int count) {
     this->partition_disarmed_[i] = (rx[9] >> i) & 1;
   }
 
-  // Siren status
-  this->siren_active_ = (rx[10] >> 5) & 1;
-
-  // Output states (KYO32G only - non-G reads 0xFF)
-  if (this->alarm_model_ == AlarmModel::KYO_32G) {
-    for (int i = 0; i < KYO_MAX_OUTPUTS; i++)
+  // Model-dependent siren and output parsing
+  if (is_kyo8) {
+    if (this->alarm_model_ == AlarmModel::KYO_8W) {
+      // KYO8W: rx[10] = siren byte, rx[12] = outputs 1-8
+      this->siren_active_ = (rx[10] >> 6) & 1;
+      for (int i = 0; i < 8; i++)
+        this->output_state_[i] = (rx[12] >> i) & 1;
+    } else {
+      // KYO4/KYO8/KYO8G: rx[10] bits 0-4 = outputs 1-5, bit 6 = siren, bit 7 = tamper memory
+      this->siren_active_ = (rx[10] >> 6) & 1;
+      for (int i = 0; i < 5; i++)
+        this->output_state_[i] = (rx[10] >> i) & 1;
+    }
+  } else {
+    // KYO32/KYO32G: rx[10] bit 5 = siren, rx[11] = outputs 9-16, rx[12] = outputs 1-8
+    this->siren_active_ = (rx[10] >> 5) & 1;
+    for (int i = 0; i < 8; i++)
       this->output_state_[i] = (rx[12] >> i) & 1;
+    for (int i = 0; i < 8; i++)
+      this->output_state_[8 + i] = (rx[11] >> i) & 1;
   }
 
   // Zone bypass, alarm memory, tamper memory
