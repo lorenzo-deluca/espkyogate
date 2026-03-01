@@ -180,6 +180,7 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   void read_partition_names_();
   void read_code_names_();
   bool read_event_log_next_();  // reads one 64-byte chunk per call, returns true when done
+  static const char *decode_event_code_(uint16_t code, uint8_t *entity_out, char *buf, size_t buf_len);
   void publish_text_sensors_();
 
   // Checksum helpers

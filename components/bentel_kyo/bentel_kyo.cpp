@@ -1298,6 +1298,55 @@ void BentelKyo::read_code_names_() {
   }
 }
 
+const char *BentelKyo::decode_event_code_(uint16_t code, uint8_t *entity_out, char *buf, size_t buf_len) {
+  // Event code table derived from KyoUnit 5.5 event log display
+  // correlated with raw serial capture data (bentel-4.log, 2026-03-01).
+  //
+  // The 16-bit event code encodes both event type and entity number:
+  //   code = base + (entity_number - 1)
+  // where entity_number is 1-based (partition 1-8, zone 1-32, code 1-24).
+
+  struct EventRange {
+    uint16_t base;
+    uint8_t count;  // max entities (0 = no entity)
+    const char *name;
+    const char *entity_type;  // "partition", "zone", "code", or nullptr
+  };
+
+  static const EventRange ranges[] = {
+    {0x0000, 8,  "Alarm Partition",              "partition"},
+    {0x0008, 32, "Alarm Zone",                   "zone"},
+    {0x0078, 24, "Recognized Code",              "code"},
+    {0x0130, 8,  "Arm Partition",                "partition"},
+    {0x0138, 8,  "Disarm Partition",             "partition"},
+    {0x0140, 8,  "Special Arming Partition",     "partition"},
+    {0x0148, 8,  "Special Disarming Partition",  "partition"},
+    {0x0150, 8,  "Reset Memory Partition",       "partition"},
+    {0x0188, 32, "Restore Zone",                 "zone"},
+    {0x01BC, 0,  "Remote Command",               nullptr},
+  };
+
+  for (const auto &range : ranges) {
+    if (range.count == 0) {
+      if (code == range.base) {
+        *entity_out = 0;
+        return range.name;
+      }
+    } else {
+      uint16_t offset = code - range.base;
+      if (code >= range.base && offset < range.count) {
+        *entity_out = offset + 1;  // 1-based
+        return range.name;
+      }
+    }
+  }
+
+  // Unknown event code — format as hex
+  *entity_out = 0;
+  snprintf(buf, buf_len, "Unknown (0x%04X)", code);
+  return buf;
+}
+
 bool BentelKyo::read_event_log_next_() {
   static const int EVENT_LOG_CHUNKS = 28;
   static const uint16_t EVENT_LOG_BASE = 0x0D27;
@@ -1324,22 +1373,30 @@ bool BentelKyo::read_event_log_next_() {
     int slot = chunk * RECORDS_PER_CHUNK + i;
     int offset = 6 + (i * 7);
 
-    uint8_t type = rx[offset];
-    uint8_t source = rx[offset + 1];
+    uint8_t code_hi = rx[offset];
+    uint8_t code_lo = rx[offset + 1];
     uint8_t day = rx[offset + 2];
     uint8_t month = rx[offset + 3];
     uint8_t year = rx[offset + 4];
     uint8_t hour = rx[offset + 5];
     uint8_t minute = rx[offset + 6];
 
-    // Skip empty/sentinel records
-    if (type == 0x8E)
-      continue;
-    if (type == 0x00 && source == 0x00 && day == 0x00 && month == 0x00)
+    // Skip empty records (all zeros)
+    if (code_hi == 0x00 && code_lo == 0x00 && day == 0x00 && month == 0x00)
       continue;
 
-    ESP_LOGI(TAG, "Event [%03d]: %02d-%02d-%04d %02d:%02d  type=0x%02X src=0x%02X",
-             slot + 1, day, month, 2000 + year, hour, minute, type, source);
+    uint16_t event_code = (code_hi << 8) | code_lo;
+    uint8_t entity = 0;
+    char unknown_buf[24];
+    const char *event_name = decode_event_code_(event_code, &entity, unknown_buf, sizeof(unknown_buf));
+
+    if (entity > 0) {
+      ESP_LOGI(TAG, "Event [%03d]: %02d-%02d-%04d %02d:%02d  %s n.%d",
+               slot + 1, day, month, 2000 + year, hour, minute, event_name, entity);
+    } else {
+      ESP_LOGI(TAG, "Event [%03d]: %02d-%02d-%04d %02d:%02d  %s",
+               slot + 1, day, month, 2000 + year, hour, minute, event_name);
+    }
     this->event_log_entries_logged_++;
   }
 
