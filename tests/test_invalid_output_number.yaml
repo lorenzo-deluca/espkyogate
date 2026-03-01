@@ -1,5 +1,5 @@
 # Test: Invalid output number should fail schema validation
-# Validates: output_number > 8 is rejected
+# Validates: output_number > 16 is rejected
 
 external_components:
   - source:
@@ -46,5 +46,5 @@ binary_sensor:
   - platform: bentel_kyo
     bentel_kyo_id: kyo
     output_state:
-      - output_number: 9
-        name: "Invalid Output 9"
+      - output_number: 17
+        name: "Invalid Output 17"

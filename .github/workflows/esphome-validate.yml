@@ -64,6 +64,6 @@ jobs:
       - name: Validate invalid output_number test
         run: |
           if esphome config tests/test_invalid_output_number.yaml; then
-            echo "Expected config validation to fail for output_number > 8"
+            echo "Expected config validation to fail for output_number > 16"
             exit 1
           fi
