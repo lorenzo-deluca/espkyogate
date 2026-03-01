@@ -16,6 +16,25 @@ A proper [ESPHome external component](https://esphome.io/components/external_com
 - [x] Bentel KYO 8W
 - [x] Bentel KYO 8
 - [x] Bentel KYO 4
+> **Warning**
+> :warning: This software was developed by analyzing serial messages from/to central, it was not sponsored or officially supported by **Bentel**
+> If someone from **Bentel** would like to contribute or collaborate please contact me at [me@lorenzodeluca.dev](mailto:me@lorenzodeluca.dev?subject=[GitHub]ESPKyoGate)
+
+## Contents
+- [Community Forum & Support](#community-forum--support)
+- [Hardware Connections](#hardware-connections)
+- [ESPHome Preparation](#esphome-preparation)
+- [Build and Upload Firmware](#build-and-upload-firmware)
+- [Home Assistant Integration](#home-assistant-integration)
+- [Alarm Control Panel Package](#alarm-control-panel-package)
+- [Troubleshooting - FAQ](#troubleshooting-faq)
+
+## Community Forum & Support
+For discussions, questions, and community support, you can join the conversation on the official Home Assistant Community forum.\
+➡️ [**Join the discussion here: Bentel KYO32 Alarm System Integration**](https://community.home-assistant.io/t/bentel-kyo32-alarm-system-integration)
+
+## Hardware Connections
+I strongly recommend using an **ESP32** Based board, like this one https://it.aliexpress.com/item/4001340660273.html.
 
 Model detection is automatic via firmware version query on first connection.
 
