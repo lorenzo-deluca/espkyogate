@@ -133,6 +133,7 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   void disarm_all_partitions();
   void arm_preset(uint8_t total_mask, uint8_t partial_mask, uint8_t partial_d0_mask);
   void reset_alarms();
+  void read_event_log();
   void activate_output(uint8_t output_number);
   void deactivate_output(uint8_t output_number);
   void include_zone(uint8_t zone_number);
@@ -173,6 +174,7 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   void read_partition_config_();
   bool read_keyfob_esn_next_();  // reads one keyfob ESN per call, returns true when done
   void read_keyfob_names_();
+  bool read_event_log_next_();  // reads one 64-byte chunk per call, returns true when done
   void publish_text_sensors_();
 
   // Checksum helpers
@@ -278,6 +280,11 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   // Keyfob ESN (read once from 0xC0B1) and names (read once from 0x3180)
   std::string keyfob_esn_[KYO_MAX_KEYFOBS];
   std::string keyfob_name_[KYO_MAX_KEYFOBS];
+
+  // Event log dump (on-demand via button)
+  bool event_log_read_pending_{false};
+  int event_log_chunk_index_{0};
+  int event_log_entries_logged_{0};
 };
 
 }  // namespace bentel_kyo

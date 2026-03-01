@@ -185,6 +185,13 @@ void BentelKyo::reread_config() {
   this->keyfob_read_index_ = 0;
 }
 
+void BentelKyo::read_event_log() {
+  ESP_LOGI(TAG, "Event log dump requested — reading 28 chunks...");
+  this->event_log_read_pending_ = true;
+  this->event_log_chunk_index_ = 0;
+  this->event_log_entries_logged_ = 0;
+}
+
 void BentelKyo::set_polling_enabled(bool enabled) {
   if (this->polling_enabled_ == enabled)
     return;
@@ -243,6 +250,13 @@ void BentelKyo::update() {
       case 8: this->publish_text_sensors_(); this->config_read_step_ = 9; break;
     }
     return;  // Skip normal polling this cycle — avoid bus collision
+  }
+
+  // On-demand event log dump (triggered by read_event_log button)
+  if (this->event_log_read_pending_) {
+    if (this->read_event_log_next_())
+      this->event_log_read_pending_ = false;
+    return;  // Skip normal polling this cycle
   }
 
   // Re-publish text sensors periodically (every 120 polling cycles = ~60s at 500ms)
@@ -1200,6 +1214,55 @@ void BentelKyo::read_keyfob_names_() {
       ESP_LOGD(TAG, "Keyfob %d name: '%s'", kf_idx + 1, name_buf);
     }
   }
+}
+
+bool BentelKyo::read_event_log_next_() {
+  static const int EVENT_LOG_CHUNKS = 28;
+  static const uint16_t EVENT_LOG_BASE = 0x0D27;
+  static const int RECORDS_PER_CHUNK = 9;  // 63 bytes / 7 bytes per record
+
+  int chunk = this->event_log_chunk_index_;
+  if (chunk >= EVENT_LOG_CHUNKS) {
+    ESP_LOGI(TAG, "Event log dump complete (%d entries logged)", this->event_log_entries_logged_);
+    return true;
+  }
+
+  uint16_t addr = EVENT_LOG_BASE + (chunk * 0x40);
+  ESP_LOGD(TAG, "Event log chunk %d/28 (0x%04X)", chunk + 1, addr);
+
+  uint8_t rx[255];
+  int count = this->read_register_(addr, 0x3F, rx, 500);
+  if (count < 6 + 63) {
+    ESP_LOGW(TAG, "Event log chunk %d read failed at 0x%04X: got %d bytes", chunk + 1, addr, count);
+    this->event_log_chunk_index_++;
+    return false;
+  }
+
+  for (int i = 0; i < RECORDS_PER_CHUNK; i++) {
+    int slot = chunk * RECORDS_PER_CHUNK + i;
+    int offset = 6 + (i * 7);
+
+    uint8_t type = rx[offset];
+    uint8_t source = rx[offset + 1];
+    uint8_t day = rx[offset + 2];
+    uint8_t month = rx[offset + 3];
+    uint8_t year = rx[offset + 4];
+    uint8_t hour = rx[offset + 5];
+    uint8_t minute = rx[offset + 6];
+
+    // Skip empty/sentinel records
+    if (type == 0x8E)
+      continue;
+    if (type == 0x00 && source == 0x00 && day == 0x00 && month == 0x00)
+      continue;
+
+    ESP_LOGI(TAG, "Event [%03d]: %02d-%02d-%04d %02d:%02d  type=0x%02X src=0x%02X",
+             slot + 1, day, month, 2000 + year, hour, minute, type, source);
+    this->event_log_entries_logged_++;
+  }
+
+  this->event_log_chunk_index_++;
+  return false;
 }
 
 void BentelKyo::publish_text_sensors_() {

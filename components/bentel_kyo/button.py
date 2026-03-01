@@ -23,6 +23,10 @@ BentelKyoArmPresetButton = bentel_kyo_ns.class_(
     "BentelKyoArmPresetButton", button.Button, cg.Component
 )
 
+BentelKyoReadEventLogButton = bentel_kyo_ns.class_(
+    "BentelKyoReadEventLogButton", button.Button, cg.Component
+)
+
 CONF_ARM_TYPE = "arm_type"
 CONF_PARTITIONS = "partitions"
 
@@ -33,6 +37,7 @@ BUTTON_TYPES = {
     "arm_all_night": (BentelKyoArmAllButton, "mdi:shield-moon", None),
     "disarm_all": (BentelKyoDisarmAllButton, "mdi:shield-off", None),
     "arm_preset": (BentelKyoArmPresetButton, "mdi:shield-account", None),
+    "read_event_log": (BentelKyoReadEventLogButton, "mdi:history", ENTITY_CATEGORY_CONFIG),
 }
 
 ARM_TYPE_MAP = {
