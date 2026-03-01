@@ -76,6 +76,8 @@ enum BinarySensorType : uint8_t {
   SIREN,
   COMMUNICATION,
   OUTPUT_STATE,
+  PANEL_PROGRAMMING_MODE,
+  TROUBLE_ACTIVE,
 };
 
 enum TextSensorType : uint8_t {
@@ -91,6 +93,8 @@ enum TextSensorType : uint8_t {
   TEXT_PARTITION_SIREN_TIMER,
   TEXT_PARTITION_NAME,
   TEXT_CODE_NAME,
+  TEXT_PANEL_MODE_RAW,
+  TEXT_STATUS_FLAGS_RAW,
 };
 
 struct RegisteredTextSensor {
@@ -181,6 +185,8 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   void read_code_names_();
   bool read_event_log_next_();  // reads one 64-byte chunk per call, returns true when done
   static const char *decode_event_code_(uint16_t code, uint8_t *entity_out, char *buf, size_t buf_len);
+  void read_panel_mode_();
+  void read_status_flags_();
   void publish_text_sensors_();
 
   // Checksum helpers
@@ -260,6 +266,15 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   bool partition_disarmed_[KYO_MAX_PARTITIONS]{};
   bool siren_active_{false};
   bool output_state_[KYO_MAX_OUTPUTS]{};
+
+  // Panel Mode register (0x01E6, 2 bytes) — capture-validated idle baseline
+  uint8_t panel_mode_raw_[2]{0x11, 0x10};
+  bool panel_programming_mode_{false};
+
+  // Status Flags register (0x1503, 5 bytes) — capture-validated no-trouble baseline
+  uint8_t status_flags_raw_[5]{0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  bool trouble_active_{false};
+
   bool zone_bypass_[KYO_MAX_ZONES]{};
   bool zone_alarm_memory_[KYO_MAX_ZONES]{};
   bool zone_tamper_memory_[KYO_MAX_ZONES]{};

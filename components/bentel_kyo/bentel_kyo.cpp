@@ -229,7 +229,7 @@ void BentelKyo::update() {
   //
   // Steps 3 and 6 (zone ESN and keyfob ESN) read one slot per cycle to avoid
   // blocking the main loop for 90+ seconds (0xC0xx reads take ~1.5s each).
-  if (this->config_read_step_ < 11 && this->communication_ok_) {
+  if (this->config_read_step_ < 13 && this->communication_ok_) {
     switch (this->config_read_step_) {
       case 0: this->config_read_step_ = 1; break;  // skip one cycle after detection
       case 1: this->read_zone_config_(); this->config_read_step_ = 2; break;
@@ -249,7 +249,9 @@ void BentelKyo::update() {
           this->config_read_step_ = 9;
         break;
       case 9: this->read_keyfob_names_(); this->config_read_step_ = 10; break;
-      case 10: this->publish_text_sensors_(); this->config_read_step_ = 11; break;
+      case 10: this->read_panel_mode_(); this->config_read_step_ = 11; break;
+      case 11: this->read_status_flags_(); this->config_read_step_ = 12; break;
+      case 12: this->publish_text_sensors_(); this->config_read_step_ = 13; break;
     }
     return;  // Skip normal polling this cycle — avoid bus collision
   }
@@ -264,9 +266,11 @@ void BentelKyo::update() {
   // Re-publish text sensors periodically (every 120 polling cycles = ~60s at 500ms)
   // Text sensors are static config data but must be re-published so API clients
   // that connect after initial publish (e.g. Home Assistant reconnects) get the state.
-  if (this->config_read_step_ >= 11) {
+  if (this->config_read_step_ >= 13) {
     this->text_sensor_republish_counter_++;
     if (this->force_publish_ || this->text_sensor_republish_counter_ >= 120) {
+      this->read_panel_mode_();
+      this->read_status_flags_();
       this->publish_text_sensors_();
       this->text_sensor_republish_counter_ = 0;
     }
@@ -622,6 +626,12 @@ void BentelKyo::publish_binary_sensors_() {
         break;
       case BinarySensorType::OUTPUT_STATE:
         if (idx < KYO_MAX_OUTPUTS) state = this->output_state_[idx];
+        break;
+      case BinarySensorType::PANEL_PROGRAMMING_MODE:
+        state = this->panel_programming_mode_;
+        break;
+      case BinarySensorType::TROUBLE_ACTIVE:
+        state = this->trouble_active_;
         break;
       case BinarySensorType::COMMUNICATION:
         // Handled separately in update()
@@ -1311,6 +1321,49 @@ void BentelKyo::read_code_names_() {
   }
 }
 
+void BentelKyo::read_panel_mode_() {
+  uint8_t rx[255];
+  int count = this->read_register_(0x01E6, 0x02, rx, 300);
+  if (count < 6 + 2) {
+    ESP_LOGW(TAG, "Panel mode read failed: got %d bytes", count);
+    return;
+  }
+
+  this->panel_mode_raw_[0] = rx[6];
+  this->panel_mode_raw_[1] = rx[7];
+
+  // Programming mode = bytes differ from idle baseline {0x11, 0x10}
+  this->panel_programming_mode_ = (rx[6] != 0x11 || rx[7] != 0x10);
+
+  ESP_LOGD(TAG, "Panel mode: %02X %02X (programming=%s)",
+           rx[6], rx[7], this->panel_programming_mode_ ? "YES" : "no");
+}
+
+void BentelKyo::read_status_flags_() {
+  uint8_t rx[255];
+  int count = this->read_register_(0x1503, 0x05, rx, 300);
+  if (count < 6 + 5) {
+    ESP_LOGW(TAG, "Status flags read failed: got %d bytes", count);
+    return;
+  }
+
+  for (int i = 0; i < 5; i++)
+    this->status_flags_raw_[i] = rx[6 + i];
+
+  // Trouble active = any byte != 0xFF (all-FF = no troubles)
+  this->trouble_active_ = false;
+  for (int i = 0; i < 5; i++) {
+    if (rx[6 + i] != 0xFF) {
+      this->trouble_active_ = true;
+      break;
+    }
+  }
+
+  ESP_LOGD(TAG, "Status flags: %02X %02X %02X %02X %02X (trouble=%s)",
+           rx[6], rx[7], rx[8], rx[9], rx[10],
+           this->trouble_active_ ? "YES" : "no");
+}
+
 const char *BentelKyo::decode_event_code_(uint16_t code, uint8_t *entity_out, char *buf, size_t buf_len) {
   // Event code table derived from KyoUnit 5.5 event log display
   // correlated with raw serial capture data (bentel-4.log, 2026-03-01).
@@ -1490,6 +1543,21 @@ void BentelKyo::publish_text_sensors_() {
         if (idx >= KYO_MAX_CODES) continue;
         entry.sensor->publish_state(this->code_name_[idx].empty() ? "N/A" : this->code_name_[idx]);
         break;
+      case TEXT_PANEL_MODE_RAW: {
+        char buf[8];
+        snprintf(buf, sizeof(buf), "%02X %02X", this->panel_mode_raw_[0], this->panel_mode_raw_[1]);
+        entry.sensor->publish_state(buf);
+        break;
+      }
+      case TEXT_STATUS_FLAGS_RAW: {
+        char buf[20];
+        snprintf(buf, sizeof(buf), "%02X %02X %02X %02X %02X",
+                 this->status_flags_raw_[0], this->status_flags_raw_[1],
+                 this->status_flags_raw_[2], this->status_flags_raw_[3],
+                 this->status_flags_raw_[4]);
+        entry.sensor->publish_state(buf);
+        break;
+      }
     }
   }
 }
