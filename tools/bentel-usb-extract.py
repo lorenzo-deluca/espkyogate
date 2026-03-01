@@ -116,6 +116,9 @@ def parse_log(filepath):
     payload entry with its sequence number, direction, timestamp and raw
     hex bytes.
 
+    Some UsbPayload dumps span multiple lines (offset 00000000, 00000010,
+    ...). This parser concatenates all contiguous dump lines into one entry.
+
     Returns:
         list[dict]: One dict per USB payload with keys *seq*, *dir*, *ts*,
         and *hex* (list of lowercase two-character hex strings).
@@ -126,9 +129,26 @@ def parse_log(filepath):
     direction = ""
     timestamp = ""
     in_payload = False
+    payload_hex = []
+
+    def flush_payload():
+        nonlocal in_payload, payload_hex
+        if payload_hex:
+            entries.append({
+                "seq": int(seq) if seq.isdigit() else 0,
+                "dir": direction,
+                "ts": timestamp,
+                "hex": payload_hex,
+            })
+            payload_hex = []
+        in_payload = False
 
     for line in lines:
         fields = line.rstrip("\n").split("\t")
+
+        # If a new transfer starts, close any previous payload capture first.
+        if in_payload and "$print instruction" in line and "Direction" in line:
+            flush_payload()
 
         # --- Direction + timestamp row ---
         if "$print instruction" in line and "Direction" in line:
@@ -149,7 +169,10 @@ def parse_log(filepath):
 
         # --- Payload marker ---
         if "UsbPayload" in line:
+            if in_payload and payload_hex:
+                flush_payload()
             in_payload = True
+            payload_hex = []
             continue
 
         # --- Hex dump lines following the payload marker ---
@@ -160,16 +183,27 @@ def parse_log(filepath):
             )
             if match:
                 hex_bytes = re.findall(r"[0-9a-fA-F]{2}", match.group(2))
-                hex_bytes = [b.lower() for b in hex_bytes]
-                entries.append({
-                    "seq": int(seq) if seq.isdigit() else 0,
-                    "dir": direction,
-                    "ts": timestamp,
-                    "hex": hex_bytes,
-                })
-                in_payload = False
-            elif stripped == "":
-                in_payload = False
+                payload_hex.extend(b.lower() for b in hex_bytes)
+                continue
+
+            # Blank line marks end of this payload block.
+            if stripped == "":
+                if payload_hex:
+                    flush_payload()
+                else:
+                    in_payload = False
+                continue
+
+            # HHD includes one or more metadata lines between the "UsbPayload"
+            # marker and the first hex dump line. Ignore them until data starts.
+            if not payload_hex:
+                continue
+
+            # Any other non-hex line ends an active payload block.
+            flush_payload()
+
+    if in_payload and payload_hex:
+        flush_payload()
 
     return entries
 
@@ -231,10 +265,89 @@ def reassemble_messages(entries):
     return messages
 
 
+def _header_checksum_valid(cmd_bytes):
+    """Validate additive checksum in bytes[0..5] for 6-byte headers."""
+    if len(cmd_bytes) < 6:
+        return False
+    try:
+        expected = sum(int(b, 16) for b in cmd_bytes[:5]) & 0xFF
+        return expected == int(cmd_bytes[5], 16)
+    except ValueError:
+        return False
+
+
+def _looks_like_cmd_header(hex_bytes):
+    """Heuristic: likely protocol header at start of a Down transfer."""
+    return (
+        len(hex_bytes) == 6
+        and hex_bytes[0] in ("f0", "0f")
+        and _header_checksum_valid(hex_bytes)
+    )
+
+
+def _is_raw_write_header(cmd_bytes):
+    """Return True for 6-byte raw-write headers (0F ADDR_LO ADDR_HI LEN 00 CHK)."""
+    return (
+        len(cmd_bytes) == 6
+        and cmd_bytes[0] == "0f"
+        and cmd_bytes[4] == "00"
+        and _header_checksum_valid(cmd_bytes)
+    )
+
+
+def _collect_raw_write_payload(entries, start_idx, expected_len):
+    """Collect following Down bytes for a raw-write payload.
+
+    Raw configuration download commands are often split as:
+      1) 6-byte header
+      2) optional Up status packets (01 60 / 01 00)
+      3) one or more Down payload chunks containing DATA + DATA_CHK
+
+    This helper consumes the write payload and skips status-only Up packets
+    encountered before/between payload chunks.
+    """
+    payload = []
+    status_changes = []
+    j = start_idx
+    last_ts = ""
+
+    while j < len(entries) and len(payload) < expected_len:
+        entry = entries[j]
+
+        if entry["dir"] == "Up":
+            if len(entry["hex"]) >= 2:
+                status = entry["hex"][1]
+                if status != "60":
+                    status_changes.append(status)
+                last_ts = entry["ts"]
+
+            # Status-only packets are common during large downloads.
+            if len(entry["hex"]) <= 2:
+                j += 1
+                continue
+
+            # Up packet with payload data is not part of host write bytes.
+            break
+
+        # entry["dir"] == "Down"
+        if _looks_like_cmd_header(entry["hex"]):
+            # A new header indicates this write did not include more payload.
+            break
+
+        payload.extend(entry["hex"])
+        last_ts = entry["ts"]
+        j += 1
+
+    if len(payload) > expected_len:
+        payload = payload[:expected_len]
+
+    return payload, status_changes, j, last_ts
+
+
 def _reassemble_command(entries, i):
     """Reassemble a host-to-panel command and its response fragments."""
     entry = entries[i]
-    cmd_bytes = entry["hex"]
+    cmd_bytes = list(entry["hex"])
     cmd_ts = entry["ts"]
     cmd_seq = entry["seq"]
 
@@ -242,6 +355,26 @@ def _reassemble_command(entries, i):
     status_changes = []
     j = i + 1
     last_ts = cmd_ts
+
+    # Raw configuration downloads use a 6-byte 0F header, then DATA+CHK bytes
+    # in one or more subsequent Down transfers.
+    if _is_raw_write_header(cmd_bytes):
+        try:
+            expected_payload = int(cmd_bytes[3], 16) + 2  # LEN+1 data + data_chk
+        except ValueError:
+            expected_payload = 0
+
+        if expected_payload > 0 and j < len(entries):
+            raw_payload, pre_status, j_after, payload_ts = _collect_raw_write_payload(
+                entries, j, expected_payload
+            )
+            if pre_status:
+                status_changes.extend(pre_status)
+            if raw_payload:
+                cmd_bytes.extend(raw_payload)
+            j = j_after
+            if payload_ts:
+                last_ts = payload_ts
 
     while j < len(entries):
         r = entries[j]
@@ -350,15 +483,27 @@ def _verify_checksum(data_bytes):
 # Command decoding helpers
 # ---------------------------------------------------------------------------
 
+
+def _command_key(cmd_hex_list):
+    """Return normalized command key (header for framed F0/0F commands)."""
+    if len(cmd_hex_list) >= 6 and cmd_hex_list[0] in ("f0", "0f"):
+        return " ".join(cmd_hex_list[:6])
+    return " ".join(cmd_hex_list)
+
+
 def get_command_name(cmd_hex):
     """Return a human-readable name for a command hex string."""
-    info = KNOWN_COMMANDS.get(cmd_hex)
+    parts = cmd_hex.split()
+    key = " ".join(parts[:6]) if len(parts) >= 6 and parts[0] in ("f0", "0f") else cmd_hex
+    info = KNOWN_COMMANDS.get(key)
     return info["name"] if info else "UNKNOWN"
 
 
 def get_command_label(cmd_hex):
     """Return 'NAME — description' for known commands, else 'UNKNOWN'."""
-    info = KNOWN_COMMANDS.get(cmd_hex)
+    parts = cmd_hex.split()
+    key = " ".join(parts[:6]) if len(parts) >= 6 and parts[0] in ("f0", "0f") else cmd_hex
+    info = KNOWN_COMMANDS.get(key)
     if info:
         return f"{info['name']} — {info['desc']}"
     return "UNKNOWN"
@@ -557,7 +702,7 @@ def format_summary(messages):
     # Command frequency
     cmd_counter = Counter()
     for m in cmd_msgs:
-        cmd_counter[" ".join(m["cmd"])] += 1
+        cmd_counter[_command_key(m["cmd"])] += 1
 
     # Checksum statistics
     chk_ok = sum(1 for m in messages if m.get("chk_valid") is True)
@@ -600,7 +745,7 @@ def format_summary(messages):
     # Unique data snapshots per command
     unique_data = {}
     for m in cmd_msgs:
-        key = " ".join(m["cmd"])
+        key = _command_key(m["cmd"])
         data_key = tuple(m["resp_data"]) if m["resp_data"] else ()
         unique_data.setdefault(key, set()).add(data_key)
 

@@ -65,6 +65,24 @@ python3 bentel-usb-extract.py capture.log --json
 
 The script reassembles fragmented USB bulk transfers, validates protocol checksums, and decodes known Bentel KYO commands including sensor status, partition status, software version queries, and configuration read/write operations.
 
+### Reading the output
+
+- Start with `--summary` to identify dominant commands and capture phases.
+- Use `--raw` when you need full frame-level detail.
+- Raw configuration downloads (`0F` writes) are reassembled as a single command line containing:
+  - the 6-byte header (`0F ADDR_LO ADDR_HI LEN 00 CHK`)
+  - followed by the raw data block (`LEN+1` bytes) and trailing data checksum.
+- In summary/counts, `0F`/`F0` commands are grouped by their 6-byte header so repeated config writes are easier to compare.
+- Some HHD exports split one `UsbPayload` across multiple hex-dump lines; the parser now joins those automatically.
+
+### Troubleshooting
+
+- If Python cannot write `.pyc` files (restricted directory), run with:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 bentel-usb-extract.py capture.log --summary
+```
+
 ### Alternative: Host-side capture with socat (macOS)
 
 If using UTM on macOS, you may consider capturing on the host instead of inside the VM. In theory, `socat` can bridge the USB serial device to a TCP port that the Windows VM connects to, while logging the raw traffic:
