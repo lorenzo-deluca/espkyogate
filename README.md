@@ -42,12 +42,12 @@ Model detection is automatic via firmware version query on first connection.
 
 - **Alarm Control Panel** entities per partition (arm away, arm home, arm night, disarm) with full Home Assistant integration
 - **Binary sensors** for zones, zone tamper, zone bypass, alarm memory, tamper memory, warnings, tamper flags, siren, communication status, and output states
-- **Text sensors** for firmware version, alarm model, zone diagnostics (type, panel name, partition, serial number), output names, partition timers, and keyfob serial numbers
+- **Text sensors** for firmware version, alarm model, zone diagnostics (type, panel name, partition, serial number), output names, partition timers, keyfob serial numbers, partition names, and code names
 - **Non-blocking serial I/O** with async state machine (no blocking delays)
 - **Response caching** with change detection (only publishes when state changes)
 - **Exponential backoff** on communication failures (2s to 32s)
 - **Dual-query polling** (sensor + partition status every 500ms cycle)
-- **One-time config reads** for zone configuration, names, serial numbers, output names, partition timers, and keyfob serial numbers
+- **One-time config reads** for zone configuration, names, serial numbers, output names, partition timers, keyfob serial numbers, partition names, and code names
 
 ## Hardware
 
@@ -282,6 +282,16 @@ text_sensor:
         name: "Keyfob 1"
       - slot: 2
         name: "Keyfob 2"
+    partitions:
+      - partition: 1
+        name: "Partition 1 Name"
+      - partition: 2
+        name: "Partition 2 Name"
+    codes:
+      - code: 1
+        name: "Code 1 Name"
+      - code: 2
+        name: "Code 2 Name"
 
 # Switch — polling control
 
@@ -290,13 +300,21 @@ switch:
     bentel_kyo_id: kyo
     name: "Panel Polling"
 
-# Buttons — reread config + arm presets
+# Buttons — reread config, reset alarms, event log, arm presets
 
 button:
   - platform: bentel_kyo
     bentel_kyo_id: kyo
     type: reread_config
     name: "Reread Panel Config"
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: reset_alarms
+    name: "Reset Alarms"
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: read_event_log
+    name: "Read Event Log"
   - platform: bentel_kyo
     bentel_kyo_id: kyo
     type: arm_preset
@@ -330,11 +348,13 @@ The partition state is read from the panel every 500ms and mapped to:
 
 | Panel State | HA State |
 |-------------|----------|
+| Disarmed | `disarmed` |
+| Partition alarm | `triggered` |
 | Armed total | `armed_away` |
 | Armed partial | `armed_home` |
 | Armed partial delay 0 | `armed_night` |
-| Disarmed | `disarmed` |
-| Partition alarm | `triggered` |
+
+> **Note**: Disarmed takes priority over triggered. The panel's alarm bit persists after disarming until the alarm memory is explicitly reset. Once the partition is disarmed, the alarm has been acknowledged and the state shows `disarmed`.
 
 Optional diagnostic text sensors for each partition:
 - `entry_delay` — entry delay timer (seconds)
@@ -405,6 +425,8 @@ button:
 | Type | Description |
 |------|-------------|
 | `reread_config` | Re-read zone configuration, names, serial numbers from panel |
+| `reset_alarms` | Reset alarm memory on the panel |
+| `read_event_log` | Read panel event log (256 entries) and dump to ESPHome logs |
 | `arm_all_away` | Arm all registered partitions in Away mode |
 | `arm_all_home` | Arm all registered partitions in Home/Stay mode |
 | `arm_all_night` | Arm all registered partitions in Night mode |
@@ -577,7 +599,9 @@ Per-zone tamper memory.
 |-----|-------------|
 | `firmware_version` | Panel firmware version string |
 | `alarm_model` | Detected alarm model (KYO4, KYO8, KYO32, etc.) |
-| `keyfobs` | Keyfob serial numbers (slot 1-16) |
+| `keyfobs` | Keyfob serial numbers and names (slot 1-16) |
+| `partitions` | Partition names as configured on the panel (partition 1-8) |
+| `codes` | User code names as configured on the panel (code 1-24) |
 
 ## KYO32 vs KYO32G
 
