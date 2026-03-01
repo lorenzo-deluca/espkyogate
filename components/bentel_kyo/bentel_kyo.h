@@ -29,6 +29,7 @@ static const uint8_t KYO_MAX_ZONES_8 = 8;
 static const uint8_t KYO_MAX_PARTITIONS = 8;
 static const uint8_t KYO_MAX_OUTPUTS = 16;
 static const uint8_t KYO_MAX_KEYFOBS = 16;
+static const uint8_t KYO_MAX_CODES = 24;
 
 // Response sizes
 static const int RESP_SENSOR_KYO32 = 18;
@@ -88,6 +89,8 @@ enum TextSensorType : uint8_t {
   TEXT_PARTITION_ENTRY_DELAY,
   TEXT_PARTITION_EXIT_DELAY,
   TEXT_PARTITION_SIREN_TIMER,
+  TEXT_PARTITION_NAME,
+  TEXT_CODE_NAME,
 };
 
 struct RegisteredTextSensor {
@@ -174,6 +177,8 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   void read_partition_config_();
   bool read_keyfob_esn_next_();  // reads one keyfob ESN per call, returns true when done
   void read_keyfob_names_();
+  void read_partition_names_();
+  void read_code_names_();
   bool read_event_log_next_();  // reads one 64-byte chunk per call, returns true when done
   void publish_text_sensors_();
 
@@ -277,9 +282,15 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   uint8_t partition_exit_delay_[KYO_MAX_PARTITIONS]{};
   uint8_t partition_siren_timer_[KYO_MAX_PARTITIONS]{};
 
+  // Partition names (read once from 0x2BA0)
+  std::string partition_name_[KYO_MAX_PARTITIONS];
+
   // Keyfob ESN (read once from 0xC0B1) and names (read once from 0x3180)
   std::string keyfob_esn_[KYO_MAX_KEYFOBS];
   std::string keyfob_name_[KYO_MAX_KEYFOBS];
+
+  // Code names (read once from 0x3000)
+  std::string code_name_[KYO_MAX_CODES];
 
   // Event log dump (on-demand via button)
   bool event_log_read_pending_{false};

@@ -229,7 +229,7 @@ void BentelKyo::update() {
   //
   // Steps 3 and 6 (zone ESN and keyfob ESN) read one slot per cycle to avoid
   // blocking the main loop for 90+ seconds (0xC0xx reads take ~1.5s each).
-  if (this->config_read_step_ < 9 && this->communication_ok_) {
+  if (this->config_read_step_ < 11 && this->communication_ok_) {
     switch (this->config_read_step_) {
       case 0: this->config_read_step_ = 1; break;  // skip one cycle after detection
       case 1: this->read_zone_config_(); this->config_read_step_ = 2; break;
@@ -241,13 +241,15 @@ void BentelKyo::update() {
         break;
       case 4: this->read_output_names_(); this->config_read_step_ = 5; break;
       case 5: this->read_partition_config_(); this->config_read_step_ = 6; break;
-      case 6:
-        // Read one keyfob ESN per cycle; advance to step 7 when done
+      case 6: this->read_partition_names_(); this->config_read_step_ = 7; break;
+      case 7: this->read_code_names_(); this->config_read_step_ = 8; break;
+      case 8:
+        // Read one keyfob ESN per cycle; advance to step 9 when done
         if (this->read_keyfob_esn_next_())
-          this->config_read_step_ = 7;
+          this->config_read_step_ = 9;
         break;
-      case 7: this->read_keyfob_names_(); this->config_read_step_ = 8; break;
-      case 8: this->publish_text_sensors_(); this->config_read_step_ = 9; break;
+      case 9: this->read_keyfob_names_(); this->config_read_step_ = 10; break;
+      case 10: this->publish_text_sensors_(); this->config_read_step_ = 11; break;
     }
     return;  // Skip normal polling this cycle — avoid bus collision
   }
@@ -262,7 +264,7 @@ void BentelKyo::update() {
   // Re-publish text sensors periodically (every 120 polling cycles = ~60s at 500ms)
   // Text sensors are static config data but must be re-published so API clients
   // that connect after initial publish (e.g. Home Assistant reconnects) get the state.
-  if (this->config_read_step_ >= 9) {
+  if (this->config_read_step_ >= 11) {
     this->text_sensor_republish_counter_++;
     if (this->force_publish_ || this->text_sensor_republish_counter_ >= 120) {
       this->publish_text_sensors_();
@@ -1222,6 +1224,80 @@ void BentelKyo::read_keyfob_names_() {
   }
 }
 
+void BentelKyo::read_partition_names_() {
+  // Partition names at 0x2BA0-0x2BFF: 16 ASCII bytes per partition, 4 per 64-byte read, 8 partitions total
+  static const uint16_t BASE_ADDRS[] = {0x2BA0, 0x2BE0};
+  int num_reads = 2;  // 8 partitions = 2 reads of 4
+
+  for (int r = 0; r < num_reads; r++) {
+    uint8_t rx[255];
+    int count = this->read_register_(BASE_ADDRS[r], 0x3F, rx, 300);
+    if (count < 6 + 64) {
+      ESP_LOGW(TAG, "Partition names read at 0x%04X failed: got %d bytes", BASE_ADDRS[r], count);
+      break;
+    }
+
+    for (int n = 0; n < 4; n++) {
+      int part_idx = r * 4 + n;
+      if (part_idx >= KYO_MAX_PARTITIONS)
+        break;
+
+      int offset = 6 + (n * 16);
+      char name_buf[17];
+      memcpy(name_buf, &rx[offset], 16);
+      name_buf[16] = '\0';
+
+      // Trim trailing spaces
+      for (int j = 15; j >= 0; j--) {
+        if (name_buf[j] == ' ' || name_buf[j] == '\0')
+          name_buf[j] = '\0';
+        else
+          break;
+      }
+
+      this->partition_name_[part_idx] = name_buf;
+      ESP_LOGD(TAG, "Partition %d name: '%s'", part_idx + 1, name_buf);
+    }
+  }
+}
+
+void BentelKyo::read_code_names_() {
+  // Code names at 0x3000-0x317F: 16 ASCII bytes per code, 4 per 64-byte read, 24 codes total
+  static const uint16_t BASE_ADDRS[] = {0x3000, 0x3040, 0x3080, 0x30C0, 0x3100, 0x3140};
+  int num_reads = 6;  // 24 codes = 6 reads of 4
+
+  for (int r = 0; r < num_reads; r++) {
+    uint8_t rx[255];
+    int count = this->read_register_(BASE_ADDRS[r], 0x3F, rx, 300);
+    if (count < 6 + 64) {
+      ESP_LOGW(TAG, "Code names read at 0x%04X failed: got %d bytes", BASE_ADDRS[r], count);
+      break;
+    }
+
+    for (int n = 0; n < 4; n++) {
+      int code_idx = r * 4 + n;
+      if (code_idx >= KYO_MAX_CODES)
+        break;
+
+      int offset = 6 + (n * 16);
+      char name_buf[17];
+      memcpy(name_buf, &rx[offset], 16);
+      name_buf[16] = '\0';
+
+      // Trim trailing spaces
+      for (int j = 15; j >= 0; j--) {
+        if (name_buf[j] == ' ' || name_buf[j] == '\0')
+          name_buf[j] = '\0';
+        else
+          break;
+      }
+
+      this->code_name_[code_idx] = name_buf;
+      ESP_LOGD(TAG, "Code %d name: '%s'", code_idx + 1, name_buf);
+    }
+  }
+}
+
 bool BentelKyo::read_event_log_next_() {
   static const int EVENT_LOG_CHUNKS = 28;
   static const uint16_t EVENT_LOG_BASE = 0x0D27;
@@ -1335,6 +1411,14 @@ void BentelKyo::publish_text_sensors_() {
       case TEXT_PARTITION_SIREN_TIMER:
         if (idx >= KYO_MAX_PARTITIONS) continue;
         entry.sensor->publish_state(to_string(this->partition_siren_timer_[idx]));
+        break;
+      case TEXT_PARTITION_NAME:
+        if (idx >= KYO_MAX_PARTITIONS) continue;
+        entry.sensor->publish_state(this->partition_name_[idx].empty() ? "N/A" : this->partition_name_[idx]);
+        break;
+      case TEXT_CODE_NAME:
+        if (idx >= KYO_MAX_CODES) continue;
+        entry.sensor->publish_state(this->code_name_[idx].empty() ? "N/A" : this->code_name_[idx]);
         break;
     }
   }
