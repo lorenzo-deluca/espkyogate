@@ -1025,6 +1025,14 @@ the panel option flags including option 29 (disallow tone check).
 Approximately 1362 bytes of Contact ID event routing configuration.
 Each event is encoded as 3 bytes.
 
+> **Note**: This address range can be both read (`F0`) and written
+> (`0F`). In the bentel-4 capture (KYO32 firmware `KYO32   1.05`),
+> these addresses appeared only as `0F` write commands during a
+> configuration download from KyoUnit to the panel. The `F0` read
+> command forms listed below are inferred from the address pattern
+> and confirmed by the general read framing convention; they have
+> not been directly observed in this particular capture.
+
 ```
 Address range: 0x03D0 - 0x0921
 Read as:       F0 D0 03 3F 00 02 (first 64 bytes)
@@ -1112,34 +1120,171 @@ Read as: F0 03 15 05 00 0D
 
 Observed response: `FF FF FF FF FF FF`. Exact bit mapping TBD.
 
-### 10.23 Register Address Summary
+### 10.23 Code Configuration (0x0229-0x02D7)
 
-| Address | Size | Content |
-|---------|------|---------|
-| `0x0000` | 12B | Firmware version string (ASCII) |
-| `0x009F` | 128B | Zone configuration (32 × 4 bytes) |
-| `0x011F` | 80B | Keyfob button config (16 × 5 bytes) |
-| `0x016F` | 26B | Timers (entry/exit/siren, 8 partitions) |
-| `0x019E` | 96B | Zone enrollment/ESN (32 × 3 bytes) |
-| `0x01E6` | 3B | Panel mode/status |
-| `0x01E9` | 64B | Partition configuration (8 × 10 bytes) |
-| `0x02DB` | 5B | Panel options |
-| `0x03D0` | ~1362B | Event routing (Contact ID) |
-| `0xF004` | 11B | Sensor status (realtime) |
-| `0x1503` | 6B | System status flags |
-| `0x1509` | 4B | ARC subscriber code (ASCII) |
-| `0x2BA0` | 128B | Partition names (8 × 16 bytes ASCII) |
-| `0x2C20` | 128B | Keypad names (8 × 16 bytes ASCII) |
-| `0x2CA0` | 256B | Reader names (16 × 16 bytes ASCII) |
-| `0x2DA0` | 96B | Expander names (6 × 16 bytes ASCII) |
-| `0x2E00` | 512B | Zone names (32 × 16 bytes ASCII) |
-| `0x3000` | 384B | Code names (24 × 16 bytes ASCII) |
-| `0x3180` | 256B | Digital key names (16 × 16 bytes ASCII) |
-| `0x3280` | 256B | Output names (16 × 16 bytes ASCII) |
-| `0x3380` | 128B | Phone number names (8 × 16 bytes ASCII) |
-| `0xC045` | 96B | Zone ESN storage (32 × 3 bytes) |
-| `0xC0B1` | 48B | Keyfob ESN storage (16 × 3 bytes) |
-| `0x14EC` | 19B | Partition status (KYO32 non-G) |
+175 bytes total: configuration and permissions for up to 24 user codes.
+
+```
+Address range: 0x0229 - 0x02D7
+Read as:       F0 29 02 3F 00 5A (codes 1-9, 64 bytes)
+               F0 69 02 3F 00 9A (codes 10-18, 64 bytes)
+               F0 A9 02 2F 00 CA (codes 19-24, 47 bytes)
+```
+
+Each code record contains partition access permissions, arm mode restrictions,
+and other flags. The exact per-byte layout is not fully decoded.
+
+> **Note**: This register stores code **permissions**, not the actual PIN
+> digits. PIN values are likely stored in a protected area not readable
+> via the serial protocol.
+
+### 10.24 ARC Phone Numbers (0x02F8-0x03CF)
+
+216 bytes total: phone number digits and dialing configuration for up to
+8 ARC (Alarm Receiving Centre) phone numbers.
+
+```
+Address range: 0x02F8 - 0x03CF
+Read as:       F0 F8 02 3F 00 29 (64 bytes)
+               F0 38 03 3F 00 6A (64 bytes)
+               F0 78 03 3F 00 AA (64 bytes)
+               F0 B8 03 17 00 C2 (24 bytes)
+```
+
+Phone digits are stored as ASCII bytes (`0x30`-`0x39`), padded with `0xFF`
+for unused digit positions. Each number supports up to 16 digits.
+
+Example from first block:
+```
+3N 3N 3N 3N 3N 3N 3N 3N 3N FF FF FF FF FF FF FF ...
+= "NNNNNNNNN" (phone number 1, 9 digits, FF-padded to 16)
+```
+
+Following the phone digits, a 4-digit ARC subscriber/client code is
+stored as ASCII (4 bytes), followed by configuration flags (`0x0F 0x00`
+observed) and `0xFF` padding.
+
+> **Note**: Phone number **names** are stored separately at `0x3380`
+> (section 10.9). This register contains the actual dialing digits,
+> subscriber code, and call configuration.
+
+### 10.25 Event Log (0x0D27-0x1426)
+
+> **Reverse-engineered from capture**: The record format below was
+> inferred from the bentel-4 USB capture (KYO32 firmware
+> `KYO32   1.05`). Two complete sweeps of this address range were
+> observed; data changed between sweeps, confirming this is live
+> event storage.
+
+1792 bytes of historical event records stored as a circular (ring)
+buffer. With a 7-byte record size, the buffer holds 256 slots
+(1792 / 7 = 256). Some slots may be empty (all-zero or contain
+a sentinel value such as `0x8E` in byte 0).
+
+```
+Address range: 0x0D27 - 0x1426
+Read as:       F0 27 0D 3F 00 63 (64 bytes)
+               F0 67 0D 3F 00 A3 (64 bytes)
+               F0 A7 0D 3F 00 E3 (64 bytes)
+               F0 E7 0D 3F 00 23 (64 bytes)
+               ... (continues in 0x40-byte strides)
+               F0 A7 13 3F 00 E9 (64 bytes)
+               F0 E7 13 3F 00 29 (64 bytes)
+```
+
+Total: 28 reads of 64 bytes = 1792 bytes. Each read uses `LEN=0x3F`
+and addresses step by `0x40`.
+
+Each event record is 7 bytes:
+
+| Offset | Size | Description |
+|--------|------|-------------|
+| +0 | 1B | Unknown — likely event type or group code. Values observed: `0x00`, `0x01`. Value `0x8E` may be a sentinel/empty marker. |
+| +1 | 1B | Unknown — likely source identifier (zone number, partition, or Contact ID event code). Wide range of values observed. |
+| +2 | 1B | Day of month (1-31) |
+| +3 | 1B | Month (1-12) |
+| +4 | 1B | Year offset from 2000 (e.g., `0x1A` = 2026) |
+| +5 | 1B | Hour (0-23) |
+| +6 | 1B | Minute (0-59) |
+
+**Example** (first 9 records from address `0x0D27`):
+
+```
+01 30  1B 02 1A 09 37   → bytes 0-1=01:30, 27-Feb-2026 09:55
+01 31  1B 02 1A 09 37   → bytes 0-1=01:31, 27-Feb-2026 09:55
+01 32  1B 02 1A 09 37   → bytes 0-1=01:32, 27-Feb-2026 09:55
+00 08  1B 02 1A 09 37   → bytes 0-1=00:08, 27-Feb-2026 09:55
+00 00  1B 02 1A 09 37   → bytes 0-1=00:00, 27-Feb-2026 09:55
+01 BC  1B 02 1A 09 38   → bytes 0-1=01:BC, 27-Feb-2026 09:56
+01 41  1B 02 1A 09 38   → bytes 0-1=01:41, 27-Feb-2026 09:56
+01 42  1B 02 1A 09 38   → bytes 0-1=01:42, 27-Feb-2026 09:56
+01 48  1B 02 1A 09 38   → bytes 0-1=01:48, 27-Feb-2026 09:56
+```
+
+**Ring-buffer behavior**: The buffer wraps around. In the observed
+capture, the last block (`0x13E7`) contains older timestamps
+(e.g., 26-Feb-2026 23:46, 27-Feb-2026 06:41) followed by newer
+entries (up to 01-Mar-2026 11:29 in sweep 1 and 01-Mar-2026 11:36 in sweep 2), confirming circular overwrite.
+The write pointer position is not stored in an obvious separate
+register — it must be inferred from timestamp ordering.
+
+> **Status**: Record boundaries and timestamp fields (bytes 2-6)
+> are confirmed from capture data. Bytes 0-1 (event type/source)
+> are not yet mapped to specific Contact ID codes or panel events.
+> Fully decoding these would require triggering known events (arm,
+> disarm, alarm, tamper, restore) and correlating the raw byte
+> values.
+
+### 10.26 EEPROM Control Registers (0xC001, 0xC004)
+
+These registers are in the EEPROM address range but are **not** part
+of the zone ESN (0xC045) or keyfob ESN (0xC0B1) storage.
+
+```
+0xC001: Read 2 bytes → observed response: FF FF FF FD
+0xC004: Read 0 bytes → observed response: 7F
+```
+
+Purpose unknown. May be EEPROM management/status registers used by
+KyoUnit during upload/download operations. Subject to the same
+~1 second EEPROM timing constraints (section 10.16).
+
+### 10.27 Register Address Summary
+
+| Address | Size | Content | Implemented |
+|---------|------|---------|-------------|
+| `0x0000` | 12B | Firmware version string (ASCII) | Yes |
+| `0x009F` | 128B | Zone configuration (32 × 4 bytes) | Yes |
+| `0x011F` | 80B | Keyfob button config (16 × 5 bytes) | No |
+| `0x016F` | 26B | Timers (entry/exit/siren, 8 partitions) | Yes |
+| `0x019E` | 96B | Zone enrollment/ESN (32 × 3 bytes) | No |
+| `0x01E6` | 3B | Panel mode/status | No |
+| `0x01E9` | 64B | Partition configuration (8 × 10 bytes) | Yes |
+| `0x0229` | 175B | Code configuration/permissions (24 codes) | No |
+| `0x02DB` | 5B | Panel options | No |
+| `0x02F8` | 216B | ARC phone numbers (digits + config) | No |
+| `0x03D0` | ~1362B | Event routing (Contact ID) | No |
+| `0x0D27` | ~1792B | Event log (256 slots × 7B, circular buffer) | No |
+| `0xF004` | 11B | Sensor status (realtime) | Yes |
+| `0xF008` | ? | Unknown status register | No |
+| `0x1503` | 6B | System status flags | No |
+| `0x1509` | 4B | ARC subscriber code (ASCII) | No |
+| `0x14EA` | 1B | Unknown (near partition status) | No |
+| `0x14EC` | 19B | Partition status (KYO32 non-G) | Yes |
+| `0x1560` | 31B | Unknown extended status/config | No |
+| `0x2BA0` | 128B | Partition names (8 × 16 bytes ASCII) | No |
+| `0x2C20` | 128B | Keypad names (8 × 16 bytes ASCII) | No |
+| `0x2CA0` | 256B | Reader names (16 × 16 bytes ASCII) | No |
+| `0x2DA0` | 96B | Expander names (6 × 16 bytes ASCII) | No |
+| `0x2E00` | 512B | Zone names (32 × 16 bytes ASCII) | Yes |
+| `0x3000` | 384B | Code names (24 × 16 bytes ASCII) | No |
+| `0x3180` | 256B | Digital key names (16 × 16 bytes ASCII) | Yes |
+| `0x3280` | 256B | Output names (16 × 16 bytes ASCII) | Yes |
+| `0x3380` | 128B | Phone number names (8 × 16 bytes ASCII) | No |
+| `0xC001` | 2B | EEPROM control/status | No |
+| `0xC004` | ? | EEPROM control/status | No |
+| `0xC045` | 96B | Zone ESN storage (32 × 3 bytes) | Yes |
+| `0xC0B1` | 48B | Keyfob ESN storage (16 × 3 bytes) | Yes |
 
 ---
 
@@ -1174,7 +1319,7 @@ exact bit mapping is not yet decoded.
 
 ### 11.4 Event Routing Format
 
-The event routing register at `0x03D0` (section 10.17) has been partially
+The event routing register at `0x03D0` (section 10.18) has been partially
 decoded: 3 bytes per event with event code, phone mask, and an unknown
 byte. The full list of Contact ID event codes and the complete event
 ordering within the register are not yet documented. A comprehensive
@@ -1191,6 +1336,34 @@ to any known function. Its purpose is unknown.
 Only bit 5 of `Rx[10]` (partition status) is mapped (siren state). The
 other 7 bits in this byte are not decoded and may contain additional
 system state flags.
+
+### 11.7 Status Register 0xF008
+
+KyoUnit reads `0xF008` with length 0 (response: unknown). This register
+is adjacent to the sensor status register (`0xF004`) and may contain
+extended real-time status bits. Purpose and response format TBD.
+
+### 11.8 Extended Partition Data (0x14EA, 0x1560)
+
+- `0x14EA` (1 byte): read just before partition status `0x14EC`. May
+  contain a partition status version counter or communication sequence
+  number.
+- `0x1560` (31 bytes): larger block of unknown data. Could contain
+  extended partition configuration or status information not available
+  in the standard partition status response.
+- `0x14EC` with `len=0x03`: KyoUnit sometimes reads only 3 bytes from
+  the partition status register instead of the full 18 bytes. This may
+  be a quick status check (e.g., checking only arm/disarm state bits).
+
+### 11.9 Event Log Record Format
+
+The event log at `0x0D27` (section 10.25) uses 7-byte records with
+a confirmed timestamp layout in bytes 2-6 (day, month, year, hour,
+minute). The meaning of bytes 0-1 is still unknown — they likely
+encode the event type and source (zone/partition number or Contact ID
+code), but a full mapping requires triggering known events and
+correlating the values. Value `0x8E` in byte 0 may mark empty or
+deleted slots.
 
 ---
 
@@ -1217,7 +1390,7 @@ Zone status 0x02 at Rx[9]: bit 1 set -> Zone 2 is active (open/triggered).
 ### 12.2 Arm Partition 1 Totally
 
 ```
-TX:  0F 00 F0 03 00 02 01 00 00 09 FF
+TX:  0F 00 F0 03 00 02 01 00 00 FE FF
 
 0F       = Write command
 00 F0    = Arm/disarm function
@@ -1227,11 +1400,8 @@ TX:  0F 00 F0 03 00 02 01 00 00 09 FF
 01       = Total arm mask: bit 0 set = partition 1
 00       = Partial arm mask: none
 00       = Padding
-09       = CRC: 0x203 - (0x0F+0x00+0xF0+0x03+0x00+0x02+0x01+0x00+0x00)
-         = 0x203 - 0x1F5 = 0x0E... wait:
-         sum = 15+0+240+3+0+2+1+0+0 = 261 = 0x105
-         CRC = 0x203 - 0x105 = 0xFE (truncated to byte)
-         (The template has 0xCC as placeholder; actual CRC is computed at runtime)
+FE       = CRC: sum(cmd[0..8]) = 0x0F+0x00+0xF0+0x03+0x00+0x02+0x01+0x00+0x00
+         = 0x105; CRC = 0x203 - 0x105 = 0xFE (truncated to 8 bits)
 FF       = Trailer
 ```
 
