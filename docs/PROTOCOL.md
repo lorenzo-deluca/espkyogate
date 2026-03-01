@@ -1017,8 +1017,21 @@ Read as: F0 DB 02 04 00 D1 (4 bytes requested, 5 data bytes returned)
 
 Observed response: `60 81 00 1E 00`.
 
-Exact bit mapping is not fully decoded. This register likely contains
-the panel option flags including option 29 (disallow tone check).
+This register contains panel option flags, including option 29
+("Disallow tone check"), mapped with high confidence to bit 5 of a
+runtime option byte accessed through:
+
+```
+Runtime read:  F0 DB 02 00 00 CD
+Runtime write: 0F DB 02 00 00 EC VV VV
+```
+
+Observed toggle values are `0x40 <-> 0x60` (bit 5 flip). In controlled
+tests, enabling/disabling this bit matched the expected trouble behavior
+for tone-check scenarios.
+
+The full meaning of other bits in the options block is still not fully
+decoded.
 
 ### 10.18 Event Routing (0x03D0-0x0921)
 
@@ -1026,12 +1039,9 @@ Approximately 1362 bytes of Contact ID event routing configuration.
 Each event is encoded as 3 bytes.
 
 > **Note**: This address range can be both read (`F0`) and written
-> (`0F`). In the bentel-4 capture (KYO32 firmware `KYO32   1.05`),
-> these addresses appeared only as `0F` write commands during a
-> configuration download from KyoUnit to the panel. The `F0` read
-> command forms listed below are inferred from the address pattern
-> and confirmed by the general read framing convention; they have
-> not been directly observed in this particular capture.
+> (`0F`). In observed sessions, this range appears as raw `0F` block
+> writes during configuration download. The `F0` read forms listed below
+> follow the same framing/address pattern and checksum rules.
 
 ```
 Address range: 0x03D0 - 0x0921
@@ -1077,6 +1087,16 @@ Events are organized in groups:
 
 When no events are configured (factory default), the entire region
 reads as all zeros.
+
+Observed write profile:
+- Full range was written in raw blocks (`0x03D0` through `0x0910`).
+- Reassembled payload is `454` records x `3` bytes.
+- The phone-mask byte (`+1`) was `0x00` in `450/454` records and non-zero
+  in `4/454` records.
+
+This indicates Contact ID delivery was effectively disabled for nearly all
+event records in that configuration profile (only a small residual set
+remained enabled).
 
 ### 10.19 ARC Subscriber Code (0x1509)
 
@@ -1170,11 +1190,9 @@ observed) and `0xFF` padding.
 
 ### 10.25 Event Log (0x0D27-0x1426)
 
-> **Reverse-engineered from capture**: The record format below was
-> inferred from the bentel-4 USB capture (KYO32 firmware
-> `KYO32   1.05`). Two complete sweeps of this address range were
-> observed; data changed between sweeps, confirming this is live
-> event storage.
+> **Reverse-engineered from observed sessions**: Two complete sweeps of
+> this address range were observed; data changed between sweeps,
+> confirming this is live event storage.
 
 1792 bytes of historical event records stored as a circular (ring)
 buffer. With a 7-byte record size, the buffer holds 256 slots
@@ -1194,6 +1212,10 @@ Read as:       F0 27 0D 3F 00 63 (64 bytes)
 
 Total: 28 reads of 64 bytes = 1792 bytes. Each read uses `LEN=0x3F`
 and addresses step by `0x40`.
+
+After each full 28-read sweep, the following control sequence was observed:
+`0F E7 14 00 00 0A 00 00` then `3C 03 00 00 00 3F`.
+These appear to be session-control/finalization commands.
 
 Each event record is 7 bytes:
 
@@ -1222,14 +1244,14 @@ Each event record is 7 bytes:
 ```
 
 **Ring-buffer behavior**: The buffer wraps around. In the observed
-capture, the last block (`0x13E7`) contains older timestamps
+sessions, the last block (`0x13E7`) contains older timestamps
 (e.g., 26-Feb-2026 23:46, 27-Feb-2026 06:41) followed by newer
 entries (up to 01-Mar-2026 11:29 in sweep 1 and 01-Mar-2026 11:36 in sweep 2), confirming circular overwrite.
 The write pointer position is not stored in an obvious separate
 register — it must be inferred from timestamp ordering.
 
 > **Status**: Record boundaries and timestamp fields (bytes 2-6)
-> are confirmed from capture data. Bytes 0-1 (event type/source)
+> are confirmed from observed data. Bytes 0-1 (event type/source)
 > are not yet mapped to specific Contact ID codes or panel events.
 > Fully decoding these would require triggering known events (arm,
 > disarm, alarm, tamper, restore) and correlating the raw byte
@@ -1258,6 +1280,8 @@ KyoUnit during upload/download operations. Subject to the same
 | `0x011F` | 80B | Keyfob button config (16 × 5 bytes) | No |
 | `0x016F` | 26B | Timers (entry/exit/siren, 8 partitions) | Yes |
 | `0x019E` | 96B | Zone enrollment/ESN (32 × 3 bytes) | No |
+| `0x0193` | 1B | Unknown post-write control | No |
+| `0x0197` | 1B | Unknown post-write control | No |
 | `0x01E6` | 3B | Panel mode/status | No |
 | `0x01E9` | 64B | Partition configuration (8 × 10 bytes) | Yes |
 | `0x0229` | 175B | Code configuration/permissions (24 codes) | No |
@@ -1270,6 +1294,7 @@ KyoUnit during upload/download operations. Subject to the same
 | `0x1503` | 6B | System status flags | No |
 | `0x1509` | 4B | ARC subscriber code (ASCII) | No |
 | `0x14EA` | 1B | Unknown (near partition status) | No |
+| `0x14E7` | 1B | Unknown session control (seen after event-log sweep) | No |
 | `0x14EC` | 19B | Partition status (KYO32 non-G) | Yes |
 | `0x1560` | 31B | Unknown extended status/config | No |
 | `0x2BA0` | 128B | Partition names (8 × 16 bytes ASCII) | No |
@@ -1312,10 +1337,11 @@ work correctly -- only readback is affected.
 The keypad displays a "T" symbol during arm/disarm operations despite no
 zone triggers. This is likely an ARC (Alarm Receiving Centre) communications
 failure indicator — possibly triggered by a failed phone line tone check
-(panel option "29 - Disallow tone check" may need to be enabled on
-VoIP/fiber landlines with non-standard dial tones). The panel options
-register at `0x02DB` (section 10.16) likely contains this setting but
-exact bit mapping is not yet decoded.
+(panel option "29 - Disallow tone check", section 10.17). Controlled
+toggle testing identified option 29 with high confidence as bit 5 of the
+runtime `0x02DB` byte (`0x40 <-> 0x60`).
+
+What remains unknown is the mapping of the other option bits in the same register block.
 
 ### 11.4 Event Routing Format
 
@@ -1364,6 +1390,12 @@ encode the event type and source (zone/partition number or Contact ID
 code), but a full mapping requires triggering known events and
 correlating the values. Value `0x8E` in byte 0 may mark empty or
 deleted slots.
+
+### 11.10 Validation Limits for Local UI Actions
+
+Actions initiated locally from keypad/keyfob (arm/disarm/mode selection)
+do not always appear as uniquely identifiable serial write commands.
+Some steps are therefore inferred from event-log and status deltas rather than from direct command signatures.
 
 ---
 
@@ -1443,6 +1475,12 @@ Include mask (bytes 10-13):
 | Reset Alarms | `0F 05 F0 01 00 05 FF 00 FF` | Write | Clear all alarm memory |
 | Activate Output | `0F 06 F0 01 00 06 MM 00 MM` | Write | MM=activate bitmask |
 | Deactivate Output | `0F 06 F0 01 00 06 00 MM MM` | Write | MM=deactivate bitmask |
+| Panel Option Runtime Read | `F0 DB 02 00 00 CD` | Read | Read 1-byte runtime options value |
+| Panel Option Runtime Write | `0F DB 02 00 00 EC VV VV` | Write | Write runtime options byte (`VV`) |
+| Post-Write Control A | `0F 97 01 00 00 A7 08 08` | Write | Control/barrier after some write phases |
+| Post-Write Control B | `0F 93 01 01 00 A4 FF FF FE` | Write | Control/barrier after routing write phase |
+| Event Log Session Control | `0F E7 14 00 00 0A 00 00` | Write | Control observed after full event-log sweep |
+| Session Barrier | `3C 03 00 00 00 3F` | Control | Non-`F0`/`0F` barrier/finalization command |
 | Update DateTime | `0F 03 F0 05 00 07 DD MM YY HH mm SS CC` | Write | Date/time components + checksum |
 | Include Zone | `0F 01 F0 07 00 07 00 00 00 00 B4 B3 B2 B1 CC` | Write | B1-B4=include zone bitmasks |
 | Exclude Zone | `0F 01 F0 07 00 07 B4 B3 B2 B1 00 00 00 00 CC` | Write | B1-B4=exclude zone bitmasks |
