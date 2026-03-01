@@ -4,64 +4,66 @@ on:
   push:
     branches:
       - master
+  pull_request:
   release:
     types:
       - published
 
 jobs:
-  validate-kyo32:
-    name: Validate KYO32 (Stable)
+  validate:
+    name: Compile (${{ matrix.config }} - ${{ matrix.channel }})
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [stable, beta]
+        config:
+          - tests/test_full.yaml
+          - tests/test_minimal.yaml
+          - tests/test_alarm_only.yaml
+          - tests/test_alarm_code_protection.yaml
+          - tests/test_sensors_only.yaml
+          - tests/test_controls.yaml
+          - tests/test_32_zones.yaml
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install ESPHome (stable)
-        run: pip install --upgrade esphome
-      - name: Compile espkyogate_configuration.yaml
-        run: esphome compile espkyogate_configuration.yaml
+      - name: Install ESPHome (${{ matrix.channel }})
+        run: |
+          if [ "${{ matrix.channel }}" = "beta" ]; then
+            pip install --upgrade --pre esphome
+          else
+            pip install --upgrade esphome
+          fi
+      - name: Compile ${{ matrix.config }}
+        run: esphome compile ${{ matrix.config }}
 
-  validate-kyo4:
-    name: Validate KYO4 (Stable)
+  validate-negative:
+    name: Validate Invalid Config (${{ matrix.channel }})
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [stable, beta]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install ESPHome (stable)
-        run: pip install --upgrade esphome
-      - name: Compile espkyogate_configuration_kyo4.yaml
-        run: esphome compile espkyogate_configuration_kyo4.yaml
-
-  validate-kyo32-beta:
-    name: Validate KYO32 (Beta)
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install ESPHome (beta)
-        run: pip install --upgrade --pre esphome
-      - name: Compile espkyogate_configuration.yaml
-        run: esphome compile espkyogate_configuration.yaml
-
-  validate-kyo4-beta:
-    name: Validate KYO4 (Beta)
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install ESPHome (beta)
-        run: pip install --upgrade --pre esphome
-      - name: Compile espkyogate_configuration_kyo4.yaml
-        run: esphome compile espkyogate_configuration_kyo4.yaml
-
+      - name: Install ESPHome (${{ matrix.channel }})
+        run: |
+          if [ "${{ matrix.channel }}" = "beta" ]; then
+            pip install --upgrade --pre esphome
+          else
+            pip install --upgrade esphome
+          fi
+      - name: Validate invalid output_number test
+        run: |
+          if esphome config tests/test_invalid_output_number.yaml; then
+            echo "Expected config validation to fail for output_number > 8"
+            exit 1
+          fi

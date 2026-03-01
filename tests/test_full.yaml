@@ -1,0 +1,151 @@
+# Test: Full configuration exercising all features
+# Validates: hub, alarm_control_panel, binary_sensor with all sensor types
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [bentel_kyo]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    version: recommended
+
+esphome:
+  name: test-full
+  friendly_name: Test Full
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO5
+  rx_pin: GPIO4
+  baud_rate: 9600
+  data_bits: 8
+  parity: EVEN
+
+logger:
+  level: DEBUG
+  baud_rate: 0
+
+api:
+
+ota:
+  platform: esphome
+
+wifi:
+  ssid: "test_ssid"
+  password: "test_password"
+
+bentel_kyo:
+  id: kyo
+  uart_id: uart_bus
+
+alarm_control_panel:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 1"
+    partition: 1
+    entry_delay:
+      name: "Partition 1 Entry Delay"
+    exit_delay:
+      name: "Partition 1 Exit Delay"
+    siren_timer:
+      name: "Partition 1 Siren Timer"
+
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 2"
+    partition: 2
+
+binary_sensor:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+
+    zones:
+      - zone: 1
+        name: "Zone 1"
+        device_class: motion
+        zone_type:
+          name: "Zone 1 Type"
+        panel_name:
+          name: "Zone 1 Panel Name"
+        zone_partition:
+          name: "Zone 1 Partition"
+        serial_number:
+          name: "Zone 1 Serial Number"
+      - zone: 2
+        name: "Zone 2"
+        device_class: door
+
+    zone_tamper:
+      - zone: 1
+        name: "Zone 1 Tamper"
+
+    zone_bypass:
+      - zone: 1
+        name: "Zone 1 Bypass"
+
+    zone_alarm_memory:
+      - zone: 1
+        name: "Zone 1 Alarm Memory"
+
+    zone_tamper_memory:
+      - zone: 1
+        name: "Zone 1 Tamper Memory"
+
+    warnings:
+      mains_failure:
+        name: "Mains Failure"
+      bpi_missing:
+        name: "BPI Missing"
+      fuse_fault:
+        name: "Fuse Fault"
+      low_battery:
+        name: "Low Battery"
+      phone_line_fault:
+        name: "Phone Line Fault"
+      default_codes:
+        name: "Default Codes"
+      wireless_fault:
+        name: "Wireless Fault"
+
+    tamper:
+      tamper_zone:
+        name: "Zone Tamper"
+      tamper_false_key:
+        name: "False Key Tamper"
+      tamper_bpi:
+        name: "BPI Tamper"
+      tamper_system:
+        name: "System Tamper"
+      tamper_rf_jam:
+        name: "RF Jam"
+      tamper_wireless:
+        name: "Wireless Tamper"
+
+    communication:
+      name: "Panel Communication"
+
+    siren:
+      name: "Siren"
+
+    output_state:
+      - output_number: 1
+        name: "Output 1"
+        panel_name:
+          name: "Output 1 Panel Name"
+      - output_number: 2
+        name: "Output 2"
+
+text_sensor:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    firmware_version:
+      name: "Firmware Version"
+    alarm_model:
+      name: "Alarm Model"
+    keyfobs:
+      - slot: 1
+        name: "Keyfob 1"

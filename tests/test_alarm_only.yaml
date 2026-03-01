@@ -1,0 +1,84 @@
+# Test: Alarm control panel only (no binary sensors)
+# Validates: alarm_control_panel platform with multiple partitions
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [bentel_kyo]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    version: recommended
+
+esphome:
+  name: test-alarm-only
+  friendly_name: Test Alarm Only
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO5
+  rx_pin: GPIO4
+  baud_rate: 9600
+  data_bits: 8
+  parity: EVEN
+
+logger:
+  level: DEBUG
+  baud_rate: 0
+
+api:
+
+ota:
+  platform: esphome
+
+wifi:
+  ssid: "test_ssid"
+  password: "test_password"
+
+bentel_kyo:
+  id: kyo
+  uart_id: uart_bus
+
+alarm_control_panel:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 1"
+    partition: 1
+
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 2"
+    partition: 2
+
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 3"
+    partition: 3
+
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 4"
+    partition: 4
+
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 5"
+    partition: 5
+
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 6"
+    partition: 6
+
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 7"
+    partition: 7
+
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    name: "Partition 8"
+    partition: 8

@@ -1,0 +1,75 @@
+# Test: Binary sensors only (no alarm_control_panel)
+# Validates: binary_sensor platform works standalone
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [bentel_kyo]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    version: recommended
+
+esphome:
+  name: test-sensors-only
+  friendly_name: Test Sensors Only
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO5
+  rx_pin: GPIO4
+  baud_rate: 9600
+  data_bits: 8
+  parity: EVEN
+
+logger:
+  level: DEBUG
+  baud_rate: 0
+
+api:
+
+ota:
+  platform: esphome
+
+wifi:
+  ssid: "test_ssid"
+  password: "test_password"
+
+bentel_kyo:
+  id: kyo
+  uart_id: uart_bus
+
+binary_sensor:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+
+    zones:
+      - zone: 1
+        name: "Zone 1"
+        device_class: motion
+      - zone: 8
+        name: "Zone 8"
+        device_class: door
+
+    zone_tamper:
+      - zone: 1
+        name: "Zone 1 Tamper"
+
+    warnings:
+      mains_failure:
+        name: "Mains Failure"
+      low_battery:
+        name: "Low Battery"
+
+    tamper:
+      tamper_system:
+        name: "System Tamper"
+
+    communication:
+      name: "Panel Communication"
+
+    siren:
+      name: "Siren"

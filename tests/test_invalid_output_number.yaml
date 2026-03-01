@@ -1,0 +1,50 @@
+# Test: Invalid output number should fail schema validation
+# Validates: output_number > 8 is rejected
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [bentel_kyo]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    version: recommended
+
+esphome:
+  name: test-invalid-output-number
+  friendly_name: Test Invalid Output Number
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO5
+  rx_pin: GPIO4
+  baud_rate: 9600
+  data_bits: 8
+  parity: EVEN
+
+logger:
+  level: DEBUG
+  baud_rate: 0
+
+api:
+
+ota:
+  platform: esphome
+
+wifi:
+  ssid: "test_ssid"
+  password: "test_password"
+
+bentel_kyo:
+  id: kyo
+  uart_id: uart_bus
+
+binary_sensor:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    output_state:
+      - output_number: 9
+        name: "Invalid Output 9"
