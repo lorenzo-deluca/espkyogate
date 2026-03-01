@@ -690,7 +690,7 @@ void BentelKyo::disarm_partition(uint8_t partition) {
   cmd[9] = calculate_crc_(cmd, 9);
 
   uint8_t rx[255];
-  this->send_message_(cmd, sizeof(cmd), rx, 100);
+  this->send_message_(cmd, sizeof(cmd), rx, 250);
 }
 
 void BentelKyo::arm_all_partitions(uint8_t arm_type) {
@@ -879,14 +879,20 @@ void BentelKyo::update_datetime(uint8_t day, uint8_t month, uint16_t year,
 
 int BentelKyo::send_message_(const uint8_t *cmd, int cmd_len, uint8_t *response, uint32_t timeout_ms) {
   // Cancel any in-flight async transaction so loop() won't steal our bytes
+  bool aborted_async = false;
   if (this->serial_state_ == SerialState::WAITING_RESPONSE) {
     ESP_LOGD(TAG, "Aborting in-flight async poll for blocking command");
     this->serial_state_ = SerialState::IDLE;
+    aborted_async = true;
   }
 
-  // Wait for bus silence — drain any remaining panel response bytes
+  // Wait for bus silence — drain any remaining panel response bytes.
+  // After aborting an async poll, the panel may still be processing the
+  // previous query (variable 10-50ms gap before it starts responding).
+  // Use a longer silence window to ensure the panel has finished.
+  uint32_t silence_ms = aborted_async ? 100 : 20;
   uint32_t quiet_start = millis();
-  while ((millis() - quiet_start) < 20) {
+  while ((millis() - quiet_start) < silence_ms) {
     if (this->available() > 0) {
       while (this->available() > 0)
         this->read();
