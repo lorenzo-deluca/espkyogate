@@ -5,8 +5,7 @@
  *
  * GNU Affero General Public License v3.0
  *
- * Placeholder for automation Action/Trigger/Condition classes.
- * To be implemented when switch/button platforms are added.
+ * Placeholder for automation Action/Trigger/Condition classes for the Bentel KYO component.
  */
 
 #pragma once
