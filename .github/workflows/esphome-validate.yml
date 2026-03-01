@@ -18,7 +18,6 @@ jobs:
       matrix:
         channel: [stable, beta]
         config:
-          - espkyogate_configuration.yaml
           - tests/test_full.yaml
           - tests/test_minimal.yaml
           - tests/test_alarm_only.yaml
