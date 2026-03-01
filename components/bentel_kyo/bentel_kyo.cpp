@@ -1365,34 +1365,84 @@ void BentelKyo::read_status_flags_() {
 }
 
 const char *BentelKyo::decode_event_code_(uint16_t code, uint8_t *entity_out, char *buf, size_t buf_len) {
-  // Event code table derived from KyoUnit 5.5 event log display
-  // correlated with raw serial capture data (bentel-4.log, 2026-03-01).
+  // Event code table from BIS KYO Unit PDF + KyoUnit 5.5 serial capture correlation.
   //
   // The 16-bit event code encodes both event type and entity number:
   //   code = base + (entity_number - 1)
-  // where entity_number is 1-based (partition 1-8, zone 1-32, code 1-24).
+  // where entity_number is 1-based (partition 1-8, zone 1-32, code 1-24, key 1-128).
+  //
+  // Entity counts differ between KYO32 and KYO4/8 — table is selected by alarm_model_.
 
   struct EventRange {
     uint16_t base;
     uint8_t count;  // max entities (0 = no entity)
     const char *name;
-    const char *entity_type;  // "partition", "zone", "code", or nullptr
+    const char *entity_type;  // "partition", "zone", "code", "key", or nullptr
   };
 
-  static const EventRange ranges[] = {
-    {0x0000, 8,  "Alarm Partition",              "partition"},
-    {0x0008, 32, "Alarm Zone",                   "zone"},
-    {0x0078, 24, "Recognized Code",              "code"},
-    {0x0130, 8,  "Arm Partition",                "partition"},
-    {0x0138, 8,  "Disarm Partition",             "partition"},
-    {0x0140, 8,  "Special Arming Partition",     "partition"},
-    {0x0148, 8,  "Special Disarming Partition",  "partition"},
-    {0x0150, 8,  "Reset Memory Partition",       "partition"},
-    {0x0188, 32, "Restore Zone",                 "zone"},
-    {0x01BC, 0,  "Remote Command",               nullptr},
+  bool is_kyo8 = (this->alarm_model_ == AlarmModel::KYO_4 ||
+                  this->alarm_model_ == AlarmModel::KYO_8 ||
+                  this->alarm_model_ == AlarmModel::KYO_8G ||
+                  this->alarm_model_ == AlarmModel::KYO_8W);
+
+  // KYO32 table: 8 partitions, 32 zones, 24 codes, 128 keys — sorted by base offset
+  static const EventRange ranges_kyo32[] = {
+    {0x0000, 8,   "Alarm Partition",              "partition"},
+    {0x0008, 32,  "Alarm Zone",                   "zone"},
+    {0x0028, 8,   "Inactivity Area",              "partition"},
+    {0x0030, 8,   "Negligence Area",              "partition"},
+    {0x0038, 32,  "Zone Bypass",                  "zone"},
+    {0x0058, 32,  "Zone Unbypass",                "zone"},
+    {0x0078, 24,  "Recognized Code",              "code"},
+    {0x0090, 128, "Recognized Key",               "key"},
+    {0x0110, 32,  "Auto Bypass Zone",             "zone"},
+    {0x0130, 8,   "Arm Partition",                "partition"},
+    {0x0138, 8,   "Disarm Partition",             "partition"},
+    {0x0140, 8,   "Special Arming Partition",     "partition"},
+    {0x0148, 8,   "Special Disarming Partition",  "partition"},
+    {0x0150, 8,   "Reset Memory Partition",       "partition"},
+    {0x0158, 8,   "Coercion Disarm Area",         "partition"},
+    {0x0160, 0,   "Failed Call",                  nullptr},
+    {0x0168, 32,  "Tamper Zone",                  "zone"},
+    {0x0188, 32,  "Restore Zone",                 "zone"},
+    {0x01BC, 0,   "Remote Command",               nullptr},
   };
 
-  for (const auto &range : ranges) {
+  // KYO4/8 table: 4 partitions, 8 zones, 8 codes, 16 keys — sorted by base offset
+  static const EventRange ranges_kyo8[] = {
+    {0x0000, 4,   "Alarm Partition",              "partition"},
+    {0x0004, 8,   "Alarm Zone",                   "zone"},
+    {0x000C, 4,   "Inactivity Area",              "partition"},
+    {0x0010, 4,   "Negligence Area",              "partition"},
+    {0x0014, 8,   "Zone Bypass",                  "zone"},
+    {0x001C, 8,   "Zone Unbypass",                "zone"},
+    {0x0024, 8,   "Recognized Code",              "code"},
+    {0x002C, 16,  "Recognized Key",               "key"},
+    {0x003C, 8,   "Auto Bypass Zone",             "zone"},
+    {0x0044, 4,   "Arm Partition",                "partition"},
+    {0x0048, 4,   "Disarm Partition",             "partition"},
+    {0x004C, 4,   "Special Arming Partition",     "partition"},
+    {0x0050, 4,   "Special Disarming Partition",  "partition"},
+    {0x0054, 4,   "Reset Memory Partition",       "partition"},
+    {0x0058, 4,   "Coercion Disarm Area",         "partition"},
+    {0x005C, 0,   "Failed Call",                  nullptr},
+    {0x0060, 8,   "Tamper Zone",                  "zone"},
+    {0x0068, 8,   "Restore Zone",                 "zone"},
+    {0x0070, 0,   "Remote Command",               nullptr},
+  };
+
+  const EventRange *ranges;
+  int num_ranges;
+  if (is_kyo8) {
+    ranges = ranges_kyo8;
+    num_ranges = sizeof(ranges_kyo8) / sizeof(ranges_kyo8[0]);
+  } else {
+    ranges = ranges_kyo32;
+    num_ranges = sizeof(ranges_kyo32) / sizeof(ranges_kyo32[0]);
+  }
+
+  for (int i = 0; i < num_ranges; i++) {
+    const auto &range = ranges[i];
     if (range.count == 0) {
       if (code == range.base) {
         *entity_out = 0;
