@@ -93,10 +93,14 @@ void BentelKyoAlarmPanel::update_state_from_hub() {
   uint8_t idx = this->partition_ - 1;  // Convert to 0-based
 
   // Map KYO state to ESPHome alarm_control_panel state
-  // Priority: triggered > armed_away > armed_home > armed_night > disarmed
+  // Priority: disarmed (if set, alarm is acknowledged) > triggered > armed states
+  // Note: partition_alarm_ bit persists after disarming until alarm memory is reset.
+  // If the partition is disarmed, the alarm has been acknowledged — show DISARMED.
   alarm_control_panel::AlarmControlPanelState new_state;
 
-  if (this->parent_->partition_alarm_[idx]) {
+  if (this->parent_->partition_disarmed_[idx]) {
+    new_state = alarm_control_panel::ACP_STATE_DISARMED;
+  } else if (this->parent_->partition_alarm_[idx]) {
     new_state = alarm_control_panel::ACP_STATE_TRIGGERED;
   } else if (this->parent_->partition_armed_total_[idx]) {
     new_state = alarm_control_panel::ACP_STATE_ARMED_AWAY;
@@ -104,8 +108,6 @@ void BentelKyoAlarmPanel::update_state_from_hub() {
     new_state = alarm_control_panel::ACP_STATE_ARMED_HOME;
   } else if (this->parent_->partition_armed_partial_delay0_[idx]) {
     new_state = alarm_control_panel::ACP_STATE_ARMED_NIGHT;
-  } else if (this->parent_->partition_disarmed_[idx]) {
-    new_state = alarm_control_panel::ACP_STATE_DISARMED;
   } else {
     // No state bits set — keep current state
     return;
