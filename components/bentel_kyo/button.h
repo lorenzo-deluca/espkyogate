@@ -26,6 +26,18 @@ class BentelKyoRereadConfigButton : public button::Button, public Component {
   BentelKyo *parent_{nullptr};
 };
 
+class BentelKyoResetAlarmsButton : public button::Button, public Component {
+ public:
+  void set_parent(BentelKyo *parent) { this->parent_ = parent; }
+
+  void press_action() override {
+    this->parent_->reset_alarms();
+  }
+
+ protected:
+  BentelKyo *parent_{nullptr};
+};
+
 class BentelKyoReadEventLogButton : public button::Button, public Component {
  public:
   void set_parent(BentelKyo *parent) { this->parent_ = parent; }
