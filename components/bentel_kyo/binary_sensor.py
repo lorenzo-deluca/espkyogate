@@ -37,6 +37,8 @@ CONF_PARTITION_ALARM = "partition_alarm"
 CONF_PARTITION = "partition"
 CONF_OUTPUT_STATE = "output_state"
 CONF_OUTPUT_NUMBER = "output_number"
+CONF_PANEL_PROGRAMMING_MODE = "panel_programming_mode"
+CONF_TROUBLE_ACTIVE = "trouble_active"
 
 # Zone diagnostic text sensor keys (nested inside zone entries)
 CONF_ZONE_TYPE = "zone_type"
@@ -89,6 +91,8 @@ SENSOR_TYPES = {
     "SIREN": BinarySensorType.SIREN,
     "COMMUNICATION": BinarySensorType.COMMUNICATION,
     "OUTPUT_STATE": BinarySensorType.OUTPUT_STATE,
+    "PANEL_PROGRAMMING_MODE": BinarySensorType.PANEL_PROGRAMMING_MODE,
+    "TROUBLE_ACTIVE": BinarySensorType.TROUBLE_ACTIVE,
 }
 
 TextSensorType = bentel_kyo_ns.enum("TextSensorType")
@@ -184,7 +188,7 @@ OUTPUT_STATE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(
     icon="mdi:electric-switch",
 ).extend(
     {
-        cv.Required(CONF_OUTPUT_NUMBER): cv.int_range(min=1, max=8),
+        cv.Required(CONF_OUTPUT_NUMBER): cv.int_range(min=1, max=16),
         cv.Optional(CONF_OUTPUT_PANEL_NAME): text_sensor.text_sensor_schema(
             icon="mdi:form-textbox",
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
@@ -283,6 +287,20 @@ SIREN_SCHEMA = binary_sensor.binary_sensor_schema(
     icon="mdi:bullhorn",
 )
 
+# Panel programming mode: problem class, diagnostic
+PANEL_PROGRAMMING_MODE_SCHEMA = binary_sensor.binary_sensor_schema(
+    device_class=DEVICE_CLASS_PROBLEM,
+    icon="mdi:cog-transfer",
+    entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+)
+
+# Trouble active: problem class, diagnostic
+TROUBLE_ACTIVE_SCHEMA = binary_sensor.binary_sensor_schema(
+    device_class=DEVICE_CLASS_PROBLEM,
+    icon="mdi:alert-circle",
+    entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+)
+
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(CONF_BENTEL_KYO_ID): cv.use_id(BentelKyo),
@@ -297,6 +315,8 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_COMMUNICATION): COMMUNICATION_SCHEMA,
         cv.Optional(CONF_SIREN): SIREN_SCHEMA,
         cv.Optional(CONF_OUTPUT_STATE): cv.ensure_list(OUTPUT_STATE_SENSOR_SCHEMA),
+        cv.Optional(CONF_PANEL_PROGRAMMING_MODE): PANEL_PROGRAMMING_MODE_SCHEMA,
+        cv.Optional(CONF_TROUBLE_ACTIVE): TROUBLE_ACTIVE_SCHEMA,
     }
 )
 
@@ -398,3 +418,11 @@ async def to_code(config):
             await _register_sensor(hub, out_conf, "OUTPUT_STATE", out_index)
             if CONF_OUTPUT_PANEL_NAME in out_conf:
                 await _register_text_sensor(hub, out_conf[CONF_OUTPUT_PANEL_NAME], "TEXT_OUTPUT_NAME", out_index)
+
+    # Panel programming mode sensor
+    if CONF_PANEL_PROGRAMMING_MODE in config:
+        await _register_sensor(hub, config[CONF_PANEL_PROGRAMMING_MODE], "PANEL_PROGRAMMING_MODE")
+
+    # Trouble active sensor
+    if CONF_TROUBLE_ACTIVE in config:
+        await _register_sensor(hub, config[CONF_TROUBLE_ACTIVE], "TROUBLE_ACTIVE")

@@ -229,7 +229,7 @@ void BentelKyo::update() {
   //
   // Steps 3 and 6 (zone ESN and keyfob ESN) read one slot per cycle to avoid
   // blocking the main loop for 90+ seconds (0xC0xx reads take ~1.5s each).
-  if (this->config_read_step_ < 11 && this->communication_ok_) {
+  if (this->config_read_step_ < 13 && this->communication_ok_) {
     switch (this->config_read_step_) {
       case 0: this->config_read_step_ = 1; break;  // skip one cycle after detection
       case 1: this->read_zone_config_(); this->config_read_step_ = 2; break;
@@ -249,7 +249,9 @@ void BentelKyo::update() {
           this->config_read_step_ = 9;
         break;
       case 9: this->read_keyfob_names_(); this->config_read_step_ = 10; break;
-      case 10: this->publish_text_sensors_(); this->config_read_step_ = 11; break;
+      case 10: this->read_panel_mode_(); this->config_read_step_ = 11; break;
+      case 11: this->read_status_flags_(); this->config_read_step_ = 12; break;
+      case 12: this->publish_text_sensors_(); this->config_read_step_ = 13; break;
     }
     return;  // Skip normal polling this cycle — avoid bus collision
   }
@@ -264,9 +266,11 @@ void BentelKyo::update() {
   // Re-publish text sensors periodically (every 120 polling cycles = ~60s at 500ms)
   // Text sensors are static config data but must be re-published so API clients
   // that connect after initial publish (e.g. Home Assistant reconnects) get the state.
-  if (this->config_read_step_ >= 11) {
+  if (this->config_read_step_ >= 13) {
     this->text_sensor_republish_counter_++;
     if (this->force_publish_ || this->text_sensor_republish_counter_ >= 120) {
+      this->read_panel_mode_();
+      this->read_status_flags_();
       this->publish_text_sensors_();
       this->text_sensor_republish_counter_ = 0;
     }
@@ -498,8 +502,8 @@ bool BentelKyo::parse_partition_status_(const uint8_t *rx, int count) {
   if (!changed)
     return true;
 
-  ESP_LOGD(TAG, "Partition status: total=0x%02X partial=0x%02X partial_d0=0x%02X disarmed=0x%02X siren=%d output=0x%02X",
-           rx[6], rx[7], rx[8], rx[9], (rx[10] >> 5) & 1, rx[12]);
+  ESP_LOGD(TAG, "Partition status: total=0x%02X partial=0x%02X partial_d0=0x%02X disarmed=0x%02X rx10=0x%02X rx11=0x%02X rx12=0x%02X",
+           rx[6], rx[7], rx[8], rx[9], rx[10], rx[11], rx[12]);
 
   // Parse partition arming states (same byte layout for both models)
   for (int i = 0; i < KYO_MAX_PARTITIONS; i++) {
@@ -509,13 +513,26 @@ bool BentelKyo::parse_partition_status_(const uint8_t *rx, int count) {
     this->partition_disarmed_[i] = (rx[9] >> i) & 1;
   }
 
-  // Siren status
-  this->siren_active_ = (rx[10] >> 5) & 1;
-
-  // Output states (KYO32G only - non-G reads 0xFF)
-  if (this->alarm_model_ == AlarmModel::KYO_32G) {
-    for (int i = 0; i < KYO_MAX_OUTPUTS; i++)
+  // Model-dependent siren and output parsing
+  if (is_kyo8) {
+    if (this->alarm_model_ == AlarmModel::KYO_8W) {
+      // KYO8W: rx[10] = siren byte, rx[12] = outputs 1-8
+      this->siren_active_ = (rx[10] >> 6) & 1;
+      for (int i = 0; i < 8; i++)
+        this->output_state_[i] = (rx[12] >> i) & 1;
+    } else {
+      // KYO4/KYO8/KYO8G: rx[10] bits 0-4 = outputs 1-5, bit 6 = siren, bit 7 = tamper memory
+      this->siren_active_ = (rx[10] >> 6) & 1;
+      for (int i = 0; i < 5; i++)
+        this->output_state_[i] = (rx[10] >> i) & 1;
+    }
+  } else {
+    // KYO32/KYO32G: rx[10] bit 5 = siren, rx[11] = outputs 9-16, rx[12] = outputs 1-8
+    this->siren_active_ = (rx[10] >> 5) & 1;
+    for (int i = 0; i < 8; i++)
       this->output_state_[i] = (rx[12] >> i) & 1;
+    for (int i = 0; i < 8; i++)
+      this->output_state_[8 + i] = (rx[11] >> i) & 1;
   }
 
   // Zone bypass, alarm memory, tamper memory
@@ -609,6 +626,12 @@ void BentelKyo::publish_binary_sensors_() {
         break;
       case BinarySensorType::OUTPUT_STATE:
         if (idx < KYO_MAX_OUTPUTS) state = this->output_state_[idx];
+        break;
+      case BinarySensorType::PANEL_PROGRAMMING_MODE:
+        state = this->panel_programming_mode_;
+        break;
+      case BinarySensorType::TROUBLE_ACTIVE:
+        state = this->trouble_active_;
         break;
       case BinarySensorType::COMMUNICATION:
         // Handled separately in update()
@@ -1298,6 +1321,148 @@ void BentelKyo::read_code_names_() {
   }
 }
 
+void BentelKyo::read_panel_mode_() {
+  uint8_t rx[255];
+  int count = this->read_register_(0x01E6, 0x02, rx, 300);
+  if (count < 6 + 2) {
+    ESP_LOGW(TAG, "Panel mode read failed: got %d bytes", count);
+    return;
+  }
+
+  this->panel_mode_raw_[0] = rx[6];
+  this->panel_mode_raw_[1] = rx[7];
+
+  // Programming mode = bytes differ from idle baseline {0x11, 0x10}
+  this->panel_programming_mode_ = (rx[6] != 0x11 || rx[7] != 0x10);
+
+  ESP_LOGD(TAG, "Panel mode: %02X %02X (programming=%s)",
+           rx[6], rx[7], this->panel_programming_mode_ ? "YES" : "no");
+}
+
+void BentelKyo::read_status_flags_() {
+  uint8_t rx[255];
+  int count = this->read_register_(0x1503, 0x05, rx, 300);
+  if (count < 6 + 5) {
+    ESP_LOGW(TAG, "Status flags read failed: got %d bytes", count);
+    return;
+  }
+
+  for (int i = 0; i < 5; i++)
+    this->status_flags_raw_[i] = rx[6 + i];
+
+  // Trouble active = any byte != 0xFF (all-FF = no troubles)
+  this->trouble_active_ = false;
+  for (int i = 0; i < 5; i++) {
+    if (rx[6 + i] != 0xFF) {
+      this->trouble_active_ = true;
+      break;
+    }
+  }
+
+  ESP_LOGD(TAG, "Status flags: %02X %02X %02X %02X %02X (trouble=%s)",
+           rx[6], rx[7], rx[8], rx[9], rx[10],
+           this->trouble_active_ ? "YES" : "no");
+}
+
+const char *BentelKyo::decode_event_code_(uint16_t code, uint8_t *entity_out, char *buf, size_t buf_len) {
+  // Event code table from BIS KYO Unit PDF + KyoUnit 5.5 serial capture correlation.
+  //
+  // The 16-bit event code encodes both event type and entity number:
+  //   code = base + (entity_number - 1)
+  // where entity_number is 1-based (partition 1-8, zone 1-32, code 1-24, key 1-128).
+  //
+  // Entity counts differ between KYO32 and KYO4/8 — table is selected by alarm_model_.
+
+  struct EventRange {
+    uint16_t base;
+    uint8_t count;  // max entities (0 = no entity)
+    const char *name;
+    const char *entity_type;  // "partition", "zone", "code", "key", or nullptr
+  };
+
+  bool is_kyo8 = (this->alarm_model_ == AlarmModel::KYO_4 ||
+                  this->alarm_model_ == AlarmModel::KYO_8 ||
+                  this->alarm_model_ == AlarmModel::KYO_8G ||
+                  this->alarm_model_ == AlarmModel::KYO_8W);
+
+  // KYO32 table: 8 partitions, 32 zones, 24 codes, 128 keys — sorted by base offset
+  static const EventRange ranges_kyo32[] = {
+    {0x0000, 8,   "Alarm Partition",              "partition"},
+    {0x0008, 32,  "Alarm Zone",                   "zone"},
+    {0x0028, 8,   "Inactivity Area",              "partition"},
+    {0x0030, 8,   "Negligence Area",              "partition"},
+    {0x0038, 32,  "Zone Bypass",                  "zone"},
+    {0x0058, 32,  "Zone Unbypass",                "zone"},
+    {0x0078, 24,  "Recognized Code",              "code"},
+    {0x0090, 128, "Recognized Key",               "key"},
+    {0x0110, 32,  "Auto Bypass Zone",             "zone"},
+    {0x0130, 8,   "Arm Partition",                "partition"},
+    {0x0138, 8,   "Disarm Partition",             "partition"},
+    {0x0140, 8,   "Special Arming Partition",     "partition"},
+    {0x0148, 8,   "Special Disarming Partition",  "partition"},
+    {0x0150, 8,   "Reset Memory Partition",       "partition"},
+    {0x0158, 8,   "Coercion Disarm Area",         "partition"},
+    {0x0160, 0,   "Failed Call",                  nullptr},
+    {0x0168, 32,  "Tamper Zone",                  "zone"},
+    {0x0188, 32,  "Restore Zone",                 "zone"},
+    {0x01BC, 0,   "Remote Command",               nullptr},
+  };
+
+  // KYO4/8 table: 4 partitions, 8 zones, 8 codes, 16 keys — sorted by base offset
+  static const EventRange ranges_kyo8[] = {
+    {0x0000, 4,   "Alarm Partition",              "partition"},
+    {0x0004, 8,   "Alarm Zone",                   "zone"},
+    {0x000C, 4,   "Inactivity Area",              "partition"},
+    {0x0010, 4,   "Negligence Area",              "partition"},
+    {0x0014, 8,   "Zone Bypass",                  "zone"},
+    {0x001C, 8,   "Zone Unbypass",                "zone"},
+    {0x0024, 8,   "Recognized Code",              "code"},
+    {0x002C, 16,  "Recognized Key",               "key"},
+    {0x003C, 8,   "Auto Bypass Zone",             "zone"},
+    {0x0044, 4,   "Arm Partition",                "partition"},
+    {0x0048, 4,   "Disarm Partition",             "partition"},
+    {0x004C, 4,   "Special Arming Partition",     "partition"},
+    {0x0050, 4,   "Special Disarming Partition",  "partition"},
+    {0x0054, 4,   "Reset Memory Partition",       "partition"},
+    {0x0058, 4,   "Coercion Disarm Area",         "partition"},
+    {0x005C, 0,   "Failed Call",                  nullptr},
+    {0x0060, 8,   "Tamper Zone",                  "zone"},
+    {0x0068, 8,   "Restore Zone",                 "zone"},
+    {0x0070, 0,   "Remote Command",               nullptr},
+  };
+
+  const EventRange *ranges;
+  int num_ranges;
+  if (is_kyo8) {
+    ranges = ranges_kyo8;
+    num_ranges = sizeof(ranges_kyo8) / sizeof(ranges_kyo8[0]);
+  } else {
+    ranges = ranges_kyo32;
+    num_ranges = sizeof(ranges_kyo32) / sizeof(ranges_kyo32[0]);
+  }
+
+  for (int i = 0; i < num_ranges; i++) {
+    const auto &range = ranges[i];
+    if (range.count == 0) {
+      if (code == range.base) {
+        *entity_out = 0;
+        return range.name;
+      }
+    } else {
+      uint16_t offset = code - range.base;
+      if (code >= range.base && offset < range.count) {
+        *entity_out = offset + 1;  // 1-based
+        return range.name;
+      }
+    }
+  }
+
+  // Unknown event code — format as hex
+  *entity_out = 0;
+  snprintf(buf, buf_len, "Unknown (0x%04X)", code);
+  return buf;
+}
+
 bool BentelKyo::read_event_log_next_() {
   static const int EVENT_LOG_CHUNKS = 28;
   static const uint16_t EVENT_LOG_BASE = 0x0D27;
@@ -1324,22 +1489,30 @@ bool BentelKyo::read_event_log_next_() {
     int slot = chunk * RECORDS_PER_CHUNK + i;
     int offset = 6 + (i * 7);
 
-    uint8_t type = rx[offset];
-    uint8_t source = rx[offset + 1];
+    uint8_t code_hi = rx[offset];
+    uint8_t code_lo = rx[offset + 1];
     uint8_t day = rx[offset + 2];
     uint8_t month = rx[offset + 3];
     uint8_t year = rx[offset + 4];
     uint8_t hour = rx[offset + 5];
     uint8_t minute = rx[offset + 6];
 
-    // Skip empty/sentinel records
-    if (type == 0x8E)
-      continue;
-    if (type == 0x00 && source == 0x00 && day == 0x00 && month == 0x00)
+    // Skip empty records (all zeros)
+    if (code_hi == 0x00 && code_lo == 0x00 && day == 0x00 && month == 0x00)
       continue;
 
-    ESP_LOGI(TAG, "Event [%03d]: %02d-%02d-%04d %02d:%02d  type=0x%02X src=0x%02X",
-             slot + 1, day, month, 2000 + year, hour, minute, type, source);
+    uint16_t event_code = (code_hi << 8) | code_lo;
+    uint8_t entity = 0;
+    char unknown_buf[24];
+    const char *event_name = decode_event_code_(event_code, &entity, unknown_buf, sizeof(unknown_buf));
+
+    if (entity > 0) {
+      ESP_LOGI(TAG, "Event [%03d]: %02d-%02d-%04d %02d:%02d  %s n.%d",
+               slot + 1, day, month, 2000 + year, hour, minute, event_name, entity);
+    } else {
+      ESP_LOGI(TAG, "Event [%03d]: %02d-%02d-%04d %02d:%02d  %s",
+               slot + 1, day, month, 2000 + year, hour, minute, event_name);
+    }
     this->event_log_entries_logged_++;
   }
 
@@ -1420,6 +1593,21 @@ void BentelKyo::publish_text_sensors_() {
         if (idx >= KYO_MAX_CODES) continue;
         entry.sensor->publish_state(this->code_name_[idx].empty() ? "N/A" : this->code_name_[idx]);
         break;
+      case TEXT_PANEL_MODE_RAW: {
+        char buf[8];
+        snprintf(buf, sizeof(buf), "%02X %02X", this->panel_mode_raw_[0], this->panel_mode_raw_[1]);
+        entry.sensor->publish_state(buf);
+        break;
+      }
+      case TEXT_STATUS_FLAGS_RAW: {
+        char buf[20];
+        snprintf(buf, sizeof(buf), "%02X %02X %02X %02X %02X",
+                 this->status_flags_raw_[0], this->status_flags_raw_[1],
+                 this->status_flags_raw_[2], this->status_flags_raw_[3],
+                 this->status_flags_raw_[4]);
+        entry.sensor->publish_state(buf);
+        break;
+      }
     }
   }
 }
