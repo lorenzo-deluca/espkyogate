@@ -1199,41 +1199,67 @@ Each event record is 7 bytes:
 
 | Offset | Size | Description |
 |--------|------|-------------|
-| +0 | 1B | Unknown — likely event type or group code. Values observed: `0x00`, `0x01`. Value `0x8E` may be a sentinel/empty marker. |
-| +1 | 1B | Unknown — likely source identifier (zone number, partition, or Contact ID event code). Wide range of values observed. |
+| +0 | 1B | Event code high byte |
+| +1 | 1B | Event code low byte |
 | +2 | 1B | Day of month (1-31) |
 | +3 | 1B | Month (1-12) |
 | +4 | 1B | Year offset from 2000 (e.g., `0x1A` = 2026) |
 | +5 | 1B | Hour (0-23) |
 | +6 | 1B | Minute (0-59) |
 
-**Example** (first 9 records from address `0x0D27`):
+Bytes 0-1 form a **16-bit event code** that encodes both the event
+type and the entity number (zone, partition, or user code). The
+entity number is an offset from a base code:
+`event_code = base + (entity_number - 1)`.
+
+#### Confirmed event type codes
+
+Mapped by correlating raw capture data with KyoUnit 5.5 event log
+display (same session, 2026-03-01). Verified across 256+ events.
+
+| Base Code | Entity Offset | Event Type | Max |
+|-----------|--------------|------------|-----|
+| `0x0000` | + (partition - 1) | Alarm Partition | 8 |
+| `0x0008` | + (zone - 1) | Alarm Zone | 32 |
+| `0x0078` | + (code - 1) | Recognized Code | 24 |
+| `0x0130` | + (partition - 1) | Arm Partition | 8 |
+| `0x0138` | + (partition - 1) | Disarm Partition | 8 |
+| `0x0140` | + (partition - 1) | Special Arming Partition | 8 |
+| `0x0148` | + (partition - 1) | Special Disarming Partition | 8 |
+| `0x0150` | + (partition - 1) | Reset Memory Partition | 8 |
+| `0x0188` | + (zone - 1) | Restore Zone | 32 |
+| `0x01BC` | (none) | Remote Command | — |
+
+Unmapped code ranges (need controlled captures to identify):
+
+| Code Range | Likely Event Type |
+|------------|-------------------|
+| `0x0028`–`0x0077` | Tamper zone/partition, zone bypass |
+| `0x0090`–`0x012F` | Supervision loss, battery, AC mains |
+| `0x0158`–`0x0187` | Partition-level events (entry/exit delay) |
+| `0x01A8`–`0x01BB` | System events |
+| `0x0800`+ | System/maintenance (observed `0x083F` once) |
+
+**Example** (decoded records from address `0x0D27`):
 
 ```
-01 30  1B 02 1A 09 37   → bytes 0-1=01:30, 27-Feb-2026 09:55
-01 31  1B 02 1A 09 37   → bytes 0-1=01:31, 27-Feb-2026 09:55
-01 32  1B 02 1A 09 37   → bytes 0-1=01:32, 27-Feb-2026 09:55
-00 08  1B 02 1A 09 37   → bytes 0-1=00:08, 27-Feb-2026 09:55
-00 00  1B 02 1A 09 37   → bytes 0-1=00:00, 27-Feb-2026 09:55
-01 BC  1B 02 1A 09 38   → bytes 0-1=01:BC, 27-Feb-2026 09:56
-01 41  1B 02 1A 09 38   → bytes 0-1=01:41, 27-Feb-2026 09:56
-01 42  1B 02 1A 09 38   → bytes 0-1=01:42, 27-Feb-2026 09:56
-01 48  1B 02 1A 09 38   → bytes 0-1=01:48, 27-Feb-2026 09:56
+01 30  1B 02 1A 09 37   → 0x0130 = Arm Partition n.1,     27-Feb-2026 09:55
+01 31  1B 02 1A 09 37   → 0x0131 = Arm Partition n.2,     27-Feb-2026 09:55
+01 32  1B 02 1A 09 37   → 0x0132 = Arm Partition n.3,     27-Feb-2026 09:55
+00 08  1B 02 1A 09 37   → 0x0008 = Alarm Zone n.1,        27-Feb-2026 09:55
+00 00  1B 02 1A 09 37   → 0x0000 = Alarm Partition n.1,   27-Feb-2026 09:55
+01 BC  1B 02 1A 09 38   → 0x01BC = Remote Command,        27-Feb-2026 09:56
+01 41  1B 02 1A 09 38   → 0x0141 = Spec. Arming Part. n.2,27-Feb-2026 09:56
+01 42  1B 02 1A 09 38   → 0x0142 = Spec. Arming Part. n.3,27-Feb-2026 09:56
+01 48  1B 02 1A 09 38   → 0x0148 = Spec. Disarm. Part. n.1,27-Feb-2026 09:56
 ```
 
 **Ring-buffer behavior**: The buffer wraps around. In the observed
 capture, the last block (`0x13E7`) contains older timestamps
 (e.g., 26-Feb-2026 23:46, 27-Feb-2026 06:41) followed by newer
-entries (up to 01-Mar-2026 11:29 in sweep 1 and 01-Mar-2026 11:36 in sweep 2), confirming circular overwrite.
-The write pointer position is not stored in an obvious separate
-register — it must be inferred from timestamp ordering.
-
-> **Status**: Record boundaries and timestamp fields (bytes 2-6)
-> are confirmed from capture data. Bytes 0-1 (event type/source)
-> are not yet mapped to specific Contact ID codes or panel events.
-> Fully decoding these would require triggering known events (arm,
-> disarm, alarm, tamper, restore) and correlating the raw byte
-> values.
+entries (up to 01-Mar-2026 11:29 in sweep 1 and 01-Mar-2026 11:36
+in sweep 2), confirming circular overwrite. The write pointer
+position must be inferred from timestamp ordering.
 
 ### 10.26 EEPROM Control Registers (0xC001, 0xC004)
 
@@ -1264,7 +1290,7 @@ KyoUnit during upload/download operations. Subject to the same
 | `0x02DB` | 5B | Panel options | No |
 | `0x02F8` | 216B | ARC phone numbers (digits + config) | No |
 | `0x03D0` | ~1362B | Event routing (Contact ID) | No |
-| `0x0D27` | ~1792B | Event log (256 slots × 7B, circular buffer) | No |
+| `0x0D27` | ~1792B | Event log (256 slots × 7B, circular buffer) | Yes |
 | `0xF004` | 11B | Sensor status (realtime) | Yes |
 | `0xF008` | ? | Unknown status register | No |
 | `0x1503` | 6B | System status flags | No |
@@ -1272,12 +1298,12 @@ KyoUnit during upload/download operations. Subject to the same
 | `0x14EA` | 1B | Unknown (near partition status) | No |
 | `0x14EC` | 19B | Partition status (KYO32 non-G) | Yes |
 | `0x1560` | 31B | Unknown extended status/config | No |
-| `0x2BA0` | 128B | Partition names (8 × 16 bytes ASCII) | No |
+| `0x2BA0` | 128B | Partition names (8 × 16 bytes ASCII) | Yes |
 | `0x2C20` | 128B | Keypad names (8 × 16 bytes ASCII) | No |
 | `0x2CA0` | 256B | Reader names (16 × 16 bytes ASCII) | No |
 | `0x2DA0` | 96B | Expander names (6 × 16 bytes ASCII) | No |
 | `0x2E00` | 512B | Zone names (32 × 16 bytes ASCII) | Yes |
-| `0x3000` | 384B | Code names (24 × 16 bytes ASCII) | No |
+| `0x3000` | 384B | Code names (24 × 16 bytes ASCII) | Yes |
 | `0x3180` | 256B | Digital key names (16 × 16 bytes ASCII) | Yes |
 | `0x3280` | 256B | Output names (16 × 16 bytes ASCII) | Yes |
 | `0x3380` | 128B | Phone number names (8 × 16 bytes ASCII) | No |

@@ -280,6 +280,34 @@ text_sensor:
         name: "Keyfob 1"
       - slot: 2
         name: "Keyfob 2"
+    partitions:
+      - partition: 1
+        name: "Partition 1 Name"
+      - partition: 2
+        name: "Partition 2 Name"
+    codes:
+      - code: 1
+        name: "Code 1 Name"
+      - code: 2
+        name: "Code 2 Name"
+
+# ========================================
+# Buttons
+# ========================================
+
+button:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: reread_config
+    name: "Reread Panel Config"
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: reset_alarms
+    name: "Reset Alarms"
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: read_event_log
+    name: "Read Event Log"
 
 sensor:
   - platform: uptime

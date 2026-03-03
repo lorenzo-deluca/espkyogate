@@ -426,12 +426,41 @@ button:
 |------|-------------|
 | `reread_config` | Re-read zone configuration, names, serial numbers from panel |
 | `reset_alarms` | Reset alarm memory on the panel |
-| `read_event_log` | Read panel event log (256 entries) and dump to ESPHome logs |
+| `read_event_log` | Read panel event log (256 entries) with decoded event names and dump to ESPHome logs |
 | `arm_all_away` | Arm all registered partitions in Away mode |
 | `arm_all_home` | Arm all registered partitions in Home/Stay mode |
 | `arm_all_night` | Arm all registered partitions in Night mode |
 | `disarm_all` | Disarm all registered partitions |
 | `arm_preset` | Arm/disarm specific partitions with per-partition mode selection |
+
+### Event Log
+
+The `read_event_log` button reads the panel's circular event log (256 slots of 7 bytes each) and outputs decoded entries to the ESPHome log. Each entry includes a timestamp and a human-readable event description.
+
+Decoded event types:
+
+| Event | Entity |
+|-------|--------|
+| Alarm Partition | Partition 1-8 |
+| Alarm Zone | Zone 1-32 |
+| Recognized Code | Code 1-24 |
+| Arm Partition | Partition 1-8 |
+| Disarm Partition | Partition 1-8 |
+| Special Arming Partition | Partition 1-8 |
+| Special Disarming Partition | Partition 1-8 |
+| Reset Memory Partition | Partition 1-8 |
+| Restore Zone | Zone 1-32 |
+| Remote Command | — |
+
+Example log output:
+```
+Event [246]: 01-03-2026 11:35  Recognized Code n.23
+Event [247]: 01-03-2026 11:35  Arm Partition n.1
+Event [248]: 01-03-2026 11:35  Arm Partition n.2
+Event [250]: 01-03-2026 11:35  Alarm Zone n.5
+Event [252]: 01-03-2026 11:36  Recognized Code n.2
+Event [253]: 01-03-2026 11:36  Disarm Partition n.1
+```
 
 ### Arm Preset Buttons
 
