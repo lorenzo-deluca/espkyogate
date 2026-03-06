@@ -381,13 +381,21 @@ bool BentelKyo::parse_sensor_status_(const uint8_t *rx, int count) {
   bool is_kyo8 = (this->alarm_model_ == AlarmModel::KYO_8 || this->alarm_model_ == AlarmModel::KYO_4 ||
                   this->alarm_model_ == AlarmModel::KYO_8G || this->alarm_model_ == AlarmModel::KYO_8W);
 
-  // Validate response length matches detected model (or infer model if not yet detected)
-  int expected_len = is_kyo8 ? RESP_SENSOR_KYO8 : RESP_SENSOR_KYO32;
+  // Determine parsing format from response length (12 = KYO8 format, 18 = KYO32 format).
+  // Some panels report one model via firmware but use a different response format,
+  // so always trust the response length for parsing.
   if (this->model_detected_) {
+    int expected_len = is_kyo8 ? RESP_SENSOR_KYO8 : RESP_SENSOR_KYO32;
     if (count != expected_len) {
-      ESP_LOGE(TAG, "Sensor status: expected %d bytes for %s model, got %d",
-               expected_len, is_kyo8 ? "KYO8" : "KYO32", count);
-      return false;
+      if (count == RESP_SENSOR_KYO32 || count == RESP_SENSOR_KYO8) {
+        is_kyo8 = (count == RESP_SENSOR_KYO8);
+        ESP_LOGW(TAG, "Sensor status: %s firmware returned %d-byte response, parsing as %s format",
+                 is_kyo8 ? "KYO32" : "KYO8", count, is_kyo8 ? "KYO8" : "KYO32");
+      } else {
+        ESP_LOGE(TAG, "Sensor status: expected %d bytes for %s model, got %d",
+                 expected_len, is_kyo8 ? "KYO8" : "KYO32", count);
+        return false;
+      }
     }
   } else {
     // Model not yet detected — infer from response length
