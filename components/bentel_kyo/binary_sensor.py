@@ -119,22 +119,18 @@ ZONE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(
         cv.Optional(CONF_ZONE_TYPE): text_sensor.text_sensor_schema(
             icon="mdi:shield-alert-outline",
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
-            disabled_by_default=True,
         ),
         cv.Optional(CONF_PANEL_NAME): text_sensor.text_sensor_schema(
             icon="mdi:form-textbox",
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
-            disabled_by_default=True,
         ),
         cv.Optional(CONF_ZONE_PARTITION): text_sensor.text_sensor_schema(
             icon="mdi:shield-home-outline",
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
-            disabled_by_default=True,
         ),
         cv.Optional(CONF_ZONE_SERIAL_NUMBER): text_sensor.text_sensor_schema(
             icon="mdi:identifier",
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
-            disabled_by_default=True,
         ),
     }
 )
@@ -196,7 +192,6 @@ OUTPUT_STATE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(
         cv.Optional(CONF_OUTPUT_PANEL_NAME): text_sensor.text_sensor_schema(
             icon="mdi:form-textbox",
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
-            disabled_by_default=True,
         ),
     }
 )
@@ -326,15 +321,18 @@ CONFIG_SCHEMA = cv.Schema(
 )
 
 
-async def _register_sensor(hub, config, sensor_type_str, index=0):
+async def _register_sensor(hub, config, sensor_type_str, index=0, disabled_by_default=False):
     """Register a binary sensor with the hub."""
     var = await binary_sensor.new_binary_sensor(config)
+    if disabled_by_default:
+        cg.add(var.set_disabled_by_default(True))
     cg.add(hub.register_binary_sensor(var, SENSOR_TYPES[sensor_type_str], index))
 
 
 async def _register_text_sensor(hub, config, type_str, index):
     """Register a zone diagnostic text sensor with the hub."""
     var = await text_sensor.new_text_sensor(config)
+    cg.add(var.set_disabled_by_default(True))
     cg.add(hub.register_text_sensor(var, TEXT_SENSOR_TYPES[type_str], index))
 
 
