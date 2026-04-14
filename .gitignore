@@ -13,3 +13,5 @@
 .pioenvs
 .piolibdeps
 .vscode/
+__pycache__/
+*.pyc
