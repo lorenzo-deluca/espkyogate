@@ -1137,16 +1137,24 @@ int BentelKyo::read_register_(uint16_t address, uint8_t length, uint8_t *respons
 
 bool BentelKyo::read_zone_config_() {
   // Zone config: 4 bytes per zone, 16 zones per 64-byte read.
-  // One read per update cycle (block 0 = zones 1-16 at 0x009F, block 1 = 17-32 at
-  // 0x00DF); returns true when done so the loop is never blocked for long.
-  static const uint16_t BASE_ADDRS[] = {0x009F, 0x00DF};
+  // One read per update cycle (block 0 = zones 1-16, block 1 = 17-32); returns true
+  // when done so the loop is never blocked for long.
+  //
+  // KYO32G 2.13 places the table six bytes later than the non-G map documented in
+  // PROTOCOL.md 10.1 — records start at 0x00A5/0x00E5, not 0x009F/0x00DF. Reading the
+  // shifted base (rather than adding a header offset like the KYO8 path below) keeps
+  // all 16 records inside the 64 returned bytes.
+  static const uint16_t BASE_ADDRS_NONG[] = {0x009F, 0x00DF};
+  static const uint16_t BASE_ADDRS_KYO32G[] = {0x00A5, 0x00E5};
+  const uint16_t *base_addrs =
+      (this->alarm_model_ == AlarmModel::KYO_32G) ? BASE_ADDRS_KYO32G : BASE_ADDRS_NONG;
   int num_blocks = (this->max_zones_ > 16) ? 2 : 1;
   int blk = this->config_chunk_index_;
 
   uint8_t rx[255];
-  int count = this->read_register_(BASE_ADDRS[blk], 0x3F, rx, 300);
+  int count = this->read_register_(base_addrs[blk], 0x3F, rx, 300);
   if (count < 6 + 64) {
-    ESP_LOGW(TAG, "Zone config read at 0x%04X failed: got %d bytes", BASE_ADDRS[blk], count);
+    ESP_LOGW(TAG, "Zone config read at 0x%04X failed: got %d bytes", base_addrs[blk], count);
   } else {
     // KYO8 2.04 prefixes the block with a 4-byte header, so zone records start at 0x00A3
     // instead of 0x009F (issue #113 validation: with the shift, every zone lands in the
@@ -1789,12 +1797,24 @@ void BentelKyo::publish_text_sensors_() {
       case TEXT_ZONE_TYPE: {
         if (idx >= (uint8_t) this->max_zones_) continue;
         const char *type_str;
-        switch (this->zone_type_raw_[idx]) {
-          case 0x00: type_str = "Instant"; break;
-          case 0x01: type_str = "Delayed"; break;
-          case 0x02: type_str = "Path"; break;
-          case 0x18: type_str = "Unconfigured"; break;
-          default: type_str = "Unknown"; break;
+        if (this->alarm_model_ == AlarmModel::KYO_32G) {
+          // The panel's own string ROM at 0x34B1 enumerates the eight zone types in this
+          // order, and the low three bits of the record's first byte index it. Confirmed on
+          // KYO32G 2.13 by changing one zone from the keypad and re-reading: Instant kept
+          // 0x?0, Duress produced 0x?4, 24 Hours produced 0x?3 — matching the ROM order.
+          // The remaining bits are not the type (bit 4 tracks the wiring/balance group, as
+          // on KYO8) so they are masked off rather than reported as "Unknown".
+          static const char *const KYO32G_ZONE_TYPES[8] = {
+              "Instant", "Delayed", "Path", "24 Hours", "Duress", "Fire", "Switch", "Arm Only"};
+          type_str = KYO32G_ZONE_TYPES[this->zone_type_raw_[idx] & 0x07];
+        } else {
+          switch (this->zone_type_raw_[idx]) {
+            case 0x00: type_str = "Instant"; break;
+            case 0x01: type_str = "Delayed"; break;
+            case 0x02: type_str = "Path"; break;
+            case 0x18: type_str = "Unconfigured"; break;
+            default: type_str = "Unknown"; break;
+          }
         }
         entry.sensor->publish_state(type_str);
         break;

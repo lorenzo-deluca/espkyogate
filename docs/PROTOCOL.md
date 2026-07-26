@@ -1466,7 +1466,7 @@ KyoUnit during upload/download operations. Subject to the same
 | Address | Size | Content | Implemented |
 |---------|------|---------|-------------|
 | `0x0000` | 12B | Firmware version string (ASCII) | Yes |
-| `0x009F` | 128B | Zone configuration (32 × 4 bytes) | Yes |
+| `0x009F` | 128B | Zone configuration (32 × 4 bytes) — `0x00A5` on KYO32G, see 10.29 | Yes |
 | `0x011F` | 80B | Keyfob button config (16 × 5 bytes) | No |
 | `0x016F` | 26B | Timers (entry/exit/siren, 8 partitions) | Yes |
 | `0x019E` | 96B | Zone enrollment/ESN (32 × 3 bytes) | No |
@@ -1512,7 +1512,7 @@ cross-checked against the live entities the component publishes.
 
 | Content | KYO32G address (observed) | Notes |
 |---------|---------------------------|-------|
-| Zone config | `0x009F` (32 × 4) | Same base as non-G; byte 0 = type, byte 2 = area mask (validated against `Zone N Partition` sensors) |
+| Zone config | `0x00A5` / `0x00E5` (32 × 4) | **Six bytes later than the non-G base** — see 10.29. Record layout matches 10.1 |
 | Timers | `0x016F` | All eight areas' entry/exit + siren, areas 5-8 included and correct |
 | Partition names | `0x1750` (8 × 16) | |
 | Zone names | zones 17-32 observed at `0x1AB0`-`0x1BAF`; the 1-16 table precedes it (~`0x19B0`) | |
@@ -1551,6 +1551,58 @@ so programming mode is only observable as a communication loss (the
 communication-status sensor). Real faults still surface through the
 `WARNING_*` binary sensors parsed from the live status poll, so gating these two
 reads loses no genuine fault detection.
+
+### 10.29 KYO32G Zone Configuration Offset (0x00A5-0x0124)
+
+The zone table has the same 4-byte record layout as 10.1, but on KYO32G 2.13 it
+starts **six bytes later** than the non-G base:
+
+```
+Address range: 0x00A5 - 0x0124
+Read as:       F0 A5 00 3F 00 D4 (zones 1-16, 64 bytes)
+               F0 E5 00 3F 00 14 (zones 17-32, 64 bytes)
+```
+
+`0x00A5 + 64 = 0x00E5`, so the two blocks stay contiguous and all 16 records fit
+inside each read. Reading the shifted base is what the component does, rather
+than skipping a header inside the response like the KYO8 path in 9.2 — skipping
+six of the 64 returned data bytes would push the last two records of each block
+past the buffer.
+
+Read at the non-G base, every field lands one field early: `zone N area` is in
+fact zone N-1's type byte, which is how the shift was first noticed (changing one
+zone's type from the keypad moved the *next* zone's reported area).
+
+**Structural confirmation.** 10.1 documents `0x0F` as the last byte of every
+record. With base `0x009F` that byte falls on `0x00A2`/`0x00A6`/`0x00AA`, which
+all read `0x00`; with base `0x00A5` it lands at offset +3 on all 32 zones.
+
+**Zone type** — the low three bits of byte +0 index the eight type strings in the
+panel's string ROM at `0x34B1`, in ROM order:
+
+| Value | Type | | Value | Type |
+|-------|------|-|-------|------|
+| `0` | Instant | | `4` | Duress |
+| `1` | Delayed | | `5` | Fire |
+| `2` | Path | | `6` | Switch |
+| `3` | 24 Hours | | `7` | Arm Only |
+
+Bit 4 carries the wiring/balance group, as on KYO8 (9.2), so the whole byte must
+not be compared against the three-value non-G table — `0x10` is a balanced
+Instant zone, not an unknown type.
+
+> **Verification** (KYO32G 2.13, live hardware): one zone was changed from the
+> keypad and the block re-read. Instant kept `0x?0`, Duress produced `0x?4`,
+> 24 Hours produced `0x?3` — matching ROM order, with no other byte in the block
+> moving. The decoded types for all 14 named zones then matched the panel's own
+> zone list read from the keypad, and the decoded areas matched two independent
+> keypad readings (zone 9 → area 1, zone 15 → area 2).
+
+The non-G base is *not* wrong: 10.1 pins the record layout on a KYO32M using the
+same controlled-change method. The two firmware generations genuinely place the
+table at different addresses, so the component routes by model and only `KYO_32G`
+uses `0x00A5`. Whether KYO8W follows the G or the non-G here is untested — it
+currently uses the non-G base.
 
 ---
 
