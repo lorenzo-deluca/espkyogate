@@ -365,6 +365,17 @@ non-G register was briefly shared with the G (`0x1502`) after the two commands
 were unified, which left non-G panels stuck reporting all partitions disarmed
 (#118); the addresses are model-specific and must not be merged again.
 
+**KYO32 non-G is not a single register generation.** A KYO32 M (2006) panel
+whose firmware doesn't answer the version query at all (echo only — see §7)
+reads back all-zero at `0x14EC` and only has real data at `0x1502`, the
+opposite of the fw-1.05 panel from #118 (issue #122). Since the model can't
+be told apart in advance in this case, the component treats `0x14EC` as the
+default for any panel it classifies as plain `KYO_32`, and falls back to
+`0x1502` at runtime the first time a partition-status read comes back with
+no partition in any arming state (`rx[6]|rx[7]|rx[8]|rx[9] == 0` — a real
+partition is always in exactly one of the four states). Once the fallback
+fires, the component keeps using `0x1502` for the rest of that boot.
+
 #### KYO32/32G Response (26 bytes total)
 
 | Index | Byte | Content |
@@ -673,7 +684,7 @@ Communication health is tracked with exponential backoff:
 | Feature | KYO32G | KYO32 (non-G) |
 |---------|--------|----------------|
 | Firmware prefix | `KYO32G` | `KYO32` |
-| Partition status address | `0x1502` | `0x14EC` |
+| Partition status address | `0x1502` | `0x14EC` usually, `0x1502` on some units (see below) |
 | Max programmable outputs | 8 | 3 |
 | Output readback (Rx[12]) | Valid bitmask | Always `0xFF` |
 | Sensor status response | 18 bytes | 18 bytes |
@@ -683,8 +694,12 @@ Communication health is tracked with exponential backoff:
 
 The non-G model is the older generation. The KYO 32M (marketing name)
 is a non-G KYO32 that supports wireless zones. Its firmware string is
-`KYO32   x.xx` (same as non-G), and it uses the KYO32 (non-G) register
-address `0x14EC` for partition status.
+`KYO32   x.xx` (same as non-G). Most units confirmed so far (fw 1.05,
+issue #118) use the KYO32 (non-G) register address `0x14EC` for partition
+status, but a KYO32 M from 2006 (issue #122) — old enough that it doesn't
+answer the version query at all — only has data at `0x1502` instead. See
+§5.2 for the runtime fallback that handles both without needing to tell
+the two apart in advance.
 
 ### 9.1 KYO32G name table relocation
 

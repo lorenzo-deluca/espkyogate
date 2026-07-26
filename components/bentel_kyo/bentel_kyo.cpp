@@ -154,7 +154,15 @@ void BentelKyo::loop() {
           // register here returns FF padding, which the parser reads as all-disarmed
           // (issue #118, regression from unifying the two commands). KYO8W is NOT in
           // this branch: it was hardware-confirmed on the 0x1502 register in #109.
-          cmd = CMD_GET_PARTITION_KYO32; cmd_len = sizeof(CMD_GET_PARTITION_KYO32);
+          //
+          // Some non-G panels are the other way around (issue #122): 0x14EC comes back
+          // completely unmapped and 0x1502 is the one that works. partition_addr_use_alt_
+          // is learned at runtime in the case 2 handler below when that's detected.
+          if (this->partition_addr_use_alt_) {
+            cmd = CMD_GET_PARTITION_KYO32G; cmd_len = sizeof(CMD_GET_PARTITION_KYO32G);
+          } else {
+            cmd = CMD_GET_PARTITION_KYO32; cmd_len = sizeof(CMD_GET_PARTITION_KYO32);
+          }
         } else {
           // KYO32G and KYO8W both read partition status at 0x1502.
           cmd = CMD_GET_PARTITION_KYO32G; cmd_len = sizeof(CMD_GET_PARTITION_KYO32G);
@@ -164,6 +172,17 @@ void BentelKyo::loop() {
       }
       break;
     case 2:  // partition status
+      if (this->alarm_model_ == AlarmModel::KYO_32 && !this->partition_addr_fallback_tried_ &&
+          this->partition_status_looks_unmapped_(this->serial_rx_buf_, count)) {
+        // 0x14EC returned no partition data at all — this panel needs the KYO32G
+        // register instead (issue #122). Switch and retry immediately, once.
+        this->partition_addr_fallback_tried_ = true;
+        this->partition_addr_use_alt_ = true;
+        ESP_LOGW(TAG, "Partition status at 0x14EC returned no partition data — retrying "
+                      "with the KYO32G register (0x1502), which this panel appears to need");
+        this->send_command_async_(CMD_GET_PARTITION_KYO32G, sizeof(CMD_GET_PARTITION_KYO32G), 2);
+        return;
+      }
       ok = this->parse_partition_status_(this->serial_rx_buf_, count);
       break;
   }
@@ -577,6 +596,15 @@ bool BentelKyo::parse_sensor_status_(const uint8_t *rx, int count) {
 
   this->publish_binary_sensors_();
   return true;
+}
+
+bool BentelKyo::partition_status_looks_unmapped_(const uint8_t *rx, int count) const {
+  if (count != RESP_PARTITION_KYO32)
+    return false;
+  // A configured partition is always in exactly one of armed_total/armed_partial/
+  // armed_partial_delay0/disarmed, so a real response always has at least one bit set
+  // across rx[6..9]. All-zero across all four means the register isn't mapped here.
+  return (rx[6] | rx[7] | rx[8] | rx[9]) == 0;
 }
 
 bool BentelKyo::parse_partition_status_(const uint8_t *rx, int count) {

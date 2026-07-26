@@ -184,6 +184,11 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   bool detect_alarm_model_(const uint8_t *rx, int count);
   bool parse_sensor_status_(const uint8_t *rx, int count);
   bool parse_partition_status_(const uint8_t *rx, int count);
+  // True when a partition-status response has no partition in any arming state at all
+  // (rx[6..9] all zero). A configured partition is always in exactly one of the four
+  // states, so this only happens when the register queried isn't mapped on this panel.
+  // Used to auto-fallback KYO_32 from 0x14EC to 0x1502 at runtime (issue #122).
+  bool partition_status_looks_unmapped_(const uint8_t *rx, int count) const;
   void send_command_async_(const uint8_t *cmd, int cmd_len, uint8_t pending_op, uint32_t timeout_ms = 200);
   void handle_serial_failure_();
   int send_message_(const uint8_t *cmd, int cmd_len, uint8_t *response, uint32_t timeout_ms = SERIAL_TIMEOUT_MS);
@@ -243,6 +248,13 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   bool model_detected_{false};
   int max_zones_{KYO_MAX_ZONES};
   char firmware_version_[14]{};
+
+  // Some KYO32 non-G panels don't actually use the 0x14EC partition-status register —
+  // a PCB/firmware revision that also fails the version query entirely (issue #122)
+  // uses the KYO32G register (0x1502) instead. Learned once at runtime per boot: start
+  // on 0x14EC, and if that comes back structurally empty, switch to 0x1502 and stay there.
+  bool partition_addr_use_alt_{false};
+  bool partition_addr_fallback_tried_{false};
 
   // Async serial I/O state machine
   SerialState serial_state_{SerialState::IDLE};
