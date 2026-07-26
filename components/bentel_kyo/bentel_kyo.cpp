@@ -9,6 +9,7 @@
 #include "bentel_kyo.h"
 #include "alarm_control_panel.h"
 #include "cp437.h"
+#include "partition_status.h"
 #include <ctime>
 
 namespace esphome {
@@ -30,6 +31,7 @@ void BentelKyo::setup() {
 
 void BentelKyo::dump_config() {
   ESP_LOGCONFIG(TAG, "Bentel KYO:");
+  ESP_LOGCONFIG(TAG, "  Source commit: %s", this->source_commit_.c_str());
   if (this->model_detected_) {
     const char *model_name;
     switch (this->alarm_model_) {
@@ -601,10 +603,7 @@ bool BentelKyo::parse_sensor_status_(const uint8_t *rx, int count) {
 bool BentelKyo::partition_status_looks_unmapped_(const uint8_t *rx, int count) const {
   if (count != RESP_PARTITION_KYO32)
     return false;
-  // A configured partition is always in exactly one of armed_total/armed_partial/
-  // armed_partial_delay0/disarmed, so a real response always has at least one bit set
-  // across rx[6..9]. All-zero across all four means the register isn't mapped here.
-  return (rx[6] | rx[7] | rx[8] | rx[9]) == 0;
+  return partition_status_bits_all_absent(rx);
 }
 
 bool BentelKyo::parse_partition_status_(const uint8_t *rx, int count) {

@@ -136,6 +136,12 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   void set_alarm_model_text_sensor(text_sensor::TextSensor *sensor) { this->alarm_model_sensor_ = sensor; }
   void register_text_sensor(text_sensor::TextSensor *sensor, TextSensorType type, uint8_t index);
 
+  // Git commit of the espkyogate source tree this firmware was built from, resolved at
+  // build time from the external_components checkout (see __init__.py). Logged in
+  // dump_config() so a bug report's logs pin down the exact revision without having to
+  // bisect versions (as was needed for issue #122).
+  void set_source_commit(const std::string &commit) { this->source_commit_ = commit; }
+
   // Public command methods
   void arm_partition(uint8_t partition, uint8_t arm_type);
   void disarm_partition(uint8_t partition);
@@ -242,6 +248,7 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   std::vector<RegisteredTextSensor> text_sensors_;
   text_sensor::TextSensor *firmware_version_sensor_{nullptr};
   text_sensor::TextSensor *alarm_model_sensor_{nullptr};
+  std::string source_commit_{"unknown"};
 
   // Model and state
   AlarmModel alarm_model_{AlarmModel::UNKNOWN};
