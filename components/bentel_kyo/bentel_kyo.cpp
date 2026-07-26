@@ -30,8 +30,8 @@ void BentelKyo::setup() {
 }
 
 void BentelKyo::dump_config() {
-  ESP_LOGCONFIG(TAG, "Bentel KYO:");
-  ESP_LOGCONFIG(TAG, "  Source commit: %s", this->source_commit_.c_str());
+  ESP_LOGI(TAG, "Bentel KYO:");
+  ESP_LOGI(TAG, "  Source commit: %s", this->source_commit_.c_str());
   if (this->model_detected_) {
     const char *model_name;
     switch (this->alarm_model_) {
@@ -43,14 +43,14 @@ void BentelKyo::dump_config() {
       case AlarmModel::KYO_32G: model_name = "KYO32G"; break;
       default: model_name = "Unknown"; break;
     }
-    ESP_LOGCONFIG(TAG, "  Model: %s", model_name);
-    ESP_LOGCONFIG(TAG, "  Firmware: %s", this->firmware_version_);
-    ESP_LOGCONFIG(TAG, "  Max Zones: %d", this->max_zones_);
+    ESP_LOGI(TAG, "  Model: %s", model_name);
+    ESP_LOGI(TAG, "  Firmware: %s", this->firmware_version_);
+    ESP_LOGI(TAG, "  Max Zones: %d", this->max_zones_);
   } else {
-    ESP_LOGCONFIG(TAG, "  Model: not yet detected");
+    ESP_LOGI(TAG, "  Model: not yet detected");
   }
-  ESP_LOGCONFIG(TAG, "  Alarm panels: %d", this->alarm_panels_.size());
-  ESP_LOGCONFIG(TAG, "  Binary sensors: %d", this->binary_sensors_.size());
+  ESP_LOGI(TAG, "  Alarm panels: %d", this->alarm_panels_.size());
+  ESP_LOGI(TAG, "  Binary sensors: %d", this->binary_sensors_.size());
 }
 
 // ========================================
@@ -1775,7 +1775,7 @@ bool BentelKyo::memory_scan_next_() {
 
   int chunk = this->memory_scan_chunk_index_;
   if (chunk >= total_chunks) {
-    ESP_LOGI(TAG, "Memory scan complete — redact personal data, then attach the SCAN lines above to issue #113");
+    ESP_LOGI(TAG, "Memory scan complete — redact personal data, then attach the SCAN lines above to the issue report");
     return true;
   }
 
