@@ -35,6 +35,10 @@ BentelKyoMemoryScanButton = bentel_kyo_ns.class_(
     "BentelKyoMemoryScanButton", button.Button, cg.Component
 )
 
+BentelKyoDumpConfigButton = bentel_kyo_ns.class_(
+    "BentelKyoDumpConfigButton", button.Button, cg.Component
+)
+
 BentelKyoActivateOutputButton = bentel_kyo_ns.class_(
     "BentelKyoActivateOutputButton", button.Button, cg.Component
 )
@@ -75,6 +79,7 @@ BUTTON_TYPES = {
     "reset_alarms": (BentelKyoResetAlarmsButton, "mdi:bell-cancel", None),
     "read_event_log": (BentelKyoReadEventLogButton, "mdi:history", ENTITY_CATEGORY_CONFIG),
     "memory_scan": (BentelKyoMemoryScanButton, "mdi:magnify-scan", ENTITY_CATEGORY_CONFIG),
+    "dump_config": (BentelKyoDumpConfigButton, "mdi:file-document-outline", ENTITY_CATEGORY_CONFIG),
     "activate_output": (BentelKyoActivateOutputButton, "mdi:electric-switch", None),
     "deactivate_output": (BentelKyoDeactivateOutputButton, "mdi:electric-switch-closed", None),
     "pulse_output": (BentelKyoPulseOutputButton, "mdi:pulse", None),

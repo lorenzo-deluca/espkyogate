@@ -121,6 +121,10 @@ button:
     bentel_kyo_id: kyo
     type: read_event_log
     name: "Read Event Log"
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: dump_config
+    name: "Dump Config"
 
   # --- New button types ---
   - platform: bentel_kyo

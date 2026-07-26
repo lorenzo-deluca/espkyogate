@@ -500,6 +500,7 @@ button:
 | `reset_alarms` | Reset alarm memory on the panel |
 | `read_event_log` | Read panel event log (256 entries) with decoded event names and dump to ESPHome logs |
 | `memory_scan` | Debug: dump the panel's configuration memory to the ESPHome log for protocol mapping |
+| `dump_config` | Debug: re-print the component's config block (model, firmware, source commit, entity counts) to the ESPHome log on demand |
 | `arm_all_away` | Arm all registered partitions in Away mode |
 | `arm_all_home` | Arm all registered partitions in Home/Stay mode |
 | `arm_all_night` | Arm all registered partitions in Night mode |
@@ -568,6 +569,27 @@ Notes:
   is expected and harmless.
 - Individual chunk failures are logged and skipped; the scan always runs to
   completion.
+
+### Dump Config (debug)
+
+`dump_config()` (model, firmware, **source commit**, entity counts) normally
+prints only once at boot, then again for each *new* log client that connects.
+If Home Assistant already had a persistent connection open before you opened
+the log view, you'll miss that boot-time block entirely and see nothing from
+it afterwards. The `dump_config` button re-runs it on demand, no reboot
+required — press it and the block appears immediately in the log:
+
+```yaml
+button:
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: dump_config
+    name: "Dump Config (Debug)"
+```
+
+The source commit line is especially useful when reporting a bug: it pins
+down the exact revision of the component you're running without having to
+bisect versions.
 
 ### Arm Preset Buttons
 

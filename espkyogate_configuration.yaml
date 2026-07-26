@@ -343,11 +343,23 @@ button:
     type: memory_scan
     name: "Memory Scan (Debug)"
 
+  # Debug: re-runs dump_config() on demand, so you don't have to reboot the device
+  # to see the "Bentel KYO:" block (model, firmware, source commit, etc.) in the log
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: dump_config
+    name: "Dump Config (Debug)"
+
   # Datetime sync — sends current NTP time to the alarm panel
   - platform: bentel_kyo
     bentel_kyo_id: kyo
     type: sync_datetime
     name: "Sync Panel Clock"
+
+  # Restart the ESP — standard ESPHome button, not specific to bentel_kyo. Useful to
+  # force a fresh dump_config()/setup() log burst on demand (see Troubleshooting).
+  - platform: restart
+    name: "Restart ESP"
 
   # Output control buttons
   - platform: bentel_kyo
