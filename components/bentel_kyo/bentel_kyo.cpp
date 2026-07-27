@@ -245,7 +245,8 @@ void BentelKyo::read_event_log() {
 
 void BentelKyo::memory_scan() {
   ESP_LOGI(TAG, "Memory scan requested — dumping unmapped config regions (issue #113)...");
-  ESP_LOGW(TAG, "Scan output contains personal data (event log, code/phone names, access PINs) — redact before sharing");
+  ESP_LOGI(TAG, "Access codes and phone numbers are masked as XX — see is_secret_address_()");
+  ESP_LOGW(TAG, "Still personal: event log entries, and the zone/code/phone names you chose — redact before sharing");
   this->memory_scan_pending_ = true;
   this->memory_scan_chunk_index_ = 0;
 }
@@ -1488,11 +1489,21 @@ void BentelKyo::read_panel_mode_() {
     // the continuous F0 68 status poll.
     return;
   }
-  if (this->alarm_model_ == AlarmModel::KYO_32G) {
+  if (this->alarm_model_ == AlarmModel::KYO_32G || this->alarm_model_ == AlarmModel::KYO_8W) {
     // 0x01E6 is not the panel-mode register on KYO32G. A full config scan of a KYO32G 2.13
-    // shows the 32-zone config table filling 0x009F-0x011E and the zone-enrollment table at
-    // 0x019E-0x01F7, so 0x01E6 lands inside enrollment (reads FF 00 = the 2nd byte of a zone
-    // record). Against the {0x11,0x10} idle baseline that is a permanent false programming=YES.
+    // shows the 32-zone config table filling 0x009F-0x011E and the access-code table at
+    // 0x01B4-0x01FE (10.3), so 0x01E6 lands inside the code table — the two bytes read are
+    // the tail of one code record and the head of the next.
+    // Against the {0x11,0x10} idle baseline that is a permanent false programming=YES.
+    //
+    // KYO8W is included because its config map is untested and it is known to share the G's
+    // partition-status register (0x1502, hardware-confirmed in #109). If it is G-like here
+    // too, these two bytes are code digits, and suppressing only the ESP_LOGD would not
+    // contain them: the same bytes are published as the panel_mode_raw text sensor and from
+    // there reach the recorder database, entity history and HA diagnostics downloads. Not
+    // reading them is the only place that closes every channel at once. If KYO8W turns out
+    // to follow the non-G map instead, the cost is a panel-mode indicator stuck at its idle
+    // default — visible, reportable and revertible, unlike a code published in a log.
     // Leave panel_programming_mode_ at its idle default. A programming-mode differential can't
     // locate the real register either: on KYO32G (as on KYO8) entering the installer menu
     // silences the serial bus entirely, so the communication-status sensor is the only
@@ -1730,6 +1741,49 @@ bool BentelKyo::read_event_log_next_() {
 // button) and the slow 0xC0xx EEPROM windows (~1.5s per read, already handled by the
 // ESN readers). Reads of addresses a model doesn't answer for fail after the timeout and
 // are logged and skipped — the scan always runs to completion.
+bool BentelKyo::is_secret_address_(uint16_t address) const {
+  if (this->is_kyo8_family_()) {
+    // KYO8 2.04 keeps its access code as ASCII digits inside 0x2E60-0x2E8F (9.3) and
+    // does not use the KYO32 table below — its 0x019E window holds an unrelated,
+    // still-unidentified 6-byte record structure, so masking by address alone would
+    // hide mapping data on this family while leaving the actual code exposed.
+    return address >= 0x2E60 && address <= 0x2E8F;
+  }
+  return is_kyo32_secret_address_(address);
+}
+
+bool BentelKyo::is_kyo32_secret_address_(uint16_t address) {
+  // Windows the scan masks because they hold credentials rather than layout data.
+  //
+  // 0x019E-0x01FE — user access codes. One 3-byte record per code slot, holding the
+  // code as BCD digits padded with nibble 0xF: a 6-digit code fills the record, a
+  // 4-digit one leaves two 0xF nibbles. Unset slots read as their own slot number
+  // (0x00 0x06 0xFF = "0006"), which is the factory default for that slot. PROTOCOL.md
+  // 10.3 previously described this window as wireless zone-enrollment ESNs; the
+  // variable padding and a code confirmed in plaintext against a wired-only KYO32G
+  // rule that out (see 10.3). The range is the union of the two KYO32 variants, whose
+  // tables sit 22 bytes apart (0x019E non-G, 0x01B4 on the G).
+  //
+  // 0x02F8-0x03CF — ARC and notification phone numbers (10.24).
+  //
+  // Masking is deliberate rather than a warning: the scan asks users to paste its
+  // output into public issues, and a warning cannot tell them which bytes to remove.
+  //
+  // Both windows are mapped, so the dump loses nothing it exists to find. The one
+  // cost is that on a non-G the union of the two variants also covers 0x01E6-0x01FE,
+  // i.e. panel mode (10.20) and the first 22 bytes of partition config (10.4) —
+  // both documented and both read directly at runtime.
+  //
+  // KYO8W gets this KYO32 range because its config map is assumed to follow the
+  // KYO32 one; that assumption is untested here as everywhere else, so its codes may
+  // sit elsewhere and remain visible.
+  // The upper bound carries one row of margin past the last record observed (0x01FE on the
+  // G): the table base already moved 22 bytes between the two generations seen so far, so a
+  // bound fitted exactly to them would fail silently on a third. The margin costs the dump
+  // 0x01FF-0x020F, which on a non-G is part of partition config (10.4).
+  return (address >= 0x019E && address <= 0x020F) || (address >= 0x02F8 && address <= 0x03CF);
+}
+
 bool BentelKyo::memory_scan_next_() {
   struct ScanRange {
     uint16_t start;
@@ -1777,8 +1831,13 @@ bool BentelKyo::memory_scan_next_() {
     char hex[16 * 3 + 1];
     char ascii[16 + 1];
     for (int i = 0; i < 16; i++) {
-      snprintf(&hex[i * 3], 4, "%02X ", p[i]);
-      ascii[i] = (p[i] >= 0x20 && p[i] <= 0x7E) ? (char) p[i] : '.';
+      if (is_secret_address_(addr + row * 16 + i)) {
+        snprintf(&hex[i * 3], 4, "XX ");
+        ascii[i] = '.';
+      } else {
+        snprintf(&hex[i * 3], 4, "%02X ", p[i]);
+        ascii[i] = (p[i] >= 0x20 && p[i] <= 0x7E) ? (char) p[i] : '.';
+      }
     }
     hex[16 * 3 - 1] = '\0';
     ascii[16] = '\0';

@@ -214,6 +214,8 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
                               std::string *out, const char *what);
   bool read_event_log_next_();  // reads one 64-byte chunk per call, returns true when done
   bool memory_scan_next_();     // reads one 64-byte chunk per call, returns true when done
+  bool is_secret_address_(uint16_t address) const;   // true for bytes the scan masks as credentials
+  static bool is_kyo32_secret_address_(uint16_t address);
   const char *decode_event_code_(uint16_t code, uint8_t *entity_out, char *buf, size_t buf_len);
   void read_panel_mode_();
   void read_status_flags_();

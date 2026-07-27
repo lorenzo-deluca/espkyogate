@@ -915,20 +915,48 @@ Read as:       F0 00 2E 3F 00 5D (zones 1-4)
 Each read returns 64 data bytes (4 zone names × 16 bytes). Default names
 follow the pattern `Zone NN` (e.g., `Zone 12          `).
 
-### 10.3 Zone Enrollment (0x019E-0x01F7)
+### 10.3 User Access Codes (0x019E / 0x01B4)
 
-96 bytes total: 3 bytes per zone, 32 zones.
+> **Credential region.** `memory_scan` masks these bytes as `XX`. Do not
+> unmask them when sharing a dump — they are the codes that disarm the panel.
+> KYO8 does not use this table: it keeps its code as ASCII digits inside
+> `0x2E60`-`0x2E8F` (9.3), which the scan masks instead on that family.
+
+One 3-byte record per code slot, holding the code as **BCD digits padded with
+nibble `0xF`**. Bentel codes are 4-6 digits, so the padding length varies with
+the code:
+
+| Bytes | Code | Digits | Padding |
+|-------|------|--------|---------|
+| `12 34 56` | `123456` | 6 | none |
+| `12 34 5F` | `12345` | 5 | one `F` |
+| `12 34 FF` | `1234` | 4 | two `F` |
+
+Illustrative values only — never quote real records from a dump.
+
+A slot the installer never changed reads as its own slot number, zero-padded to
+four digits: slot 6 reads `00 06 FF` = `0006`, slot 24 reads `00 24 FF` = `0024`.
+That is the factory default, not a placeholder.
+
+Base address differs by firmware generation, the same 22-byte shift seen at the
+landmark `26 66 92 C0 FA FF FF` (`0x018E` non-G, `0x01A4` on the G):
 
 ```
-Address range: 0x019E - 0x01F7
-Read as:       F0 9E 01 3F 00 CE (zones 1-21, 64 bytes)
-               F0 DE 01 07 00 D6 (zones 22-24, partial)
+KYO32 1.05 (non-G):  0x019E - 0x01E5
+KYO32G 2.13:         0x01B4 - 0x01FE
 ```
 
-Each 3-byte record contains 2 bytes of ESN/serial fragment followed by
-`0xFF`. Enrolled wireless sensors have non-zero ESN bytes; unenrolled
-or wired zones show their zone number as placeholder (e.g., `00 03 FF`
-for zone 3).
+> **Previously documented as "Zone Enrollment"** — 3-byte records read as two
+> ESN bytes plus an `0xFF` marker, with unenrolled zones showing their zone
+> number. The record shape fits, the content does not. Two observations rule it
+> out: the trailing `0xF` nibbles are *variable-length padding* that tracks the
+> digit count, not a fixed marker; and on a KYO32G with no wireless zones at all
+> (every zone record carries attribute byte `0x00`, i.e. `ViaRadio` off) the
+> first record held the panel's actual 6-digit access code, confirmed against the
+> keypad. A wireless-enrollment table on that panel would be empty.
+>
+> Wireless ESNs are stored separately at `0xC045` (10.15), which is what the
+> component actually reads.
 
 ### 10.4 Partition Configuration (0x01E9-0x0228)
 
@@ -1130,9 +1158,10 @@ Read as:       F0 45 C0 02 00 F7 (zone 1)
 Each read returns 3 data bytes: the wireless zone sensor's ESN.
 Unenrolled or wired zones return `00 00 00`.
 
-> **Note**: This register stores the raw ESN for each zone independently
-> of the zone enrollment register (section 10.3). The enrollment register
-> at `0x019E` uses a different format (2 ESN bytes + `0xFF` marker).
+> **Note**: This is the only wireless-ESN storage the component reads. The
+> `0x019E` window was previously described as a second enrollment table with a
+> different format; it is not enrollment data at all, but the user access codes
+> (10.3).
 
 > **EEPROM timing**: See section 10.16 for critical timing requirements.
 
@@ -1469,7 +1498,7 @@ KyoUnit during upload/download operations. Subject to the same
 | `0x009F` | 128B | Zone configuration (32 × 4 bytes) — `0x00A5` on KYO32G, see 10.29 | Yes |
 | `0x011F` | 80B | Keyfob button config (16 × 5 bytes) | No |
 | `0x016F` | 26B | Timers (entry/exit/siren, 8 partitions) | Yes |
-| `0x019E` | 96B | Zone enrollment/ESN (32 × 3 bytes) | No |
+| `0x019E` | 72B | **User access codes** (3 bytes/slot, BCD) — `0x01B4` on KYO32G, see 10.3 | No — masked by `memory_scan` |
 | `0x0193` | 1B | Unknown post-write control | No |
 | `0x0197` | 1B | Unknown post-write control | No |
 | `0x01E6` | 3B | Panel mode/status | No |
@@ -1541,7 +1570,7 @@ labels rather than the configured names.
 
 | Register | Non-G meaning | On KYO32G 2.13 | Effect if read |
 |----------|---------------|----------------|----------------|
-| `0x01E6` | Panel mode | Inside the zone-enrollment table `0x019E`-`0x01F7` (reads `FF 00`, the 2nd byte of a zone record) | Permanent false `programming=YES` |
+| `0x01E6` | Panel mode | Inside the access-code table, which on the G runs to `0x01FE` (10.3) | Permanent false `programming=YES`, and the two bytes read are code digits — the read is skipped on KYO32G and KYO8W |
 | `0x1503` | Status flags | `FF` padding just after partition status `0x14EC`/`0x1502` (reads `00 00 FF 00 FF`) | Permanent false `trouble=YES` |
 
 The correct KYO32G panel-mode / trouble registers, if they exist, cannot be
