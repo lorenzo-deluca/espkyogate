@@ -9,6 +9,7 @@
 #include "bentel_kyo.h"
 #include "alarm_control_panel.h"
 #include "cp437.h"
+#include "partition_status.h"
 #include <ctime>
 
 namespace esphome {
@@ -29,7 +30,8 @@ void BentelKyo::setup() {
 }
 
 void BentelKyo::dump_config() {
-  ESP_LOGCONFIG(TAG, "Bentel KYO:");
+  ESP_LOGI(TAG, "Bentel KYO:");
+  ESP_LOGI(TAG, "  Source commit: %s", this->source_commit_.c_str());
   if (this->model_detected_) {
     const char *model_name;
     switch (this->alarm_model_) {
@@ -41,14 +43,14 @@ void BentelKyo::dump_config() {
       case AlarmModel::KYO_32G: model_name = "KYO32G"; break;
       default: model_name = "Unknown"; break;
     }
-    ESP_LOGCONFIG(TAG, "  Model: %s", model_name);
-    ESP_LOGCONFIG(TAG, "  Firmware: %s", this->firmware_version_);
-    ESP_LOGCONFIG(TAG, "  Max Zones: %d", this->max_zones_);
+    ESP_LOGI(TAG, "  Model: %s", model_name);
+    ESP_LOGI(TAG, "  Firmware: %s", this->firmware_version_);
+    ESP_LOGI(TAG, "  Max Zones: %d", this->max_zones_);
   } else {
-    ESP_LOGCONFIG(TAG, "  Model: not yet detected");
+    ESP_LOGI(TAG, "  Model: not yet detected");
   }
-  ESP_LOGCONFIG(TAG, "  Alarm panels: %d", this->alarm_panels_.size());
-  ESP_LOGCONFIG(TAG, "  Binary sensors: %d", this->binary_sensors_.size());
+  ESP_LOGI(TAG, "  Alarm panels: %d", this->alarm_panels_.size());
+  ESP_LOGI(TAG, "  Binary sensors: %d", this->binary_sensors_.size());
 }
 
 // ========================================
@@ -154,7 +156,15 @@ void BentelKyo::loop() {
           // register here returns FF padding, which the parser reads as all-disarmed
           // (issue #118, regression from unifying the two commands). KYO8W is NOT in
           // this branch: it was hardware-confirmed on the 0x1502 register in #109.
-          cmd = CMD_GET_PARTITION_KYO32; cmd_len = sizeof(CMD_GET_PARTITION_KYO32);
+          //
+          // Some non-G panels are the other way around (issue #122): 0x14EC comes back
+          // completely unmapped and 0x1502 is the one that works. partition_addr_use_alt_
+          // is learned at runtime in the case 2 handler below when that's detected.
+          if (this->partition_addr_use_alt_) {
+            cmd = CMD_GET_PARTITION_KYO32G; cmd_len = sizeof(CMD_GET_PARTITION_KYO32G);
+          } else {
+            cmd = CMD_GET_PARTITION_KYO32; cmd_len = sizeof(CMD_GET_PARTITION_KYO32);
+          }
         } else {
           // KYO32G and KYO8W both read partition status at 0x1502.
           cmd = CMD_GET_PARTITION_KYO32G; cmd_len = sizeof(CMD_GET_PARTITION_KYO32G);
@@ -164,6 +174,17 @@ void BentelKyo::loop() {
       }
       break;
     case 2:  // partition status
+      if (this->alarm_model_ == AlarmModel::KYO_32 && !this->partition_addr_fallback_tried_ &&
+          this->partition_status_looks_unmapped_(this->serial_rx_buf_, count)) {
+        // 0x14EC returned no partition data at all — this panel needs the KYO32G
+        // register instead (issue #122). Switch and retry immediately, once.
+        this->partition_addr_fallback_tried_ = true;
+        this->partition_addr_use_alt_ = true;
+        ESP_LOGW(TAG, "Partition status at 0x14EC returned no partition data — retrying "
+                      "with the KYO32G register (0x1502), which this panel appears to need");
+        this->send_command_async_(CMD_GET_PARTITION_KYO32G, sizeof(CMD_GET_PARTITION_KYO32G), 2);
+        return;
+      }
       ok = this->parse_partition_status_(this->serial_rx_buf_, count);
       break;
   }
@@ -578,6 +599,12 @@ bool BentelKyo::parse_sensor_status_(const uint8_t *rx, int count) {
 
   this->publish_binary_sensors_();
   return true;
+}
+
+bool BentelKyo::partition_status_looks_unmapped_(const uint8_t *rx, int count) const {
+  if (count != RESP_PARTITION_KYO32)
+    return false;
+  return partition_status_bits_all_absent(rx);
 }
 
 bool BentelKyo::parse_partition_status_(const uint8_t *rx, int count) {
@@ -1802,7 +1829,7 @@ bool BentelKyo::memory_scan_next_() {
 
   int chunk = this->memory_scan_chunk_index_;
   if (chunk >= total_chunks) {
-    ESP_LOGI(TAG, "Memory scan complete — redact personal data, then attach the SCAN lines above to issue #113");
+    ESP_LOGI(TAG, "Memory scan complete — redact personal data, then attach the SCAN lines above to the issue report");
     return true;
   }
 

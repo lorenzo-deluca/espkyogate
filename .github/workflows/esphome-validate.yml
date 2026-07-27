@@ -53,6 +53,10 @@ jobs:
         run: |
           g++ -std=c++17 -Wall -Wextra -o test_decode_panel_name tests/test_decode_panel_name.cpp
           ./test_decode_panel_name
+      - name: Compile and run partition_status_fallback tests
+        run: |
+          g++ -std=c++17 -Wall -Wextra -o test_partition_status_fallback tests/test_partition_status_fallback.cpp
+          ./test_partition_status_fallback
 
   validate-negative:
     name: Validate Invalid Config (${{ matrix.channel }})

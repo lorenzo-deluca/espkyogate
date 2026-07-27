@@ -136,6 +136,12 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   void set_alarm_model_text_sensor(text_sensor::TextSensor *sensor) { this->alarm_model_sensor_ = sensor; }
   void register_text_sensor(text_sensor::TextSensor *sensor, TextSensorType type, uint8_t index);
 
+  // Git commit of the espkyogate source tree this firmware was built from, resolved at
+  // build time from the external_components checkout (see __init__.py). Logged in
+  // dump_config() so a bug report's logs pin down the exact revision without having to
+  // bisect versions (as was needed for issue #122).
+  void set_source_commit(const std::string &commit) { this->source_commit_ = commit; }
+
   // Public command methods
   void arm_partition(uint8_t partition, uint8_t arm_type);
   void disarm_partition(uint8_t partition);
@@ -184,6 +190,11 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   bool detect_alarm_model_(const uint8_t *rx, int count);
   bool parse_sensor_status_(const uint8_t *rx, int count);
   bool parse_partition_status_(const uint8_t *rx, int count);
+  // True when a partition-status response has no partition in any arming state at all
+  // (rx[6..9] all zero). A configured partition is always in exactly one of the four
+  // states, so this only happens when the register queried isn't mapped on this panel.
+  // Used to auto-fallback KYO_32 from 0x14EC to 0x1502 at runtime (issue #122).
+  bool partition_status_looks_unmapped_(const uint8_t *rx, int count) const;
   void send_command_async_(const uint8_t *cmd, int cmd_len, uint8_t pending_op, uint32_t timeout_ms = 200);
   void handle_serial_failure_();
   int send_message_(const uint8_t *cmd, int cmd_len, uint8_t *response, uint32_t timeout_ms = SERIAL_TIMEOUT_MS);
@@ -239,12 +250,20 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   std::vector<RegisteredTextSensor> text_sensors_;
   text_sensor::TextSensor *firmware_version_sensor_{nullptr};
   text_sensor::TextSensor *alarm_model_sensor_{nullptr};
+  std::string source_commit_{"unknown"};
 
   // Model and state
   AlarmModel alarm_model_{AlarmModel::UNKNOWN};
   bool model_detected_{false};
   int max_zones_{KYO_MAX_ZONES};
   char firmware_version_[14]{};
+
+  // Some KYO32 non-G panels don't actually use the 0x14EC partition-status register —
+  // a PCB/firmware revision that also fails the version query entirely (issue #122)
+  // uses the KYO32G register (0x1502) instead. Learned once at runtime per boot: start
+  // on 0x14EC, and if that comes back structurally empty, switch to 0x1502 and stay there.
+  bool partition_addr_use_alt_{false};
+  bool partition_addr_fallback_tried_{false};
 
   // Async serial I/O state machine
   SerialState serial_state_{SerialState::IDLE};

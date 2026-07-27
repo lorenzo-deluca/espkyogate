@@ -206,6 +206,10 @@ button:
     bentel_kyo_id: kyo
     type: memory_scan
     name: "Memory Scan"
+  - platform: bentel_kyo
+    bentel_kyo_id: kyo
+    type: dump_config
+    name: "Dump Config"
 
   # Arming
   - platform: bentel_kyo
