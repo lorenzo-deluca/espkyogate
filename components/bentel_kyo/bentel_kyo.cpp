@@ -174,29 +174,40 @@ void BentelKyo::loop() {
       }
       break;
     case 2:  // partition status
+      // Runtime learning of the KYO32 non-G partition register, until the register in use
+      // is proven mapped (partition_addr_confirmed_) or the one-shot fallback has run
+      // (partition_addr_fallback_tried_). See issues #118, #122, #124.
       if (this->alarm_model_ == AlarmModel::KYO_32 && !this->partition_addr_confirmed_ &&
-          !this->partition_addr_fallback_tried_ &&
-          this->partition_status_looks_unmapped_(this->serial_rx_buf_, count)) {
-        // 0x14EC returned no partition data at all — this panel needs the KYO32G
-        // register instead (issue #122). Switch and retry immediately, once.
-        this->partition_addr_fallback_tried_ = true;
-        this->partition_addr_use_alt_ = true;
-        ESP_LOGW(TAG, "Partition status at 0x14EC returned no partition data — retrying "
-                      "with the KYO32G register (0x1502), which this panel appears to need");
-        this->send_command_async_(CMD_GET_PARTITION_KYO32G, sizeof(CMD_GET_PARTITION_KYO32G), 2);
-        return;
-      }
-      // The active register has now returned a structurally valid, non-empty partition
-      // frame, so it is proven mapped: latch that and stop re-checking for fallback
-      // (issue #124). Without this, partition_addr_fallback_tried_ never sets on a panel
-      // where 0x14EC is correct and never falls back, leaving the unmapped-check live for
-      // the whole uptime — a single corrupt all-zero frame (status polling is not checksum-
-      // verified) would then flip a working panel to 0x1502 permanently, restoring #118.
-      // Confirmation can only ever prevent a switch, never cause one.
-      if (this->alarm_model_ == AlarmModel::KYO_32 && !this->partition_addr_confirmed_ &&
-          count == RESP_PARTITION_KYO32 &&
-          !this->partition_status_looks_unmapped_(this->serial_rx_buf_, count)) {
-        this->partition_addr_confirmed_ = true;
+          !this->partition_addr_fallback_tried_) {
+        if (this->partition_status_looks_unmapped_(this->serial_rx_buf_, count)) {
+          // Require several consecutive empty frames before switching. A genuinely
+          // unmapped register returns empty on every poll (issue #122), so the fallback
+          // still fires — just a few polls later. But status polling is not checksum-
+          // verified (loop() keeps whatever bytes arrive before INTER_BYTE_SILENCE_MS;
+          // the only checksum check is in send_message_ and even it merely warns), so a
+          // single corrupt all-zero frame must not be enough to flip a working panel to
+          // 0x1502 (issue #124). This also covers the very first poll, before any good
+          // frame can confirm the register.
+          if (++this->partition_unmapped_streak_ >= PARTITION_UNMAPPED_FALLBACK_THRESHOLD) {
+            this->partition_addr_fallback_tried_ = true;
+            this->partition_addr_use_alt_ = true;
+            ESP_LOGW(TAG, "Partition status at 0x14EC returned no partition data on %u "
+                          "consecutive polls — switching to the KYO32G register (0x1502), "
+                          "which this panel appears to need",
+                     (unsigned) this->partition_unmapped_streak_);
+            this->send_command_async_(CMD_GET_PARTITION_KYO32G, sizeof(CMD_GET_PARTITION_KYO32G), 2);
+            return;
+          }
+          // Not enough yet — fall through and parse this frame as-is (all-disarmed).
+        } else {
+          // Any frame that is not structurally empty breaks the streak. A valid, non-empty
+          // 26-byte frame additionally proves the register mapped: latch it so the check
+          // stops for the rest of the uptime and a later corrupt frame can never switch a
+          // working panel. Confirmation can only ever prevent a switch, never cause one.
+          this->partition_unmapped_streak_ = 0;
+          if (count == RESP_PARTITION_KYO32)
+            this->partition_addr_confirmed_ = true;
+        }
       }
       ok = this->parse_partition_status_(this->serial_rx_buf_, count);
       break;
