@@ -174,7 +174,8 @@ void BentelKyo::loop() {
       }
       break;
     case 2:  // partition status
-      if (this->alarm_model_ == AlarmModel::KYO_32 && !this->partition_addr_fallback_tried_ &&
+      if (this->alarm_model_ == AlarmModel::KYO_32 && !this->partition_addr_confirmed_ &&
+          !this->partition_addr_fallback_tried_ &&
           this->partition_status_looks_unmapped_(this->serial_rx_buf_, count)) {
         // 0x14EC returned no partition data at all — this panel needs the KYO32G
         // register instead (issue #122). Switch and retry immediately, once.
@@ -184,6 +185,18 @@ void BentelKyo::loop() {
                       "with the KYO32G register (0x1502), which this panel appears to need");
         this->send_command_async_(CMD_GET_PARTITION_KYO32G, sizeof(CMD_GET_PARTITION_KYO32G), 2);
         return;
+      }
+      // The active register has now returned a structurally valid, non-empty partition
+      // frame, so it is proven mapped: latch that and stop re-checking for fallback
+      // (issue #124). Without this, partition_addr_fallback_tried_ never sets on a panel
+      // where 0x14EC is correct and never falls back, leaving the unmapped-check live for
+      // the whole uptime — a single corrupt all-zero frame (status polling is not checksum-
+      // verified) would then flip a working panel to 0x1502 permanently, restoring #118.
+      // Confirmation can only ever prevent a switch, never cause one.
+      if (this->alarm_model_ == AlarmModel::KYO_32 && !this->partition_addr_confirmed_ &&
+          count == RESP_PARTITION_KYO32 &&
+          !this->partition_status_looks_unmapped_(this->serial_rx_buf_, count)) {
+        this->partition_addr_confirmed_ = true;
       }
       ok = this->parse_partition_status_(this->serial_rx_buf_, count);
       break;

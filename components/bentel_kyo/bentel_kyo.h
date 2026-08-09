@@ -264,6 +264,12 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   // on 0x14EC, and if that comes back structurally empty, switch to 0x1502 and stay there.
   bool partition_addr_use_alt_{false};
   bool partition_addr_fallback_tried_{false};
+  // Latches once the active partition register returns a non-empty frame, proving it
+  // mapped and disabling the fallback check for the rest of the uptime (issue #124).
+  // partition_addr_fallback_tried_ only sets when the fallback actually fires, so on a
+  // panel where 0x14EC is correct it never sets and the check would otherwise stay live
+  // forever, letting a single corrupt all-zero frame flip a working panel to 0x1502.
+  bool partition_addr_confirmed_{false};
 
   // Async serial I/O state machine
   SerialState serial_state_{SerialState::IDLE};
