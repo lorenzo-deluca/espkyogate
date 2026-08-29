@@ -46,6 +46,12 @@ static const int MAX_INVALID_COUNT = 3;
 static const uint32_t SERIAL_TIMEOUT_MS = 300;
 static const uint32_t INTER_BYTE_SILENCE_MS = 20;
 
+// KYO32 non-G partition-register fallback (#122/#124): number of consecutive structurally
+// empty 0x14EC frames required before switching to 0x1502. Above 1 so a single corrupt,
+// unchecksummed status frame cannot flip a working panel; a genuinely unmapped register
+// answers empty on every poll and still trips this within a few update cycles.
+static const uint8_t PARTITION_UNMAPPED_FALLBACK_THRESHOLD = 3;
+
 enum class AlarmModel : uint8_t {
   UNKNOWN = 0,
   KYO_4,
@@ -264,6 +270,15 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   // on 0x14EC, and if that comes back structurally empty, switch to 0x1502 and stay there.
   bool partition_addr_use_alt_{false};
   bool partition_addr_fallback_tried_{false};
+  // Latches once the active partition register returns a non-empty frame, proving it
+  // mapped and disabling the fallback check for the rest of the uptime (issue #124).
+  // partition_addr_fallback_tried_ only sets when the fallback actually fires, so on a
+  // panel where 0x14EC is correct it never sets and the check would otherwise stay live
+  // forever, letting a single corrupt all-zero frame flip a working panel to 0x1502.
+  bool partition_addr_confirmed_{false};
+  // Consecutive structurally-empty 0x14EC frames seen so far; reset by any non-empty frame.
+  // The fallback only fires once this reaches PARTITION_UNMAPPED_FALLBACK_THRESHOLD (#124).
+  uint8_t partition_unmapped_streak_{0};
 
   // Async serial I/O state machine
   SerialState serial_state_{SerialState::IDLE};
