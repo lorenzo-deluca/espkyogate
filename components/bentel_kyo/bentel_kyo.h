@@ -210,6 +210,9 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   // excluded — it uses KYO32-format runtime responses (issue #107/PR #109) and has no
   // validated KYO8 config trace; see the definition for details.
   bool is_kyo8_family_() const;
+  // True when config/name tables must be read at the KYO32G addresses: KYO32G itself, or a
+  // KYO32 latched onto the G map by the partition-register fallback (see kyo32g_map_latched_).
+  bool uses_kyo32g_map_() const;
   // Selects the per-model base-address map for a config table. Returns nullptr when the
   // table location is not yet known for the current model, so the reader skips it instead
   // of decoding garbage from the wrong address.
@@ -263,6 +266,7 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   bool model_detected_{false};
   int max_zones_{KYO_MAX_ZONES};
   char firmware_version_[14]{};
+  int firmware_major_{0};  // major version parsed from firmware_version_; 0 = unknown
 
   // Some KYO32 non-G panels don't actually use the 0x14EC partition-status register —
   // a PCB/firmware revision that also fails the version query entirely (issue #122)
@@ -279,6 +283,10 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   // Consecutive structurally-empty 0x14EC frames seen so far; reset by any non-empty frame.
   // The fallback only fires once this reaches PARTITION_UNMAPPED_FALLBACK_THRESHOLD (#124).
   uint8_t partition_unmapped_streak_{0};
+  // Set when a KYO32 on firmware >= 2 needs the 0x1502 fallback: such a panel (seen on
+  // "KYO32   2.12") uses the KYO32G memory map throughout, so every config/name table is
+  // switched to the G addresses too and the configuration is re-read.
+  bool kyo32g_map_latched_{false};
 
   // Async serial I/O state machine
   SerialState serial_state_{SerialState::IDLE};
