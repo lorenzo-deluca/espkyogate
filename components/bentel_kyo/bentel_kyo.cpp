@@ -10,6 +10,7 @@
 #include "alarm_control_panel.h"
 #include "cp437.h"
 #include "partition_status.h"
+#include <cstdlib>
 #include <ctime>
 
 namespace esphome {
@@ -45,6 +46,8 @@ void BentelKyo::dump_config() {
     }
     ESP_LOGI(TAG, "  Model: %s", model_name);
     ESP_LOGI(TAG, "  Firmware: %s", this->firmware_version_);
+    ESP_LOGI(TAG, "  Memory map: %s", this->uses_kyo32g_map_() ? "KYO32G"
+                                      : (this->is_kyo8_family_() ? "KYO8" : "KYO32 non-G"));
     ESP_LOGI(TAG, "  Max Zones: %d", this->max_zones_);
   } else {
     ESP_LOGI(TAG, "  Model: not yet detected");
@@ -195,6 +198,25 @@ void BentelKyo::loop() {
                           "consecutive polls — switching to the KYO32G register (0x1502), "
                           "which this panel appears to need",
                      (unsigned) this->partition_unmapped_streak_);
+            // A firmware 2.x KYO32 that needs 0x1502 uses the KYO32G memory map for its
+            // config and name tables too (traced on "KYO32   2.12": zone names at 0x19B0,
+            // area names at 0x1750). The config read has usually finished on the non-G
+            // addresses by now, so switch the map and read it again.
+            if (this->firmware_major_ >= 2) {
+              this->kyo32g_map_latched_ = true;
+              ESP_LOGW(TAG, "Firmware %d.x KYO32 on the 0x1502 register — switching config and "
+                            "name tables to the KYO32G memory map and re-reading them",
+                       this->firmware_major_);
+              // 0x01E6 and 0x1503 are not read on the G map (see read_panel_mode_ and
+              // read_status_flags_); drop what the non-G read left behind — on the G,
+              // 0x01E6 lies inside the access-code table.
+              this->panel_mode_raw_[0] = 0x11;
+              this->panel_mode_raw_[1] = 0x10;
+              this->panel_programming_mode_ = false;
+              memset(this->status_flags_raw_, 0xFF, sizeof(this->status_flags_raw_));
+              this->trouble_active_ = false;
+              this->reread_config();
+            }
             this->send_command_async_(CMD_GET_PARTITION_KYO32G, sizeof(CMD_GET_PARTITION_KYO32G), 2);
             return;
           }
@@ -441,6 +463,16 @@ bool BentelKyo::detect_alarm_model_(const uint8_t *rx, int count) {
     this->firmware_version_[i] = (char) rx[6 + i];
 
   ESP_LOGI(TAG, "Firmware: '%s'", this->firmware_version_);
+
+  // Major version: the digits right before the '.' of "x.yy" ("KYO32   2.12" -> 2).
+  this->firmware_major_ = 0;
+  const char *dot = strchr(this->firmware_version_, '.');
+  if (dot != nullptr) {
+    const char *p = dot;
+    while (p > this->firmware_version_ && p[-1] >= '0' && p[-1] <= '9')
+      p--;
+    this->firmware_major_ = atoi(p);
+  }
 
   // Match model from firmware string prefix (longest match first)
   if (strncmp(this->firmware_version_, "KYO32G", 6) == 0) {
@@ -1199,7 +1231,7 @@ bool BentelKyo::read_zone_config_() {
   static const uint16_t BASE_ADDRS_NONG[] = {0x009F, 0x00DF};
   static const uint16_t BASE_ADDRS_KYO32G[] = {0x00A5, 0x00E5};
   const uint16_t *base_addrs =
-      (this->alarm_model_ == AlarmModel::KYO_32G) ? BASE_ADDRS_KYO32G : BASE_ADDRS_NONG;
+      this->uses_kyo32g_map_() ? BASE_ADDRS_KYO32G : BASE_ADDRS_NONG;
   int num_blocks = (this->max_zones_ > 16) ? 2 : 1;
   int blk = this->config_chunk_index_;
 
@@ -1254,9 +1286,14 @@ bool BentelKyo::is_kyo8_family_() const {
          this->alarm_model_ == AlarmModel::KYO_8G;
 }
 
+bool BentelKyo::uses_kyo32g_map_() const {
+  return this->alarm_model_ == AlarmModel::KYO_32G ||
+         (this->alarm_model_ == AlarmModel::KYO_32 && this->kyo32g_map_latched_);
+}
+
 const uint16_t *BentelKyo::select_name_bases_(const uint16_t *nong, const uint16_t *kyo32g,
                                               const uint16_t *kyo8) const {
-  if (this->alarm_model_ == AlarmModel::KYO_32G)
+  if (this->uses_kyo32g_map_())
     return kyo32g;
   if (this->is_kyo8_family_())
     return kyo8;
@@ -1540,7 +1577,7 @@ void BentelKyo::read_panel_mode_() {
     // the continuous F0 68 status poll.
     return;
   }
-  if (this->alarm_model_ == AlarmModel::KYO_32G || this->alarm_model_ == AlarmModel::KYO_8W) {
+  if (this->uses_kyo32g_map_() || this->alarm_model_ == AlarmModel::KYO_8W) {
     // 0x01E6 is not the panel-mode register on KYO32G. A full config scan of a KYO32G 2.13
     // shows the 32-zone config table filling 0x009F-0x011E and the access-code table at
     // 0x01B4-0x01FE (10.3), so 0x01E6 lands inside the code table — the two bytes read are
@@ -1585,7 +1622,7 @@ void BentelKyo::read_status_flags_() {
     // trouble_active_ at its no-trouble default until the real register is located.
     return;
   }
-  if (this->alarm_model_ == AlarmModel::KYO_32G) {
+  if (this->uses_kyo32g_map_()) {
     // 0x1503 is not the trouble-flags register on KYO32G. The 2.13 scan shows this address
     // sits in the FF padding just after the partition-status block (0x14EC/0x1502 on the G),
     // reading 00 00 FF 00 FF; the "any byte != 0xFF" rule turns that into a permanent false
@@ -1907,7 +1944,7 @@ void BentelKyo::publish_text_sensors_() {
       case TEXT_ZONE_TYPE: {
         if (idx >= (uint8_t) this->max_zones_) continue;
         const char *type_str;
-        if (this->alarm_model_ == AlarmModel::KYO_32G) {
+        if (this->uses_kyo32g_map_()) {
           // The panel's own string ROM at 0x34B1 enumerates the eight zone types in this
           // order, and the low three bits of the record's first byte index it. Confirmed on
           // KYO32G 2.13 by changing one zone from the keypad and re-reading: Instant kept
