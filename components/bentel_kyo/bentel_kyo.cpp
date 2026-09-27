@@ -1755,7 +1755,9 @@ const char *BentelKyo::decode_event_code_(uint16_t code, uint8_t *entity_out, ch
 
 bool BentelKyo::read_event_log_next_() {
   static const int EVENT_LOG_CHUNKS = 28;
-  static const uint16_t EVENT_LOG_BASE = 0x0D27;
+  // KYO32G (and KYO32 latched onto the G map) keeps the log 0x16 bytes later, the same
+  // shift as partition status 0x14EC -> 0x1502.
+  const uint16_t EVENT_LOG_BASE = this->uses_kyo32g_map_() ? 0x0D3D : 0x0D27;
   static const int RECORDS_PER_CHUNK = 9;  // 63 bytes / 7 bytes per record
 
   int chunk = this->event_log_chunk_index_;
