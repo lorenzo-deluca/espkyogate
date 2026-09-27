@@ -304,7 +304,7 @@ void BentelKyo::reread_config() {
 }
 
 void BentelKyo::read_event_log() {
-  ESP_LOGI(TAG, "Event log dump requested — reading 28 chunks...");
+  ESP_LOGI(TAG, "Event log dump requested");
   this->event_log_read_pending_ = true;
   this->event_log_chunk_index_ = 0;
   this->event_log_entries_logged_ = 0;
@@ -1754,30 +1754,37 @@ const char *BentelKyo::decode_event_code_(uint16_t code, uint8_t *entity_out, ch
 }
 
 bool BentelKyo::read_event_log_next_() {
-  static const int EVENT_LOG_CHUNKS = 28;
+  // 7-byte records: 128 on KYO4/8/8G, 256 on KYO32/32G/8W. Reads are aligned to whole
+  // records (9 per read, 63 bytes) so no record straddles two reads; the last read
+  // carries the remainder.
+  static const int RECORDS_PER_CHUNK = 9;
+  const int event_log_records = this->is_kyo8_family_() ? 128 : 256;
+  const int event_log_chunks = (event_log_records + RECORDS_PER_CHUNK - 1) / RECORDS_PER_CHUNK;
   // KYO32G (and KYO32 latched onto the G map) keeps the log 0x16 bytes later, the same
   // shift as partition status 0x14EC -> 0x1502.
   const uint16_t EVENT_LOG_BASE = this->uses_kyo32g_map_() ? 0x0D3D : 0x0D27;
-  static const int RECORDS_PER_CHUNK = 9;  // 63 bytes / 7 bytes per record
 
   int chunk = this->event_log_chunk_index_;
-  if (chunk >= EVENT_LOG_CHUNKS) {
+  if (chunk >= event_log_chunks) {
     ESP_LOGI(TAG, "Event log dump complete (%d entries logged)", this->event_log_entries_logged_);
     return true;
   }
 
-  uint16_t addr = EVENT_LOG_BASE + (chunk * 0x40);
-  ESP_LOGD(TAG, "Event log chunk %d/28 (0x%04X)", chunk + 1, addr);
+  int remaining = event_log_records - chunk * RECORDS_PER_CHUNK;
+  int records = remaining < RECORDS_PER_CHUNK ? remaining : RECORDS_PER_CHUNK;
+  int len = records * 7;
+  uint16_t addr = EVENT_LOG_BASE + chunk * RECORDS_PER_CHUNK * 7;
+  ESP_LOGD(TAG, "Event log chunk %d/%d (0x%04X)", chunk + 1, event_log_chunks, addr);
 
   uint8_t rx[255];
-  int count = this->read_register_(addr, 0x3F, rx, 500);
-  if (count < 6 + 63) {
+  int count = this->read_register_(addr, len - 1, rx, 500);  // LEN byte is length - 1
+  if (count < 6 + len) {
     ESP_LOGW(TAG, "Event log chunk %d read failed at 0x%04X: got %d bytes", chunk + 1, addr, count);
     this->event_log_chunk_index_++;
     return false;
   }
 
-  for (int i = 0; i < RECORDS_PER_CHUNK; i++) {
+  for (int i = 0; i < records; i++) {
     int slot = chunk * RECORDS_PER_CHUNK + i;
     int offset = 6 + (i * 7);
 
