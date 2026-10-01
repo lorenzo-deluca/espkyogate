@@ -28,10 +28,15 @@ void BentelKyo::setup() {
   ESP_LOGI(TAG, "Setting up Bentel KYO hub...");
   this->communication_ok_ = false;
   this->force_publish_ = true;
+
+  // Static build-time value: publish once, independently of panel communication
+  if (this->component_version_sensor_ != nullptr)
+    this->component_version_sensor_->publish_state(this->component_version_);
 }
 
 void BentelKyo::dump_config() {
   ESP_LOGI(TAG, "Bentel KYO:");
+  ESP_LOGI(TAG, "  Component version: %s", this->component_version_.c_str());
   ESP_LOGI(TAG, "  Source commit: %s", this->source_commit_.c_str());
   if (this->model_detected_) {
     const char *model_name;

@@ -301,6 +301,9 @@ text_sensor:
     bentel_kyo_id: kyo
     firmware_version:
       name: "Firmware Version"
+    # espkyogate release tag this firmware was built from (e.g. v2026.9.27)
+    component_version:
+      name: "ESPKyoGate Version"
     alarm_model:
       name: "Alarm Model"
     keyfobs:
