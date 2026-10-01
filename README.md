@@ -291,13 +291,15 @@ binary_sensor:
       - output_number: 2
         name: "Output 2"
 
-# Text Sensors — firmware, model, keyfobs
+# Text Sensors — firmware, component version, model, keyfobs
 
 text_sensor:
   - platform: bentel_kyo
     bentel_kyo_id: kyo
     firmware_version:
       name: "Firmware Version"
+    component_version:
+      name: "ESPKyoGate Version"
     alarm_model:
       name: "Alarm Model"
     keyfobs:
@@ -572,7 +574,7 @@ Notes:
 
 ### Dump Config (debug)
 
-`dump_config()` (model, firmware, **source commit**, entity counts) normally
+`dump_config()` (model, firmware, **component version**, **source commit**, entity counts) normally
 prints only once at boot, then again for each *new* log client that connects.
 If Home Assistant already had a persistent connection open before you opened
 the log view, you'll miss that boot-time block entirely and see nothing from
@@ -587,9 +589,10 @@ button:
     name: "Dump Config (Debug)"
 ```
 
-The source commit line is especially useful when reporting a bug: it pins
-down the exact revision of the component you're running without having to
-bisect versions.
+The component version and source commit lines are especially useful when
+reporting a bug: they pin down the exact release/revision of the component
+you're running without having to bisect versions. To see the release in Home
+Assistant too, add the `component_version` text sensor.
 
 ### Arm Preset Buttons
 
@@ -756,6 +759,7 @@ Per-zone tamper memory.
 | Key | Description |
 |-----|-------------|
 | `firmware_version` | Panel firmware version string |
+| `component_version` | espkyogate release this firmware was built from: the git tag in `external_components` (e.g. `github://lorenzo-deluca/espkyogate@v2026.9.27` → `v2026.9.27`). Untagged sources report `<branch>@<commit>` (e.g. `master@258801431884`). Not to be confused with ESPHome's own `version` sensor, which reports the ESPHome version |
 | `alarm_model` | Detected alarm model (KYO4, KYO8, KYO32, etc.) |
 | `keyfobs` | Keyfob serial numbers and names (slot 1-16) |
 | `partitions` | Partition names as configured on the panel (partition 1-8) |

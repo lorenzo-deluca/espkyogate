@@ -147,6 +147,10 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   // dump_config() so a bug report's logs pin down the exact revision without having to
   // bisect versions (as was needed for issue #122).
   void set_source_commit(const std::string &commit) { this->source_commit_ = commit; }
+  // Release tag the component was fetched at (e.g. "v2026.9.27"), also resolved at build
+  // time: ESPHome only reports its own version, not this component's (issue #133).
+  void set_component_version(const std::string &version) { this->component_version_ = version; }
+  void set_component_version_text_sensor(text_sensor::TextSensor *sensor) { this->component_version_sensor_ = sensor; }
 
   // Public command methods
   void arm_partition(uint8_t partition, uint8_t arm_type);
@@ -259,7 +263,9 @@ class BentelKyo : public PollingComponent, public uart::UARTDevice {
   std::vector<RegisteredTextSensor> text_sensors_;
   text_sensor::TextSensor *firmware_version_sensor_{nullptr};
   text_sensor::TextSensor *alarm_model_sensor_{nullptr};
+  text_sensor::TextSensor *component_version_sensor_{nullptr};
   std::string source_commit_{"unknown"};
+  std::string component_version_{"unknown"};
 
   // Model and state
   AlarmModel alarm_model_{AlarmModel::UNKNOWN};

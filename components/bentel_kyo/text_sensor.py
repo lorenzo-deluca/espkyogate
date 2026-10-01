@@ -13,6 +13,7 @@ from . import bentel_kyo_ns, BentelKyo, CONF_BENTEL_KYO_ID
 DEPENDENCIES = ["bentel_kyo"]
 
 CONF_FIRMWARE_VERSION = "firmware_version"
+CONF_COMPONENT_VERSION = "component_version"
 CONF_ALARM_MODEL = "alarm_model"
 CONF_KEYFOBS = "keyfobs"
 CONF_SLOT = "slot"
@@ -67,6 +68,11 @@ CONFIG_SCHEMA = cv.Schema(
             icon="mdi:tag",
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ).extend({cv.Optional("disabled_by_default", default=True): cv.boolean}),
+        # Release tag of this component (not the panel firmware, not ESPHome's version)
+        cv.Optional(CONF_COMPONENT_VERSION): text_sensor.text_sensor_schema(
+            icon="mdi:tag-text-outline",
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+        ).extend({cv.Optional("disabled_by_default", default=True): cv.boolean}),
         cv.Optional(CONF_ALARM_MODEL): text_sensor.text_sensor_schema(
             icon="mdi:shield-check",
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
@@ -92,6 +98,10 @@ async def to_code(config):
     if CONF_FIRMWARE_VERSION in config:
         var = await text_sensor.new_text_sensor(config[CONF_FIRMWARE_VERSION])
         cg.add(hub.set_firmware_version_text_sensor(var))
+
+    if CONF_COMPONENT_VERSION in config:
+        var = await text_sensor.new_text_sensor(config[CONF_COMPONENT_VERSION])
+        cg.add(hub.set_component_version_text_sensor(var))
 
     if CONF_ALARM_MODEL in config:
         var = await text_sensor.new_text_sensor(config[CONF_ALARM_MODEL])
