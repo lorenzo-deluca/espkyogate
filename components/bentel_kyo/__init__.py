@@ -1,5 +1,6 @@
 """Bentel KYO alarm panel hub component."""
 
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -40,6 +41,8 @@ def _git(*args: str) -> str | None:
             text=True,
             timeout=5,
             check=False,
+            # Never block the build on a credentials prompt (ls-remote on a private fork)
+            env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
         )
     except (OSError, subprocess.SubprocessError):
         return None
@@ -81,6 +84,23 @@ def _get_fetched_ref(head: str) -> tuple[str | None, str] | None:
     return m.group(2), m.group(3)
 
 
+def _get_remote_tag(head: str) -> str | None:
+    """Newest tag pointing at HEAD on the remote, for when the local clone doesn't know
+    it: a tag created after its commit was fetched never arrives with `git fetch origin
+    master` (github://...@master), nor within the `refresh` window, where ESPHome doesn't
+    fetch at all — so building master right after tagging a release reported
+    "master@<commit>". Needs the network: best effort, None when offline."""
+    out = _git("ls-remote", "--tags", "--sort=-version:refname", "origin")
+    if not out:
+        return None
+    for line in out.splitlines():
+        sha, _, ref = line.partition("\t")
+        if sha == head:
+            # Annotated tags match on their peeled "refs/tags/<name>^{}" line
+            return ref.removeprefix("refs/tags/").removesuffix("^{}")
+    return None
+
+
 def _get_component_version(commit: str) -> str:
     """Release of espkyogate this firmware was built from: the git tag the source was
     fetched at (github://lorenzo-deluca/espkyogate@v2026.9.27 -> "v2026.9.27"), so users
@@ -96,9 +116,9 @@ def _get_component_version(commit: str) -> str:
     if fetched is not None and fetched[0] == "tag":
         return fetched[1] + dirty
 
-    # A tag the local repo does know: a full checkout (local source), or a shallow
-    # clone whose tip happened to be tagged
-    tag = _git("describe", "--tags", "--exact-match", "HEAD")
+    # A tag the local repo does know (a full checkout, or a shallow clone whose tip was
+    # already tagged), else one the remote has on this commit
+    tag = _git("describe", "--tags", "--exact-match", "HEAD") or _get_remote_tag(head)
     if tag:
         return tag + dirty
 
