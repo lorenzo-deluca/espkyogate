@@ -759,7 +759,7 @@ Per-zone tamper memory.
 | Key | Description |
 |-----|-------------|
 | `firmware_version` | Panel firmware version string |
-| `component_version` | espkyogate release this firmware was built from: the git tag in `external_components` (e.g. `github://lorenzo-deluca/espkyogate@v2026.9.27` → `v2026.9.27`). Untagged sources report `<branch>@<commit>` (e.g. `master@258801431884`). Not to be confused with ESPHome's own `version` sensor, which reports the ESPHome version |
+| `component_version` | espkyogate release this firmware was built from: the git tag in `external_components` (e.g. `github://lorenzo-deluca/espkyogate@v2026.9.27` → `v2026.9.27`). Building a branch whose commit is tagged (e.g. `master` right after a release) reports the tag as well; untagged sources report `<branch>@<commit>` (e.g. `master@258801431884`). Not to be confused with ESPHome's own `version` sensor, which reports the ESPHome version |
 | `alarm_model` | Detected alarm model (KYO4, KYO8, KYO32, etc.) |
 | `keyfobs` | Keyfob serial numbers and names (slot 1-16) |
 | `partitions` | Partition names as configured on the panel (partition 1-8) |
