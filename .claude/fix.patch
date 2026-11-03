@@ -1,0 +1,39 @@
+diff --git a/components/bentel_kyo/bentel_kyo.cpp b/components/bentel_kyo/bentel_kyo.cpp
+index f6971f5..19fc1f8 100644
+--- a/components/bentel_kyo/bentel_kyo.cpp
++++ b/components/bentel_kyo/bentel_kyo.cpp
+@@ -1191,8 +1191,9 @@ int BentelKyo::send_message_(const uint8_t *cmd, int cmd_len, uint8_t *response,
+     for (int i = data_start; i < data_end; i++)
+       expected_chk += rx_buf[i];
+ 
+-    if (expected_chk != rx_buf[data_end])
++    if (expected_chk != rx_buf[data_end]) {
+       ESP_LOGW(TAG, "Response checksum mismatch: expected 0x%02X, got 0x%02X", expected_chk, rx_buf[data_end]);
++    }
+   }
+ 
+   memcpy(response, rx_buf, index);
+@@ -1374,8 +1375,9 @@ bool BentelKyo::read_zone_esn_next_() {
+ 
+   if (i >= this->max_zones_) {
+     for (int z = 0; z < this->max_zones_; z++) {
+-      if (this->zone_enrolled_[z])
++      if (this->zone_enrolled_[z]) {
+         ESP_LOGD(TAG, "Zone %d serial: %s", z + 1, this->zone_esn_[z].c_str());
++      }
+     }
+     this->esn_read_index_ = 0;
+     return true;
+@@ -1474,10 +1476,11 @@ void BentelKyo::read_partition_config_() {
+     this->partition_exit_delay_[i] = rx[6 + (i * 2) + 1];   // exit delay
+     this->partition_siren_timer_[i] = rx[6 + 16 + i];        // siren duration
+ 
+-    if (this->partition_entry_delay_[i] != 0 || this->partition_exit_delay_[i] != 0)
++    if (this->partition_entry_delay_[i] != 0 || this->partition_exit_delay_[i] != 0) {
+       ESP_LOGD(TAG, "Partition %d: entry=%ds, exit=%ds, siren=%d", i + 1,
+                this->partition_entry_delay_[i], this->partition_exit_delay_[i],
+                this->partition_siren_timer_[i]);
++    }
+   }
+ }
+ 
