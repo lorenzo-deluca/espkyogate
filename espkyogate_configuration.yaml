@@ -67,6 +67,7 @@ logger:
   baud_rate: 0
   logs:
     component: ERROR
+  boot_log_level: INFO
 
 # Enable Home Assistant API
 api:
