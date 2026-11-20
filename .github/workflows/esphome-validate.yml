@@ -9,6 +9,12 @@ on:
     types:
       - published
 
+# ESPHome 2026.10 and later require Python >= 3.12. With an older interpreter pip
+# silently resolves "latest"/"--pre" to a much older ESPHome release that still
+# supports it, so CI stays green while current ESPHome releases fail to build.
+env:
+  PYTHON_VERSION: '3.13'
+
 jobs:
   validate:
     name: Compile (${{ matrix.config }} - ${{ matrix.channel }})
@@ -28,19 +34,27 @@ jobs:
           - tests/test_pulse_output.yaml
           - tests/test_zone_datetime.yaml
           - tests/test_debug_switches.yaml
+        include:
+          # Pin the release the component is known to target, so a moving
+          # "stable"/"beta" can't hide a breakage with it.
+          - channel: '2026.11.0'
+            config: tests/test_full.yaml
+          - channel: '2026.11.0'
+            config: tests/test_minimal.yaml
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install ESPHome (${{ matrix.channel }})
         run: |
-          if [ "${{ matrix.channel }}" = "beta" ]; then
-            pip install --upgrade --pre esphome
-          else
-            pip install --upgrade esphome
-          fi
+          case "${{ matrix.channel }}" in
+            beta)   pip install --upgrade --pre esphome ;;
+            stable) pip install --upgrade esphome ;;
+            *)      pip install "esphome==${{ matrix.channel }}" ;;
+          esac
+          esphome version
       - name: Compile ${{ matrix.config }}
         run: esphome compile ${{ matrix.config }}
 
@@ -70,7 +84,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install ESPHome (${{ matrix.channel }})
         run: |
           if [ "${{ matrix.channel }}" = "beta" ]; then
@@ -78,6 +92,7 @@ jobs:
           else
             pip install --upgrade esphome
           fi
+          esphome version
       - name: Validate invalid output_number test
         run: |
           if esphome config tests/test_invalid_output_number.yaml; then
