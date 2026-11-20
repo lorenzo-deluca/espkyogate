@@ -58,6 +58,38 @@ jobs:
       - name: Compile ${{ matrix.config }}
         run: esphome compile ${{ matrix.config }}
 
+  # The shipped example (espkyogate_configuration.yaml) is what users copy, but it
+  # points external_components at GitHub, so it is compiled here against the
+  # checked-out component, and with the placeholder secrets.yaml it ships with.
+  example-config:
+    name: Compile example config (${{ matrix.channel }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [stable, beta, '2026.11.0']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install ESPHome (${{ matrix.channel }})
+        run: |
+          case "${{ matrix.channel }}" in
+            beta)   pip install --upgrade --pre esphome ;;
+            stable) pip install --upgrade esphome ;;
+            *)      pip install "esphome==${{ matrix.channel }}" ;;
+          esac
+          esphome version
+      - name: Point the example at the checked-out component
+        run: |
+          sed 's#source: github://lorenzo-deluca/espkyogate#source: {type: local, path: components}#' \
+            espkyogate_configuration.yaml > ci_example.yaml
+          grep -q 'type: local' ci_example.yaml
+      - name: Compile espkyogate_configuration.yaml
+        run: esphome compile ci_example.yaml
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-22.04
