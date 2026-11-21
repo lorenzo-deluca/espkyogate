@@ -35,11 +35,16 @@ jobs:
           - tests/test_zone_datetime.yaml
           - tests/test_debug_switches.yaml
         include:
-          # Pin the release the component is known to target, so a moving
-          # "stable"/"beta" can't hide a breakage with it.
+          # Pin the releases the component is known to target, so a moving
+          # "stable"/"beta" can't hide a breakage with it. 2026.10.2 is the
+          # oldest supported release (get_name_to() does not exist there yet).
           - channel: '2026.11.0'
             config: tests/test_full.yaml
           - channel: '2026.11.0'
+            config: tests/test_minimal.yaml
+          - channel: '2026.10.2'
+            config: tests/test_full.yaml
+          - channel: '2026.10.2'
             config: tests/test_minimal.yaml
     steps:
       - uses: actions/checkout@v4

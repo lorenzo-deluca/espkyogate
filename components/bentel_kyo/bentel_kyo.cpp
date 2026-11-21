@@ -10,11 +10,42 @@
 #include "alarm_control_panel.h"
 #include "cp437.h"
 #include "partition_status.h"
+#include "esphome/core/version.h"
 #include <cstdlib>
 #include <ctime>
 
 namespace esphome {
 namespace bentel_kyo {
+
+namespace {
+
+// Entity name for log messages, working across ESPHome versions:
+//  - <= 2026.10.x: only EntityBase::get_name() exists
+//  - >= 2026.11.0: get_name() is deprecated and gets removed in 2027.5.0; get_name_to() replaces it
+// get_name_to() may format the name into a caller-provided buffer, so the buffer lives in this object:
+// keep it alive while the pointer returned by c_str() is in use, and do not copy it.
+class EntityNameForLog {
+ public:
+  explicit EntityNameForLog(const EntityBase *entity) {
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 11, 0)
+    this->name_ = entity->get_name_to(this->buf_).c_str();
+#else
+    this->name_ = entity->get_name().c_str();
+#endif
+  }
+  EntityNameForLog(const EntityNameForLog &) = delete;
+  EntityNameForLog &operator=(const EntityNameForLog &) = delete;
+
+  const char *c_str() const { return this->name_; }
+
+ private:
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 11, 0)
+  char buf_[ENTITY_NAME_BUF_SIZE];
+#endif
+  const char *name_;
+};
+
+}  // namespace
 
 // Static constexpr definitions
 constexpr uint8_t BentelKyo::CMD_GET_SENSOR_STATUS[];
@@ -829,8 +860,9 @@ void BentelKyo::publish_binary_sensors_() {
 
     // Log state changes when log_trace is enabled
     if (this->log_trace_ && state != entry.sensor->state) {
+      EntityNameForLog name(entry.sensor);
       ESP_LOGI(TAG, "State change: %s [idx=%d] %s -> %s",
-               entry.sensor->get_name().c_str(), idx,
+               name.c_str(), idx,
                entry.sensor->state ? "ON" : "OFF",
                state ? "ON" : "OFF");
     }
