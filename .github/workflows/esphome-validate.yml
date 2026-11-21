@@ -9,6 +9,12 @@ on:
     types:
       - published
 
+# ESPHome 2026.10 and later require Python >= 3.12. With an older interpreter pip
+# silently resolves "latest"/"--pre" to a much older ESPHome release that still
+# supports it, so CI stays green while current ESPHome releases fail to build.
+env:
+  PYTHON_VERSION: '3.13'
+
 jobs:
   validate:
     name: Compile (${{ matrix.config }} - ${{ matrix.channel }})
@@ -28,21 +34,66 @@ jobs:
           - tests/test_pulse_output.yaml
           - tests/test_zone_datetime.yaml
           - tests/test_debug_switches.yaml
+        include:
+          # Pin the releases the component is known to target, so a moving
+          # "stable"/"beta" can't hide a breakage with it. 2026.10.2 is the
+          # oldest supported release (get_name_to() does not exist there yet).
+          - channel: '2026.11.0'
+            config: tests/test_full.yaml
+          - channel: '2026.11.0'
+            config: tests/test_minimal.yaml
+          - channel: '2026.10.2'
+            config: tests/test_full.yaml
+          - channel: '2026.10.2'
+            config: tests/test_minimal.yaml
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install ESPHome (${{ matrix.channel }})
         run: |
-          if [ "${{ matrix.channel }}" = "beta" ]; then
-            pip install --upgrade --pre esphome
-          else
-            pip install --upgrade esphome
-          fi
+          case "${{ matrix.channel }}" in
+            beta)   pip install --upgrade --pre esphome ;;
+            stable) pip install --upgrade esphome ;;
+            *)      pip install "esphome==${{ matrix.channel }}" ;;
+          esac
+          esphome version
       - name: Compile ${{ matrix.config }}
         run: esphome compile ${{ matrix.config }}
+
+  # The shipped example (espkyogate_configuration.yaml) is what users copy, but it
+  # points external_components at GitHub, so it is compiled here against the
+  # checked-out component, and with the placeholder secrets.yaml it ships with.
+  example-config:
+    name: Compile example config (${{ matrix.channel }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [stable, beta, '2026.11.0']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install ESPHome (${{ matrix.channel }})
+        run: |
+          case "${{ matrix.channel }}" in
+            beta)   pip install --upgrade --pre esphome ;;
+            stable) pip install --upgrade esphome ;;
+            *)      pip install "esphome==${{ matrix.channel }}" ;;
+          esac
+          esphome version
+      - name: Point the example at the checked-out component
+        run: |
+          sed 's#source: github://lorenzo-deluca/espkyogate#source: {type: local, path: components}#' \
+            espkyogate_configuration.yaml > ci_example.yaml
+          grep -q 'type: local' ci_example.yaml
+      - name: Compile espkyogate_configuration.yaml
+        run: esphome compile ci_example.yaml
 
   unit-tests:
     name: Unit Tests
@@ -70,7 +121,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install ESPHome (${{ matrix.channel }})
         run: |
           if [ "${{ matrix.channel }}" = "beta" ]; then
@@ -78,6 +129,7 @@ jobs:
           else
             pip install --upgrade esphome
           fi
+          esphome version
       - name: Validate invalid output_number test
         run: |
           if esphome config tests/test_invalid_output_number.yaml; then

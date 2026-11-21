@@ -10,11 +10,42 @@
 #include "alarm_control_panel.h"
 #include "cp437.h"
 #include "partition_status.h"
+#include "esphome/core/version.h"
 #include <cstdlib>
 #include <ctime>
 
 namespace esphome {
 namespace bentel_kyo {
+
+namespace {
+
+// Entity name for log messages, working across ESPHome versions:
+//  - <= 2026.10.x: only EntityBase::get_name() exists
+//  - >= 2026.11.0: get_name() is deprecated and gets removed in 2027.5.0; get_name_to() replaces it
+// get_name_to() may format the name into a caller-provided buffer, so the buffer lives in this object:
+// keep it alive while the pointer returned by c_str() is in use, and do not copy it.
+class EntityNameForLog {
+ public:
+  explicit EntityNameForLog(const EntityBase *entity) {
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 11, 0)
+    this->name_ = entity->get_name_to(this->buf_).c_str();
+#else
+    this->name_ = entity->get_name().c_str();
+#endif
+  }
+  EntityNameForLog(const EntityNameForLog &) = delete;
+  EntityNameForLog &operator=(const EntityNameForLog &) = delete;
+
+  const char *c_str() const { return this->name_; }
+
+ private:
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 11, 0)
+  char buf_[ENTITY_NAME_BUF_SIZE];
+#endif
+  const char *name_;
+};
+
+}  // namespace
 
 // Static constexpr definitions
 constexpr uint8_t BentelKyo::CMD_GET_SENSOR_STATUS[];
@@ -72,8 +103,9 @@ void BentelKyo::send_command_async_(const uint8_t *cmd, int cmd_len, uint8_t pen
 
   // Log serial trace if enabled
   if (this->serial_trace_) {
+    char hex[format_hex_pretty_size(255)];
     ESP_LOGI(TAG, "TX [%d bytes]: %s", cmd_len,
-             format_hex_pretty(cmd, cmd_len).c_str());
+             format_hex_pretty_to(hex, cmd, cmd_len, '.'));
   }
 
   // Send command bytes (fast: ~7ms for 6 bytes at 9600 baud)
@@ -127,8 +159,9 @@ void BentelKyo::loop() {
 
   // Log serial trace if enabled
   if (this->serial_trace_ && count > 0) {
+    char hex[format_hex_pretty_size(sizeof(this->serial_rx_buf_))];
     ESP_LOGI(TAG, "RX [%d bytes]: %s", count,
-             format_hex_pretty(this->serial_rx_buf_, count).c_str());
+             format_hex_pretty_to(hex, this->serial_rx_buf_, count, '.'));
   }
 
   if (count <= 0) {
@@ -827,8 +860,9 @@ void BentelKyo::publish_binary_sensors_() {
 
     // Log state changes when log_trace is enabled
     if (this->log_trace_ && state != entry.sensor->state) {
+      EntityNameForLog name(entry.sensor);
       ESP_LOGI(TAG, "State change: %s [idx=%d] %s -> %s",
-               entry.sensor->get_name().c_str(), idx,
+               name.c_str(), idx,
                entry.sensor->state ? "ON" : "OFF",
                state ? "ON" : "OFF");
     }
@@ -1153,8 +1187,9 @@ int BentelKyo::send_message_(const uint8_t *cmd, int cmd_len, uint8_t *response,
 
   // Send command
   if (this->serial_trace_) {
+    char hex[format_hex_pretty_size(255)];
     ESP_LOGI(TAG, "TX [%d bytes]: %s", cmd_len,
-             format_hex_pretty(cmd, cmd_len).c_str());
+             format_hex_pretty_to(hex, cmd, cmd_len, '.'));
   }
   this->write_array(cmd, cmd_len);
 
@@ -1199,8 +1234,9 @@ int BentelKyo::send_message_(const uint8_t *cmd, int cmd_len, uint8_t *response,
   memcpy(response, rx_buf, index);
 
   if (this->serial_trace_) {
+    char hex[format_hex_pretty_size(sizeof(rx_buf))];
     ESP_LOGI(TAG, "RX [%d bytes]: %s", index,
-             format_hex_pretty(rx_buf, index).c_str());
+             format_hex_pretty_to(hex, rx_buf, index, '.'));
   }
 
   return index;
